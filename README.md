@@ -1,4 +1,4 @@
-# 📚 Decks App
+# 📚 Burbly App
 
 A simple and elegant Flutter app for managing study decks and practicing different topics.  
 Each deck represents a subject (e.g., Microcontrollers, Logic Design, Data Structures), and you can easily create, edit, and practice decks to improve your knowledge.
