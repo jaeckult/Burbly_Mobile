@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/flashcard.dart';
-import '../services/data_service.dart';
+import '../../../core/core.dart';
 
 class AddFlashcardScreen extends StatefulWidget {
   final String deckId;

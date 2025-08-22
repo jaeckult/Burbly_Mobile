@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/deck.dart';
-import '../services/data_service.dart';
+import '../../../core/core.dart';
+
 
 class CreateDeckScreen extends StatefulWidget {
   final Function(Deck) onDeckCreated;
@@ -20,6 +20,8 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
   final _descriptionController = TextEditingController();
   final _dataService = DataService();
   String? _selectedColor;
+  String? _selectedPackId;
+  List<DeckPack> _availablePacks = [];
   bool _isLoading = false;
 
   final List<String> _colorOptions = [
@@ -36,10 +38,30 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadDeckPacks();
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDeckPacks() async {
+    try {
+      if (!_dataService.isInitialized) {
+        await _dataService.initialize();
+      }
+      final packs = await _dataService.getDeckPacks();
+      setState(() {
+        _availablePacks = packs;
+      });
+    } catch (e) {
+      // Silently handle error, packs are optional
+    }
   }
 
   Future<void> _createDeck() async {
@@ -48,11 +70,21 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Ensure DataService is initialized
+      if (!_dataService.isInitialized) {
+        await _dataService.initialize();
+      }
+      
       final deck = await _dataService.createDeck(
         _nameController.text.trim(),
         _descriptionController.text.trim(),
         coverColor: _selectedColor,
       );
+
+      // If a pack is selected, add the deck to it
+      if (_selectedPackId != null) {
+        await _dataService.addDeckToPack(deck.id, _selectedPackId!);
+      }
 
       widget.onDeckCreated(deck);
 
@@ -176,6 +208,42 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
               }).toList(),
             ),
             const SizedBox(height: 32),
+
+            // Deck Pack Selection
+            if (_availablePacks.isNotEmpty) ...[
+              Text(
+                'Assign to Deck Pack (Optional)',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _selectedPackId,
+                decoration: const InputDecoration(
+                  labelText: 'Deck Pack',
+                  hintText: 'Select a pack (optional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.folder),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('No Pack'),
+                  ),
+                  ..._availablePacks.map((pack) => DropdownMenuItem(
+                    value: pack.id,
+                    child: Text(pack.name),
+                  )),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedPackId = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 32),
+            ],
 
             // Create Button
             SizedBox(

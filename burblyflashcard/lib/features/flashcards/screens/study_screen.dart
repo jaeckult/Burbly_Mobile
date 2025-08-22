@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/deck.dart';
-import '../models/flashcard.dart';
-import '../services/data_service.dart';
+import '../../../core/core.dart';
 
 class StudyScreen extends StatefulWidget {
   final Deck deck;
@@ -245,7 +243,7 @@ class _StudyScreenState extends State<StudyScreen> {
     try {
       final currentCard = widget.flashcards[_currentIndex];
       final updatedCard = currentCard.copyWith(
-        difficulty: difficulty,
+        easeFactor: currentCard.easeFactor + (0.1 * (5 - difficulty)),
         lastReviewed: DateTime.now(),
         reviewCount: currentCard.reviewCount + 1,
       );

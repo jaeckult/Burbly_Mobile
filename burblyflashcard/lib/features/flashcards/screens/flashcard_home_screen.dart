@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/auth_service.dart';
-import '../models/deck.dart';
-import '../services/data_service.dart';
+import '../../../core/core.dart';
 import 'create_deck_screen.dart';
 import 'deck_detail_screen.dart';
+import 'search_screen.dart';
+import 'deck_pack_list_screen.dart';
+import 'notes_screen.dart';
+import '../../stats/stats_page.dart';
 
 class FlashcardHomeScreen extends StatefulWidget {
   const FlashcardHomeScreen({super.key});
@@ -28,10 +31,19 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   }
 
   Future<void> _initializeData() async {
-    await _dataService.initialize();
-    _isGuestMode = await _dataService.isGuestMode();
-    await _loadDecks();
-    setState(() => _isLoading = false);
+    try {
+      // Ensure DataService is initialized
+      if (!_dataService.isInitialized) {
+        await _dataService.initialize();
+      }
+      
+      _isGuestMode = await _dataService.isGuestMode();
+      await _loadDecks();
+      setState(() => _isLoading = false);
+    } catch (e) {
+      print('Error initializing data: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadDecks() async {
@@ -43,9 +55,6 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
     try {
       final result = await _authService.signInWithGoogle();
       if (result != null) {
-        // Sync local data to Firestore
-        await _dataService.syncLocalDataToFirestore();
-        
         // Update guest mode status
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isGuestMode', false);
@@ -55,7 +64,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Successfully signed in! Your data has been synced.'),
+              content: Text('Successfully signed in! Use the backup button to sync your data.'),
               backgroundColor: Colors.green,
             ),
           );
@@ -66,6 +75,30 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Sign-in failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _backupToCloud() async {
+    try {
+      await _dataService.backupToFirestore();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup completed successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup failed: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -110,6 +143,18 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+          ),
           if (_isGuestMode)
             Container(
               margin: const EdgeInsets.only(right: 16),
@@ -128,17 +173,24 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                 ),
               ),
             ),
+          if (!_isGuestMode)
+            IconButton(
+              onPressed: _backupToCloud,
+              icon: const Icon(Icons.backup),
+              tooltip: 'Backup to Cloud',
+            ),
         ],
       ),
       drawer: _buildDrawer(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _createNewDeck(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showActionOptions(),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Add'),
       ),
     );
   }
@@ -181,13 +233,43 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.home),
-                  title: const Text('Home'),
-                  onTap: () => Navigator.pop(context),
+                  title: const Text('Deck Packs'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushReplacementNamed(context, '/home');
+                  },
                 ),
                 ListTile(
                   leading: const Icon(Icons.school),
                   title: const Text('My Decks'),
                   onTap: () => Navigator.pop(context),
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.note),
+                  title: const Text('Notes'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.analytics),
+                  title: const Text('Statistics'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StatsPage(),
+                      ),
+                    );
+                  },
                 ),
                 const Divider(),
                 if (_isGuestMode) ...[
@@ -200,16 +282,25 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                       _signInWithGoogle();
                     },
                   ),
-                ] else ...[
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text('Sign out'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _signOut();
-                    },
-                  ),
-                ],
+                                 ] else ...[
+                   ListTile(
+                     leading: const Icon(Icons.backup),
+                     title: const Text('Backup to Cloud'),
+                     subtitle: const Text('Sync your data'),
+                     onTap: () {
+                       Navigator.pop(context);
+                       _backupToCloud();
+                     },
+                   ),
+                   ListTile(
+                     leading: const Icon(Icons.logout),
+                     title: const Text('Sign out'),
+                     onTap: () {
+                       Navigator.pop(context);
+                       _signOut();
+                     },
+                   ),
+                 ],
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.info),
@@ -351,6 +442,38 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const Spacer(),
+                
+                // Pack indicator (if deck is in a pack)
+                if (deck.packId != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.folder,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'In Pack',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -496,6 +619,36 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
           'A smart flashcard app that works offline and syncs your data when you sign in.',
         ),
       ],
+    );
+  }
+
+  void _showActionOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.school),
+              title: const Text('Create New Deck'),
+              onTap: () {
+                Navigator.pop(context);
+                _createNewDeck();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder),
+              title: const Text('Go to Deck Packs'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/home');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

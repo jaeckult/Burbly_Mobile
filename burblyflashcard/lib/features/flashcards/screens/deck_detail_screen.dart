@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/deck.dart';
-import '../models/flashcard.dart';
-import '../services/data_service.dart';
+import '../../../core/core.dart';
 import 'add_flashcard_screen.dart';
 import 'study_screen.dart';
+import 'enhanced_study_screen.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final Deck deck;
@@ -59,12 +58,233 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StudyScreen(
+        builder: (context) => EnhancedStudyScreen(
           deck: widget.deck,
           flashcards: _flashcards,
         ),
       ),
     ).then((_) => _loadFlashcards());
+  }
+
+  void _showDeckSettings() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Deck Settings',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Timer Settings
+            ListTile(
+              leading: const Icon(Icons.timer),
+              title: const Text('Study Timer'),
+              subtitle: Text(
+                widget.deck.timerDuration != null 
+                    ? '${widget.deck.timerDuration} seconds'
+                    : 'Disabled',
+              ),
+              trailing: Switch(
+                value: widget.deck.timerDuration != null,
+                onChanged: (value) {
+                  Navigator.pop(context);
+                  _showTimerSettings();
+                },
+              ),
+            ),
+            
+            // Spaced Repetition Settings
+            ListTile(
+              leading: const Icon(Icons.repeat),
+              title: const Text('Spaced Repetition'),
+              subtitle: const Text('Optimize review intervals'),
+              trailing: Switch(
+                value: widget.deck.spacedRepetitionEnabled,
+                onChanged: (value) async {
+                  final updatedDeck = widget.deck.copyWith(
+                    spacedRepetitionEnabled: value,
+                  );
+                  await _dataService.updateDeck(updatedDeck);
+                  Navigator.pop(context);
+                  setState(() {});
+                },
+              ),
+            ),
+            
+            // Deck Pack Settings
+            ListTile(
+              leading: const Icon(Icons.folder),
+              title: const Text('Deck Pack'),
+              subtitle: Text(
+                widget.deck.packId != null ? 'Assigned to pack' : 'No pack assigned',
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeckPackSettings();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTimerSettings() {
+    int? selectedDuration = widget.deck.timerDuration;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Study Timer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Set timer duration (seconds):'),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int>(
+              value: selectedDuration,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Duration',
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('Disabled'),
+                ),
+                ...List.generate(12, (index) {
+                  final duration = (index + 1) * 5;
+                  return DropdownMenuItem(
+                    value: duration,
+                    child: Text('$duration seconds'),
+                  );
+                }),
+              ],
+              onChanged: (value) {
+                selectedDuration = value;
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final updatedDeck = widget.deck.copyWith(
+                timerDuration: selectedDuration,
+              );
+              await _dataService.updateDeck(updatedDeck);
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeckPackSettings() async {
+    List<DeckPack> availablePacks = [];
+    try {
+      availablePacks = await _dataService.getDeckPacks();
+    } catch (e) {
+      // Handle error silently
+    }
+
+    String? selectedPackId = widget.deck.packId;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Deck Pack Assignment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Assign this deck to a pack:'),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: selectedPackId,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Deck Pack',
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('No Pack'),
+                ),
+                ...availablePacks.map((pack) => DropdownMenuItem(
+                  value: pack.id,
+                  child: Text(pack.name),
+                )),
+              ],
+              onChanged: (value) {
+                selectedPackId = value;
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                if (selectedPackId != null) {
+                  await _dataService.addDeckToPack(widget.deck.id, selectedPackId!);
+                } else if (widget.deck.packId != null) {
+                  await _dataService.removeDeckFromPack(widget.deck.id, widget.deck.packId!);
+                }
+                
+                final updatedDeck = widget.deck.copyWith(
+                  packId: selectedPackId,
+                );
+                await _dataService.updateDeck(updatedDeck);
+                
+                Navigator.pop(context);
+                setState(() {});
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(selectedPackId != null 
+                          ? 'Deck assigned to pack successfully!' 
+                          : 'Deck removed from pack successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error updating deck pack: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showFlashcardOptions(Flashcard flashcard) {
@@ -141,6 +361,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _showDeckSettings,
+            tooltip: 'Deck Settings',
+          ),
           IconButton(
             icon: const Icon(Icons.play_arrow),
             onPressed: _startStudy,
@@ -358,7 +583,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Difficulty: ${flashcard.difficulty}/5',
+                    'Ease: ${flashcard.easeFactor.toStringAsFixed(1)}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[500],

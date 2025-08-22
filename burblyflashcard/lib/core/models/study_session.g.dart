@@ -1,59 +1,56 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'flashcard.dart';
+part of 'study_session.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class FlashcardAdapter extends TypeAdapter<Flashcard> {
+class StudySessionAdapter extends TypeAdapter<StudySession> {
   @override
-  final int typeId = 0;
+  final int typeId = 4;
 
   @override
-  Flashcard read(BinaryReader reader) {
+  StudySession read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Flashcard(
+    return StudySession(
       id: fields[0] as String,
       deckId: fields[1] as String,
-      question: fields[2] as String,
-      answer: fields[3] as String,
-      createdAt: fields[4] as DateTime,
-      updatedAt: fields[5] as DateTime,
-      difficulty: fields[6] as int,
-      lastReviewed: fields[7] as DateTime?,
-      reviewCount: fields[8] as int,
-      isSynced: fields[9] as bool,
+      date: fields[2] as DateTime,
+      totalCards: fields[3] as int,
+      correctAnswers: fields[4] as int,
+      incorrectAnswers: fields[5] as int,
+      averageScore: fields[6] as double,
+      studyTimeSeconds: fields[7] as int,
+      usedTimer: fields[8] as bool,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Flashcard obj) {
+  void write(BinaryWriter writer, StudySession obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.deckId)
       ..writeByte(2)
-      ..write(obj.question)
+      ..write(obj.date)
       ..writeByte(3)
-      ..write(obj.answer)
+      ..write(obj.totalCards)
       ..writeByte(4)
-      ..write(obj.createdAt)
+      ..write(obj.correctAnswers)
       ..writeByte(5)
-      ..write(obj.updatedAt)
+      ..write(obj.incorrectAnswers)
       ..writeByte(6)
-      ..write(obj.difficulty)
+      ..write(obj.averageScore)
       ..writeByte(7)
-      ..write(obj.lastReviewed)
+      ..write(obj.studyTimeSeconds)
       ..writeByte(8)
-      ..write(obj.reviewCount)
-      ..writeByte(9)
-      ..write(obj.isSynced);
+      ..write(obj.usedTimer);
   }
 
   @override
@@ -62,7 +59,7 @@ class FlashcardAdapter extends TypeAdapter<Flashcard> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FlashcardAdapter &&
+      other is StudySessionAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
