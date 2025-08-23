@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
+import '../../../core/services/background_service.dart';
+import '../../../core/services/pet_service.dart';
 
 class StudyScreen extends StatefulWidget {
   final Deck deck;
@@ -256,10 +258,21 @@ class _StudyScreenState extends State<StudyScreen> {
           _currentIndex++;
           _showAnswer = false;
         });
-      } else {
-        // Study session completed
-        if (mounted) {
-          Navigator.pop(context);
+                  } else {
+              // Study session completed
+              // Update study streak
+              await BackgroundService().updateStudyStreak();
+              
+              // Update pet with study progress
+              final petService = PetService();
+              await petService.initialize();
+              final currentPet = petService.getCurrentPet();
+              if (currentPet != null) {
+                await petService.studyWithPet(currentPet, _currentIndex + 1);
+              }
+              
+              if (mounted) {
+                Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Study session completed! You reviewed ${widget.flashcards.length} cards.'),

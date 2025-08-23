@@ -3,12 +3,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/auth_service.dart';
 import '../../../core/core.dart';
+import '../../../core/services/theme_service.dart';
 import 'create_deck_pack_screen.dart';
 import 'deck_pack_detail_screen.dart';
 import 'flashcard_home_screen.dart';
 import 'notes_screen.dart';
 import 'search_screen.dart';
 import '../../stats/stats_page.dart';
+import 'notification_settings_screen.dart';
+import '../widgets/notification_widget.dart';
+import '../../pets/widgets/pet_companion_widget.dart';
+import '../../pets/screens/pet_management_screen.dart';
 
 class DeckPackListScreen extends StatefulWidget {
   const DeckPackListScreen({super.key});
@@ -20,6 +25,7 @@ class DeckPackListScreen extends StatefulWidget {
 class _DeckPackListScreenState extends State<DeckPackListScreen> {
   final DataService _dataService = DataService();
   final AuthService _authService = AuthService();
+  final ThemeService _themeService = ThemeService();
   List<DeckPack> _deckPacks = [];
   bool _isLoading = true;
   bool _isGuestMode = false;
@@ -254,6 +260,15 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     );
   }
 
+  void _showPetManagement() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PetManagementScreen(),
+      ),
+    );
+  }
+
   Widget _buildDrawer() {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -330,6 +345,35 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                     );
                   },
                 ),
+                ListTile(
+                  leading: const Icon(Icons.notifications),
+                  title: const Text('Notification Settings'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(_themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                  title: Text(_themeService.isDarkMode ? 'Light Mode' : 'Dark Mode'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _themeService.toggleTheme();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.pets),
+                  title: const Text('Pet Management'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showPetManagement();
+                  },
+                ),
                 const Divider(),
                 if (_isGuestMode) ...[
                   ListTile(
@@ -380,21 +424,44 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Your Decks'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
+            icon: Icon(Icons.menu, color: Theme.of(context).appBarTheme.foregroundColor),
             onPressed: () {
               Scaffold.of(context).openDrawer();
             },
           ),
         ),
+        actions: [
+          // Notification settings button
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
+                ),
+              );
+            },
+            icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
+            tooltip: 'Notification Settings',
+          ),
+          // Theme toggle button
+          IconButton(
+            onPressed: () async {
+              await _themeService.toggleTheme();
+            },
+            icon: Icon(
+              _themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              color: Theme.of(context).appBarTheme.foregroundColor,
+            ),
+            tooltip: _themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          ),
+        ],
       ),
       drawer: _buildDrawer(),
       body: _isLoading
@@ -412,24 +479,40 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   Widget _buildBody() {
     return RefreshIndicator(
       onRefresh: _loadDeckPacks,
-      child: Column(
-        children: [
-          // Search Bar
+              child: Column(
+          children: [
+            // Pet Companion Widget
+            const PetCompanionWidget(),
+            
+            // Notification widget
+            const NotificationWidget(),
+            
+            // Search Bar
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.white,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? Colors.grey[800] 
+                    : Colors.grey[100],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: TextField(
                 decoration: InputDecoration(
                   hintText: 'Search...',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  hintStyle: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey[400] 
+                        : Colors.grey[600]
+                  ),
                   border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                  prefixIcon: Icon(
+                    Icons.search, 
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey[400] 
+                        : Colors.grey[600]
+                  ),
                 ),
                 onTap: () {
                   Navigator.push(

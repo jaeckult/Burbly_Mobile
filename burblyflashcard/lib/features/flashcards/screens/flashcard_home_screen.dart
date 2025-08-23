@@ -10,6 +10,7 @@ import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
 import '../../stats/stats_page.dart';
 
+
 class FlashcardHomeScreen extends StatefulWidget {
   const FlashcardHomeScreen({super.key});
 
@@ -155,6 +156,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
           ),
+
           if (_isGuestMode)
             Container(
               margin: const EdgeInsets.only(right: 16),
@@ -271,6 +273,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     );
                   },
                 ),
+
                 const Divider(),
                 if (_isGuestMode) ...[
                   ListTile(
@@ -322,7 +325,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
     if (_decks.isEmpty) {
       return _buildEmptyState();
     }
-
+    
     return RefreshIndicator(
       onRefresh: _loadDecks,
       child: GridView.builder(

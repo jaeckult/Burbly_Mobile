@@ -2,13 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/deck.dart';
-import '../models/flashcard.dart';
-import '../models/deck_pack.dart';
-import '../models/note.dart';
-import '../models/pet.dart';
-import '../models/study_session.dart';
-
+import '../../../core/models/deck.dart';
+import '../../../core/models/flashcard.dart';
+import '../../../core/models/deck_pack.dart';
+import '../../../core/models/note.dart';
+import '../../../core/models/study_session.dart';
 class DataService {
   static const String _decksBoxName = 'decks';
   static const String _flashcardsBoxName = 'flashcards';
@@ -35,46 +33,14 @@ class DataService {
     if (_isInitialized) return; // Prevent multiple initializations
     
     try {
-      // Check if Hive is already initialized
-      if (!Hive.isBoxOpen(_decksBoxName)) {
-        await Hive.initFlutter();
-        
-        // Clear any existing boxes to avoid type ID conflicts
-        await Hive.deleteBoxFromDisk(_decksBoxName);
-        await Hive.deleteBoxFromDisk(_flashcardsBoxName);
-        await Hive.deleteBoxFromDisk(_deckPacksBoxName);
-        await Hive.deleteBoxFromDisk(_notesBoxName);
-        await Hive.deleteBoxFromDisk(_studySessionsBoxName);
-        
-        // Register adapters only if not already registered
-        if (!Hive.isAdapterRegistered(0)) {
-          Hive.registerAdapter(DeckAdapter());
-        }
-        if (!Hive.isAdapterRegistered(1)) {
-          Hive.registerAdapter(FlashcardAdapter());
-        }
-        if (!Hive.isAdapterRegistered(2)) {
-          Hive.registerAdapter(DeckPackAdapter());
-        }
-        if (!Hive.isAdapterRegistered(3)) {
-          Hive.registerAdapter(NoteAdapter());
-        }
-        if (!Hive.isAdapterRegistered(4)) {
-          Hive.registerAdapter(StudySessionAdapter());
-        }
-        if (!Hive.isAdapterRegistered(5)) {
-          Hive.registerAdapter(PetAdapter());
-        }
-        if (!Hive.isAdapterRegistered(6)) {
-          Hive.registerAdapter(PetTypeAdapter());
-        }
-        if (!Hive.isAdapterRegistered(7)) {
-          Hive.registerAdapter(PetMoodAdapter());
-        }
-        if (!Hive.isAdapterRegistered(8)) {
-          Hive.registerAdapter(PetStageAdapter());
-        }
-      }
+      await Hive.initFlutter();
+      
+      // Register adapters
+      Hive.registerAdapter(DeckAdapter());
+      Hive.registerAdapter(FlashcardAdapter());
+      Hive.registerAdapter(DeckPackAdapter());
+      Hive.registerAdapter(NoteAdapter());
+      Hive.registerAdapter(StudySessionAdapter());
       
       // Open boxes
       _decksBox = await Hive.openBox<Deck>(_decksBoxName);
@@ -264,14 +230,6 @@ class DataService {
     return _flashcardsBox.values.where((card) => card.deckId == deckId).toList();
   }
 
-  // Get all flashcards
-  Future<List<Flashcard>> getAllFlashcards() async {
-    if (!_isInitialized) {
-      throw Exception('DataService has not been initialized. Please call initialize() first.');
-    }
-    return _flashcardsBox.values.toList();
-  }
-
   // Update flashcard
   Future<void> updateFlashcard(Flashcard flashcard) async {
     if (!_isInitialized) {
@@ -448,7 +406,7 @@ class DataService {
       description: description,
       createdAt: now,
       updatedAt: now,
-      coverColor: coverColor ?? 'FF9800',
+      coverColor: coverColor ?? '',
     );
 
     await _deckPacksBox.put(pack.id, pack);
