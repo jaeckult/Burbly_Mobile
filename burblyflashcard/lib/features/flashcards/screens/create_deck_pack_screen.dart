@@ -20,15 +20,16 @@ class _CreateDeckPackScreenState extends State<CreateDeckPackScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
+  String _selectedColor = '2196F3'; // Default blue
   bool _isLoading = false;
 
   final List<String> _colorOptions = [
+    '2196F3', // Blue
     'FF9800', // Orange
     'E91E63', // Pink
     '9C27B0', // Purple
     '673AB7', // Deep Purple
     '3F51B5', // Indigo
-    '2196F3', // Blue
     '00BCD4', // Cyan
     '009688', // Teal
     '4CAF50', // Green
@@ -58,34 +59,26 @@ class _CreateDeckPackScreenState extends State<CreateDeckPackScreen> {
         await _dataService.initialize();
       }
 
-      // Generate a random color for the deck pack
-      final random = Random();
-      final randomColor = _colorOptions[random.nextInt(_colorOptions.length)];
-      
       final deckPack = await _dataService.createDeckPack(
         _nameController.text.trim(),
         _descriptionController.text.trim(),
-        coverColor: randomColor,
+        coverColor: _selectedColor,
       );
 
       widget.onDeckPackCreated(deckPack);
       
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deck pack "${deckPack.name}" created successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        SnackbarUtils.showSuccessSnackbar(
+          context,
+          'Deck pack "${deckPack.name}" created successfully!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating deck pack: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error creating deck pack: ${e.toString()}',
         );
       }
     } finally {
@@ -182,40 +175,107 @@ class _CreateDeckPackScreenState extends State<CreateDeckPackScreen> {
                     : null;
               },
             ),
+            const SizedBox(height: 20),
+
+            // Color Selection
+            Text(
+              'Pack Color',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 60,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _colorOptions.length,
+                itemBuilder: (context, index) {
+                  final color = _colorOptions[index];
+                  final isSelected = color == _selectedColor;
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedColor = color;
+                      });
+                    },
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: Color(int.parse('0xFF$color')),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? Colors.white : Colors.transparent,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: isSelected
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 24,
+                            )
+                          : null,
+                    ),
+                  );
+                },
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Create Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createDeckPack,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Create Deck Pack',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+SizedBox(
+  width: double.infinity,
+  height: 50,
+  child: ElevatedButton(
+    onPressed: _isLoading ? null : _createDeckPack,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.secondary
+          : Theme.of(context).primaryColor,
+      foregroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    child: _isLoading
+        ? SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black
+                    : Colors.white,
               ),
             ),
-          ],
+          )
+        : Text(
+            'Create Deck Pack',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black
+                  : Colors.white,
+            ),
+          ),
+  ),
+)
+],
         ),
       ),
     );

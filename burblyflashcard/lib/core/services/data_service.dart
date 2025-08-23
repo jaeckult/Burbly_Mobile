@@ -169,9 +169,9 @@ class DataService {
     await _decksBox.delete(deckId);
   }
 
-  // ===== SPACED REPETITION LOGIC =====
+  // ===== SPACED REPETITION LOGIC (SM2 Algorithm) =====
 
-  // Update flashcard with spaced repetition algorithm
+  // Update flashcard with proper SM2 spaced repetition algorithm
   Future<void> updateFlashcardWithReview(Flashcard flashcard, int quality) async {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
@@ -181,23 +181,42 @@ class DataService {
     int newInterval;
     double newEaseFactor;
 
+    // SM2 Algorithm Implementation
     if (quality >= 3) {
-      // Good response
+      // Successful recall (Good/Easy)
       if (flashcard.interval == 1) {
+        // First successful review after failure
         newInterval = 6;
       } else {
+        // Subsequent successful reviews
         newInterval = (flashcard.interval * flashcard.easeFactor).round();
       }
-      newEaseFactor = flashcard.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+      
+      // Adjust ease factor based on quality
+      // Quality: 3=Hard, 4=Good, 5=Easy
+      double qualityAdjustment;
+      if (quality == 3) {
+        // Hard - slight decrease in ease factor
+        qualityAdjustment = -0.15;
+      } else if (quality == 4) {
+        // Good - minimal change
+        qualityAdjustment = 0.0;
+      } else {
+        // Easy - slight increase in ease factor
+        qualityAdjustment = 0.1;
+      }
+      
+      newEaseFactor = flashcard.easeFactor + qualityAdjustment;
     } else {
-      // Poor response - reset to 1 day
+      // Failed recall (Again) - reset to learning phase
       newInterval = 1;
       newEaseFactor = flashcard.easeFactor - 0.2;
     }
 
-    // Ensure ease factor doesn't go below 1.3
-    newEaseFactor = newEaseFactor < 1.3 ? 1.3 : newEaseFactor;
+    // Ensure ease factor stays within reasonable bounds
+    newEaseFactor = newEaseFactor.clamp(1.3, 2.5);
 
+    // Calculate next review date
     final nextReview = now.add(Duration(days: newInterval));
     
     final updatedFlashcard = flashcard.copyWith(
@@ -212,19 +231,67 @@ class DataService {
     await _flashcardsBox.put(flashcard.id, updatedFlashcard);
   }
 
-  // Get flashcards due for review
+  // Get flashcards due for review today (SM2 scheduling)
   Future<List<Flashcard>> getDueFlashcards(String deckId) async {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
     }
 
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
     return _flashcardsBox.values
         .where((card) => 
             card.deckId == deckId && 
-            (card.nextReview == null || card.nextReview!.isBefore(now)))
+            (card.nextReview == null || 
+             card.nextReview!.isBefore(today.add(const Duration(days: 1)))))
         .toList();
   }
+
+  // Get flashcards due in the next X days
+  Future<List<Flashcard>> getFlashcardsDueInDays(String deckId, int days) async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+
+    final now = DateTime.now();
+    final futureDate = now.add(Duration(days: days));
+    
+    return _flashcardsBox.values
+        .where((card) => 
+            card.deckId == deckId && 
+            card.nextReview != null &&
+            card.nextReview!.isBefore(futureDate))
+        .toList();
+  }
+
+  // Get learning cards (new cards or failed cards with interval = 1)
+  Future<List<Flashcard>> getLearningCards(String deckId) async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+
+    return _flashcardsBox.values
+        .where((card) => 
+            card.deckId == deckId && 
+            card.interval == 1)
+        .toList();
+  }
+
+  // Get review cards (cards with interval > 1)
+  Future<List<Flashcard>> getReviewCards(String deckId) async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+
+    return _flashcardsBox.values
+        .where((card) => 
+            card.deckId == deckId && 
+            card.interval > 1)
+        .toList();
+  }
+
+
 
   // ===== FLASHCARD OPERATIONS =====
 

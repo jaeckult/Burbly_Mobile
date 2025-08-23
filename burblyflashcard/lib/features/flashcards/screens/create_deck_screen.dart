@@ -19,23 +19,9 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _dataService = DataService();
-  String? _selectedColor;
   String? _selectedPackId;
   List<DeckPack> _availablePacks = [];
   bool _isLoading = false;
-
-  final List<String> _colorOptions = [
-    '2196F3', // Blue
-    '4CAF50', // Green
-    'FF9800', // Orange
-    'E91E63', // Pink
-    '9C27B0', // Purple
-    'FF5722', // Deep Orange
-    '00BCD4', // Cyan
-    '8BC34A', // Light Green
-    'FFC107', // Amber
-    '795548', // Brown
-  ];
 
   @override
   void initState() {
@@ -75,10 +61,17 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
         await _dataService.initialize();
       }
       
+      // Get the deck pack color if one is selected
+      String? deckColor;
+      if (_selectedPackId != null) {
+        final selectedPack = _availablePacks.firstWhere((pack) => pack.id == _selectedPackId);
+        deckColor = selectedPack.coverColor;
+      }
+      
       final deck = await _dataService.createDeck(
         _nameController.text.trim(),
         _descriptionController.text.trim(),
-        coverColor: _selectedColor,
+        coverColor: deckColor,
       );
 
       // If a pack is selected, add the deck to it
@@ -90,20 +83,16 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deck "${deck.name}" created successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        SnackbarUtils.showSuccessSnackbar(
+          context,
+          'Deck "${deck.name}" created successfully!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating deck: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error creating deck: ${e.toString()}',
         );
       }
     } finally {
@@ -161,53 +150,7 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Color Selection
-            Text(
-              'Choose Cover Color',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: _colorOptions.map((color) {
-                final isSelected = _selectedColor == color;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColor = color),
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Color(int.parse('0xFF$color')),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected ? Colors.black : Colors.grey[300]!,
-                        width: isSelected ? 3 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: isSelected
-                        ? const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 24,
-                          )
-                        : null,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
+
 
             // Deck Pack Selection
             if (_availablePacks.isNotEmpty) ...[
@@ -246,37 +189,48 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
             ],
 
             // Create Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createDeck,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Create Deck',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+SizedBox(
+  width: double.infinity,
+  height: 50,
+  child: ElevatedButton(
+    onPressed: _isLoading ? null : _createDeck,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.secondary
+          : Theme.of(context).primaryColor,
+      foregroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    child: _isLoading
+        ? SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black
+                    : Colors.white,
               ),
             ),
-          ],
+          )
+        : Text(
+            'Create Deck',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black
+                  : Colors.white,
+            ),
+          ),
+  ),
+)
+],
         ),
       ),
     );

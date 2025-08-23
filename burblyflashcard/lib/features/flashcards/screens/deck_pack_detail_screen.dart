@@ -37,11 +37,9 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading decks: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error loading decks: ${e.toString()}',
         );
       }
     }
@@ -59,12 +57,10 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
               await _loadDecks();
             } catch (e) {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error adding deck to pack: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error adding deck to pack: ${e.toString()}',
+        );
               }
             }
           },
@@ -99,21 +95,17 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
         await _loadDecks();
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Deck "${deck.name}" removed from pack'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+                  SnackbarUtils.showWarningSnackbar(
+          context,
+          'Deck "${deck.name}" removed from pack',
+        );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error removing deck: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+                  SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error removing deck: ${e.toString()}',
+        );
         }
       }
     }
@@ -156,11 +148,9 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
       
       if (availableDecks.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No available decks to add. All decks are already in packs.'),
-              backgroundColor: Colors.orange,
-            ),
+          SnackbarUtils.showWarningSnackbar(
+            context,
+            'No available decks to add. All decks are already in packs.',
           );
         }
         return;
@@ -187,20 +177,16 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
                         await _dataService.addDeckToPack(deck.id, widget.deckPack.id);
                         await _loadDecks();
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Deck "${deck.name}" added to pack'),
-                              backgroundColor: Colors.green,
-                            ),
+                          SnackbarUtils.showSuccessSnackbar(
+                            context,
+                            'Deck "${deck.name}" added to pack',
                           );
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error adding deck: ${e.toString()}'),
-                              backgroundColor: Colors.red,
-                            ),
+                          SnackbarUtils.showErrorSnackbar(
+                            context,
+                            'Error adding deck: ${e.toString()}',
                           );
                         }
                       }
@@ -219,15 +205,233 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading available decks: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+              if (mounted) {
+          SnackbarUtils.showErrorSnackbar(
+            context,
+            'Error loading available decks: ${e.toString()}',
+          );
+        }
     }
+  }
+
+  void _showEditPackOptions() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Edit Deck Pack',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.color_lens),
+              title: const Text('Change Color'),
+              onTap: () {
+                Navigator.pop(context);
+                _showColorPicker();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit Name & Description'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditPackDetails();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showColorPicker() {
+    final List<String> colorOptions = [
+      'FF9800', // Orange
+      'E91E63', // Pink
+      '9C27B0', // Purple
+      '673AB7', // Deep Purple
+      '3F51B5', // Indigo
+      '2196F3', // Blue
+      '00BCD4', // Cyan
+      '009688', // Teal
+      '4CAF50', // Green
+      '8BC34A', // Light Green
+      'CDDC39', // Lime
+      'FFEB3B', // Yellow
+      'FFC107', // Amber
+      'FF5722', // Deep Orange
+      '795548', // Brown
+      '9E9E9E', // Grey
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Pack Color'),
+        content: SizedBox(
+          width: 300,
+          height: 200,
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: colorOptions.length,
+            itemBuilder: (context, index) {
+              final color = colorOptions[index];
+              final isSelected = color == widget.deckPack.coverColor;
+              
+              return GestureDetector(
+                onTap: () async {
+                  try {
+                    final updatedPack = widget.deckPack.copyWith(
+                      coverColor: color,
+                      updatedAt: DateTime.now(),
+                    );
+                    await _dataService.updateDeckPack(updatedPack);
+                    
+                    // Update all decks in this pack to use the new color
+                    for (final deck in _decks) {
+                      final updatedDeck = deck.copyWith(
+                        coverColor: color,
+                        updatedAt: DateTime.now(),
+                      );
+                      await _dataService.updateDeck(updatedDeck);
+                    }
+                    
+                    Navigator.pop(context);
+                    setState(() {});
+                    
+                                         if (mounted) {
+                       SnackbarUtils.showSuccessSnackbar(
+                         context,
+                         'Pack color updated! All decks now use this color.',
+                       );
+                     }
+                  } catch (e) {
+                                         if (mounted) {
+                       SnackbarUtils.showErrorSnackbar(
+                         context,
+                         'Error updating color: ${e.toString()}',
+                       );
+                     }
+                  }
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Color(int.parse('0xFF$color')),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      width: 3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 24,
+                        )
+                      : null,
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditPackDetails() {
+    final nameController = TextEditingController(text: widget.deckPack.name);
+    final descriptionController = TextEditingController(text: widget.deckPack.description);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Pack Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Pack Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                final updatedPack = widget.deckPack.copyWith(
+                  name: nameController.text.trim(),
+                  description: descriptionController.text.trim(),
+                  updatedAt: DateTime.now(),
+                );
+                await _dataService.updateDeckPack(updatedPack);
+                
+                Navigator.pop(context);
+                setState(() {});
+                
+                                 if (mounted) {
+                   SnackbarUtils.showSuccessSnackbar(
+                     context,
+                     'Pack details updated successfully!',
+                   );
+                 }
+              } catch (e) {
+                                 if (mounted) {
+                   SnackbarUtils.showErrorSnackbar(
+                     context,
+                     'Error updating pack: ${e.toString()}',
+                   );
+                 }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -241,9 +445,7 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
-            onPressed: () {
-              // TODO: Implement edit deck pack
-            },
+            onPressed: _showEditPackOptions,
             tooltip: 'Edit Pack',
           ),
         ],
@@ -329,7 +531,7 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
                     _formatDate(widget.deckPack.updatedAt),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -367,7 +569,7 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No decks in this pack',
+            'No decks in this pack yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.grey[600],
             ),
@@ -377,16 +579,6 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
             'Add your first deck to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.grey[500],
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _showAddDeckOptions,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Decks'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(int.parse('0xFF${widget.deckPack.coverColor ?? 'FF9800'}')),
-              foregroundColor: Colors.white,
             ),
           ),
         ],

@@ -21,16 +21,12 @@ class NotificationService {
   static const int studyStreakId = 3000;
 
   Future<void> initialize() async {
-    // Initialize timezone
     tz.initializeTimeZones();
 
-    // Android settings
     const AndroidInitializationSettings androidSettings = 
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // iOS settings
-    const DarwinInitializationSettings iosSettings = 
-        DarwinInitializationSettings(
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
@@ -46,7 +42,6 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // Request permissions
     await _requestPermissions();
   }
 
@@ -63,16 +58,15 @@ class NotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap - navigate to appropriate screen
-    // This will be implemented when we add navigation handling
+    // TODO: Handle navigation when user taps a notification
   }
 
-  // Schedule daily reminder
+  // Daily reminders
   Future<void> scheduleDailyReminder({
     required TimeOfDay time,
     required List<int> daysOfWeek,
   }) async {
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'daily_reminder_channel',
       'Daily Study Reminders',
       channelDescription: 'Reminders to study your flashcards daily',
@@ -81,18 +75,15 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    final NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    for (int day in daysOfWeek) {
+    for (final day in daysOfWeek) {
       await _notifications.zonedSchedule(
         dailyReminderId + day,
         'Time to Study! 📚',
@@ -100,23 +91,19 @@ class NotificationService {
         _nextInstanceOfDay(time, day),
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
     }
 
-    // Save reminder settings
     await _saveReminderSettings(time, daysOfWeek);
   }
 
-  // Schedule overdue cards reminder
   Future<void> scheduleOverdueCardsReminder() async {
     final overdueCards = await getOverdueCards();
-    
     if (overdueCards.isEmpty) return;
 
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'overdue_cards_channel',
       'Overdue Cards',
       channelDescription: 'Reminders for cards that need review',
@@ -125,32 +112,27 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    final NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _notifications.zonedSchedule(
       overdueCardsId,
       'Cards Need Review! ⏰',
-      'You have ${overdueCards.length} cards that are overdue for review.',
+      'You have ${overdueCards.length} overdue cards waiting for review.',
       tz.TZDateTime.now(tz.local).add(const Duration(hours: 2)),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
-  // Schedule study streak reminder
   Future<void> scheduleStudyStreakReminder(int streakDays) async {
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'study_streak_channel',
       'Study Streaks',
       channelDescription: 'Celebrate your study streaks',
@@ -159,16 +141,13 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    final NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _notifications.zonedSchedule(
       studyStreakId,
@@ -177,79 +156,44 @@ class NotificationService {
       tz.TZDateTime.now(tz.local).add(const Duration(hours: 1)),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
-  // Check and schedule notifications for overdue cards
-  Future<void> checkAndScheduleOverdueNotifications() async {
-    final overdueCards = await getOverdueCards();
-    
-    if (overdueCards.isNotEmpty) {
-      await scheduleOverdueCardsReminder();
-    }
-  }
-
-  // Get overdue cards
+  // Helpers
   Future<List<Flashcard>> getOverdueCards() async {
     final now = DateTime.now();
     final allCards = await _dataService.getAllFlashcards();
-    
-    return allCards.where((card) {
-      return card.nextReview != null && card.nextReview!.isBefore(now);
-    }).toList();
+    return allCards.where((c) => c.nextReview != null && c.nextReview!.isBefore(now)).toList();
   }
 
-  // Get cards due today
   Future<List<Flashcard>> getCardsDueToday() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
     final allCards = await _dataService.getAllFlashcards();
-    
-    return allCards.where((card) {
-      if (card.nextReview == null) return false;
-      final reviewDate = DateTime(
-        card.nextReview!.year,
-        card.nextReview!.month,
-        card.nextReview!.day,
-      );
+    return allCards.where((c) {
+      if (c.nextReview == null) return false;
+      final reviewDate = DateTime(c.nextReview!.year, c.nextReview!.month, c.nextReview!.day);
       return reviewDate.isAtSameMomentAs(today);
     }).toList();
   }
 
-  // Get cards due in next 3 days
   Future<List<Flashcard>> getCardsDueSoon() async {
     final now = DateTime.now();
     final threeDaysFromNow = now.add(const Duration(days: 3));
-    
     final allCards = await _dataService.getAllFlashcards();
-    
-    return allCards.where((card) {
-      return card.nextReview != null && 
-             card.nextReview!.isAfter(now) && 
-             card.nextReview!.isBefore(threeDaysFromNow);
-    }).toList();
+    return allCards.where((c) => c.nextReview != null && c.nextReview!.isAfter(now) && c.nextReview!.isBefore(threeDaysFromNow)).toList();
   }
 
-  // Cancel all notifications
-  Future<void> cancelAllNotifications() async {
-    await _notifications.cancelAll();
-  }
+  Future<void> cancelAllNotifications() async => await _notifications.cancelAll();
+  Future<void> cancelNotification(int id) async => await _notifications.cancel(id);
 
-  // Cancel specific notification
-  Future<void> cancelNotification(int id) async {
-    await _notifications.cancel(id);
-  }
-
-  // Show immediate notification
   Future<void> showImmediateNotification({
     required String title,
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const androidDetails = AndroidNotificationDetails(
       'immediate_channel',
       'Immediate Notifications',
       channelDescription: 'Immediate notifications',
@@ -258,16 +202,13 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _notifications.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -278,23 +219,17 @@ class NotificationService {
     );
   }
 
-  // Helper method to get next instance of a specific day and time
   tz.TZDateTime _nextInstanceOfDay(TimeOfDay time, int dayOfWeek) {
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, time.hour, time.minute);
-    
-    while (scheduledDate.isBefore(now)) {
+
+    while (scheduledDate.isBefore(now) || scheduledDate.weekday != dayOfWeek) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
-    
-    while (scheduledDate.weekday != dayOfWeek) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-    
+
     return scheduledDate;
   }
 
-  // Save reminder settings
   Future<void> _saveReminderSettings(TimeOfDay time, List<int> daysOfWeek) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('reminder_hour', time.hour);
@@ -302,35 +237,23 @@ class NotificationService {
     await prefs.setStringList('reminder_days', daysOfWeek.map((d) => d.toString()).toList());
   }
 
-  // Load reminder settings
   Future<Map<String, dynamic>?> getReminderSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final hour = prefs.getInt('reminder_hour');
     final minute = prefs.getInt('reminder_minute');
     final daysList = prefs.getStringList('reminder_days');
-    
-    if (hour == null || minute == null || daysList == null) {
-      return null;
-    }
-    
+    if (hour == null || minute == null || daysList == null) return null;
     final days = daysList.map((d) => int.parse(d)).toList();
-    return {
-      'time': TimeOfDay(hour: hour, minute: minute),
-      'daysOfWeek': days,
-    };
+    return {'time': TimeOfDay(hour: hour, minute: minute), 'daysOfWeek': days};
   }
 
-  // Check if notifications are enabled
   Future<bool> areNotificationsEnabled() async {
-    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     return await androidPlugin?.areNotificationsEnabled() ?? false;
   }
 
-  // Request notification permissions
   Future<bool> requestNotificationPermissions() async {
-    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     return await androidPlugin?.requestNotificationsPermission() ?? false;
   }
 }

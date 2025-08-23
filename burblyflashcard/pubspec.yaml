@@ -47,6 +47,8 @@ dependencies:
   timezone: ^0.9.4
   adaptive_theme: ^3.4.0
   google_fonts: ^6.1.0
+  awesome_dialog: ^3.2.1
+
 
 dev_dependencies:
   flutter_test:

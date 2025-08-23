@@ -110,11 +110,9 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
               await _loadAllDecks();
             } catch (e) {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error adding deck to pack: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
+                SnackbarUtils.showErrorSnackbar(
+                  context,
+                  'Error adding deck to pack: ${e.toString()}',
                 );
               }
             }
@@ -174,20 +172,16 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         await _loadAllDecks();
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Deck "${deck.name}" removed from pack'),
-              backgroundColor: Colors.orange,
-            ),
+          SnackbarUtils.showWarningSnackbar(
+            context,
+            'Deck "${deck.name}" removed from pack',
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error removing deck: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
+          SnackbarUtils.showErrorSnackbar(
+            context,
+            'Error removing deck: ${e.toString()}',
           );
         }
       }
@@ -575,7 +569,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your Decks'),
+        title: const Text('Deck Packs'),
         elevation: 0,
         centerTitle: true,
         leading: Builder(

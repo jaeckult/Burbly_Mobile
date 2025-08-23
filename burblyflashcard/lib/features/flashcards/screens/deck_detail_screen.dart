@@ -3,6 +3,8 @@ import '../../../core/core.dart';
 import 'add_flashcard_screen.dart';
 import 'study_screen.dart';
 import 'enhanced_study_screen.dart';
+import 'study_mode_selection_screen.dart';
+import 'spaced_repetition_stats_screen.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final Deck deck;
@@ -46,11 +48,9 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
 
   void _startStudy() {
     if (_flashcards.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add some flashcards to start studying!'),
-          backgroundColor: Colors.orange,
-        ),
+      SnackbarUtils.showWarningSnackbar(
+        context,
+        'Add some flashcards to start studying!',
       );
       return;
     }
@@ -58,12 +58,23 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EnhancedStudyScreen(
+        builder: (context) => StudyModeSelectionScreen(
           deck: widget.deck,
           flashcards: _flashcards,
         ),
       ),
     ).then((_) => _loadFlashcards());
+  }
+
+  void _showSpacedRepetitionStats() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SpacedRepetitionStatsScreen(
+          deck: widget.deck,
+        ),
+      ),
+    );
   }
 
   void _showDeckSettings() {
@@ -259,25 +270,21 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                 Navigator.pop(context);
                 setState(() {});
                 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(selectedPackId != null 
-                          ? 'Deck assigned to pack successfully!' 
-                          : 'Deck removed from pack successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
+                                 if (mounted) {
+                   SnackbarUtils.showSuccessSnackbar(
+                     context,
+                     selectedPackId != null 
+                         ? 'Deck assigned to pack successfully!' 
+                         : 'Deck removed from pack successfully!',
+                   );
+                 }
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error updating deck pack: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                                 if (mounted) {
+                   SnackbarUtils.showErrorSnackbar(
+                     context,
+                     'Error updating deck pack: ${e.toString()}',
+                   );
+                 }
               }
             },
             child: const Text('Save'),
@@ -341,14 +348,12 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       await _dataService.deleteFlashcard(flashcard.id);
       await _loadFlashcards();
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Flashcard deleted'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+             if (mounted) {
+         SnackbarUtils.showWarningSnackbar(
+           context,
+           'Flashcard deleted',
+         );
+       }
     }
   }
 
@@ -470,6 +475,42 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
             ],
           ),
         ),
+
+        // Action Buttons
+        if (_flashcards.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _startStudy,
+                    icon: const Icon(Icons.school),
+                    label: const Text('Study'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _showSpacedRepetitionStats,
+                    icon: const Icon(Icons.analytics),
+                    label: const Text('SR Stats'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
 
         // Flashcards List
         Expanded(

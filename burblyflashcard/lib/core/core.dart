@@ -13,3 +13,4 @@ export 'constants/app_constants.dart';
 
 // Core Utils
 export 'utils/date_utils.dart';
+export 'utils/snackbar_utils.dart';

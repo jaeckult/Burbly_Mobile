@@ -213,20 +213,23 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: [
-                        const Icon(Icons.schedule, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Daily Study Reminders',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const Spacer(),
-                        Switch(
-                          value: _dailyRemindersEnabled,
-                          onChanged: _notificationsEnabled ? _toggleDailyReminders : null,
-                        ),
-                      ],
-                    ),
+  children: [
+    const Icon(Icons.schedule, color: Colors.blue),
+    const SizedBox(width: 8),
+    Expanded(
+      child: Text(
+        'Daily Study Reminders',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        overflow: TextOverflow.ellipsis, // ensures text doesn’t overflow
+      ),
+    ),
+    Switch(
+      value: _dailyRemindersEnabled,
+      onChanged: _notificationsEnabled ? _toggleDailyReminders : null,
+    ),
+  ],
+),
+
                     
                     if (_dailyRemindersEnabled) ...[
                       const SizedBox(height: 16),
@@ -251,18 +254,52 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       ),
                       const SizedBox(height: 8),
                       Wrap(
-                        spacing: 8,
-                        children: List.generate(7, (index) {
-                          final day = index + 1;
-                          final isSelected = _selectedDays.contains(day);
-                          return FilterChip(
-                            label: Text(_dayNames[index]),
-                            selected: isSelected,
-                            onSelected: (selected) => _toggleDay(day),
-                            selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                          );
-                        }),
-                      ),
+  spacing: 8,
+  runSpacing: 8,
+  children: List.generate(7, (index) {
+    final day = index + 1;
+    final isSelected = _selectedDays.contains(day);
+
+    return GestureDetector(
+      onTap: () => _toggleDay(day),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[300]!,
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          _dayNames[index],
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isSelected
+                ? Theme.of(context).colorScheme.onPrimaryContainer
+                : Theme.of(context).textTheme.bodyMedium!.color,
+          ),
+        ),
+      ),
+    );
+  }),
+)
+
                     ],
                   ],
                 ),

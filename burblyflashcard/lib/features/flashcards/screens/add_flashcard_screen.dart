@@ -42,20 +42,16 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Flashcard created successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        SnackbarUtils.showSuccessSnackbar(
+          context,
+          'Flashcard created successfully!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating flashcard: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error creating flashcard: ${e.toString()}',
         );
       }
     } finally {
