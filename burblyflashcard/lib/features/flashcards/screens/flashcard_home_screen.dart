@@ -241,11 +241,6 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     Navigator.pushReplacementNamed(context, '/home');
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.school),
-                  title: const Text('My Decks'),
-                  onTap: () => Navigator.pop(context),
-                ),
 
                 ListTile(
                   leading: const Icon(Icons.note),
@@ -639,14 +634,6 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _createNewDeck();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.folder),
-              title: const Text('Go to Deck Packs'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/home');
               },
             ),
           ],

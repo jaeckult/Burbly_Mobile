@@ -3,10 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/auth_service.dart';
 import '../../../core/core.dart';
-import '../../../core/services/theme_service.dart';
+import '../../../core/services/adaptive_theme_service.dart';
 import 'create_deck_pack_screen.dart';
-import 'deck_pack_detail_screen.dart';
-import 'flashcard_home_screen.dart';
+import 'deck_detail_screen.dart';
+import 'create_deck_screen.dart';
 import 'notes_screen.dart';
 import 'search_screen.dart';
 import '../../stats/stats_page.dart';
@@ -25,8 +25,10 @@ class DeckPackListScreen extends StatefulWidget {
 class _DeckPackListScreenState extends State<DeckPackListScreen> {
   final DataService _dataService = DataService();
   final AuthService _authService = AuthService();
-  final ThemeService _themeService = ThemeService();
   List<DeckPack> _deckPacks = [];
+  List<Deck> _allDecks = [];
+  Map<String, List<Deck>> _decksInPacks = {};
+  Map<String, bool> _expandedPacks = {};
   bool _isLoading = true;
   bool _isGuestMode = false;
 
@@ -45,6 +47,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
       _isGuestMode = await _dataService.isGuestMode();
       await _loadDeckPacks();
+      await _loadAllDecks();
       setState(() => _isLoading = false);
     } catch (e) {
       print('Error initializing data: $e');
@@ -61,17 +64,123 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     }
   }
 
+  Future<void> _loadAllDecks() async {
+    try {
+      final allDecks = await _dataService.getDecks();
+      setState(() => _allDecks = allDecks);
+      
+      // Organize decks by pack
+      final decksInPacks = <String, List<Deck>>{};
+      for (final deckPack in _deckPacks) {
+        decksInPacks[deckPack.id] = allDecks.where((deck) => deck.packId == deckPack.id).toList();
+      }
+      setState(() => _decksInPacks = decksInPacks);
+    } catch (e) {
+      print('Error loading decks: $e');
+    }
+  }
+
   void _createNewDeckPack() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CreateDeckPackScreen(
           onDeckPackCreated: (deckPack) {
-            setState(() => _deckPacks.add(deckPack));
+            setState(() {
+              _deckPacks.add(deckPack);
+              _decksInPacks[deckPack.id] = [];
+              _expandedPacks[deckPack.id] = false;
+            });
           },
         ),
       ),
     );
+  }
+
+  void _createNewDeck(DeckPack deckPack) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateDeckScreen(
+          onDeckCreated: (deck) async {
+            try {
+              await _dataService.addDeckToPack(deck.id, deckPack.id);
+              await _loadAllDecks();
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error adding deck to pack: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  void _togglePackExpansion(String packId) {
+    setState(() {
+      _expandedPacks[packId] = !(_expandedPacks[packId] ?? false);
+    });
+  }
+
+  void _openDeck(Deck deck) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DeckDetailScreen(deck: deck),
+      ),
+    ).then((_) => _loadAllDecks());
+  }
+
+  void _removeDeckFromPack(Deck deck, DeckPack deckPack) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Deck from Pack'),
+        content: Text('Are you sure you want to remove "${deck.name}" from this pack?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _dataService.removeDeckFromPack(deck.id, deckPack.id);
+        await _loadAllDecks();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Deck "${deck.name}" removed from pack'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error removing deck: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _showDeckPackOptions(DeckPack deckPack) {
@@ -82,6 +191,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('Add New Deck'),
+              onTap: () {
+                Navigator.pop(context);
+                _createNewDeck(deckPack);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.edit),
               title: const Text('Edit Deck Pack'),
@@ -132,7 +249,11 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     if (confirmed == true) {
       try {
         await _dataService.deleteDeckPack(deckPack.id);
-        setState(() => _deckPacks.removeWhere((d) => d.id == deckPack.id));
+        setState(() {
+          _deckPacks.removeWhere((d) => d.id == deckPack.id);
+          _decksInPacks.remove(deckPack.id);
+          _expandedPacks.remove(deckPack.id);
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -311,15 +432,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                 ListTile(
                   leading: const Icon(Icons.school),
                   title: const Text('My Decks'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FlashcardHomeScreen(),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.pop(context),
                 ),
                 ListTile(
                   leading: const Icon(Icons.note),
@@ -359,11 +472,11 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(_themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-                  title: Text(_themeService.isDarkMode ? 'Light Mode' : 'Dark Mode'),
-                  onTap: () async {
+                  leading: Icon(AdaptiveThemeService.isDarkMode(context) ? Icons.light_mode : Icons.dark_mode),
+                  title: Text(AdaptiveThemeService.isDarkMode(context) ? 'Light Mode' : 'Dark Mode'),
+                  onTap: () {
                     Navigator.pop(context);
-                    await _themeService.toggleTheme();
+                    AdaptiveThemeService.toggleTheme(context);
                   },
                 ),
                 ListTile(
@@ -452,14 +565,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           ),
           // Theme toggle button
           IconButton(
-            onPressed: () async {
-              await _themeService.toggleTheme();
+            onPressed: () {
+              AdaptiveThemeService.toggleTheme(context);
             },
             icon: Icon(
-              _themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              AdaptiveThemeService.isDarkMode(context) ? Icons.light_mode : Icons.dark_mode,
               color: Theme.of(context).appBarTheme.foregroundColor,
             ),
-            tooltip: _themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            tooltip: AdaptiveThemeService.isDarkMode(context) ? 'Switch to Light Mode' : 'Switch to Dark Mode',
           ),
         ],
       ),
@@ -467,51 +580,48 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _createNewDeckPack,
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New Pack'),
       ),
     );
   }
 
   Widget _buildBody() {
     return RefreshIndicator(
-      onRefresh: _loadDeckPacks,
-              child: Column(
-          children: [
-            // Pet Companion Widget
-            const PetCompanionWidget(),
-            
-            // Notification widget
-            const NotificationWidget(),
-            
-            // Search Bar
+      onRefresh: () async {
+        await _loadDeckPacks();
+        await _loadAllDecks();
+      },
+      child: Column(
+        children: [
+          
+          
+          // Notification widget
+          const NotificationWidget(),
+          
+          // Search Bar
           Container(
             padding: const EdgeInsets.all(16),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.grey[800] 
-                    : Colors.grey[100],
+                color: Theme.of(context).inputDecorationTheme.fillColor,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: TextField(
                 decoration: InputDecoration(
                   hintText: 'Search...',
                   hintStyle: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey[400] 
-                        : Colors.grey[600]
+                    color: Theme.of(context).hintColor,
                   ),
                   border: InputBorder.none,
                   prefixIcon: Icon(
                     Icons.search, 
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey[400] 
-                        : Colors.grey[600]
+                    color: Theme.of(context).hintColor,
                   ),
                 ),
                 onTap: () {
@@ -530,13 +640,51 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           Expanded(
             child: _deckPacks.isEmpty
                 ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _deckPacks.length,
-                    itemBuilder: (context, index) {
-                      final deckPack = _deckPacks[index];
-                      return _buildDeckPackCard(deckPack);
-                    },
+                : Column(
+                    children: [
+                      // Header with total count
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder,
+                              color: Theme.of(context).primaryColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_deckPacks.length} ${_deckPacks.length == 1 ? 'Deck Pack' : 'Deck Packs'}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${_allDecks.length} total decks',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Deck Packs List
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _deckPacks.length,
+                          itemBuilder: (context, index) {
+                            final deckPack = _deckPacks[index];
+                            return _buildDeckPackCard(deckPack);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
           ),
 
@@ -544,7 +692,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Swipe left to edit or delete a deck',
+              'Tap to expand deck packs and view decks',
               style: TextStyle(color: Colors.grey[600], fontSize: 12),
               textAlign: TextAlign.center,
             ),
@@ -599,98 +747,425 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         ? deckPack.name.substring(0, 2).toUpperCase()
         : deckPack.name.substring(0, 1).toUpperCase();
 
+    final decks = _decksInPacks[deckPack.id] ?? [];
+    final expanded = _expandedPacks[deckPack.id] ?? false;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: expanded 
+              ? Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.3)
+              : Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[700]!
+                  : Colors.grey[200]!,
+          width: expanded ? 2 : 1,
+        ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: Colors.transparent,
-          child: Container(
+      child: Column(
+        children: [
+          // Deck Pack Header
+          Container(
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
               gradient: LinearGradient(
-                colors: [
-                  Color(
-                    int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}'),
-                  ).withOpacity(0.85),
-                  Color(int.parse('0xFF${deckPack.coverColor ?? '1E88E5'}')),
-                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
+                colors: [
+                  Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1),
+                  Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.05),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 10,
-                  offset: const Offset(2, 4),
-                ),
-                BoxShadow(
-                  // soft outer glow
-                  color: Color(
-                    int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}'),
-                  ).withOpacity(0.4),
-                  blurRadius: 20,
-                  spreadRadius: -5,
-                ),
-              ],
             ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  color: Colors.white,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              leading: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                      Color(int.parse('0xFF${deckPack.coverColor ?? '1E88E5'}')),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+              title: Text(
+                deckPack.name,
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (deckPack.description.isNotEmpty) ...[
+                    Text(
+                      deckPack.description,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.folder,
+                        size: 16,
+                        color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${decks.length} ${decks.length == 1 ? 'deck' : 'decks'}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: expanded 
+                          ? Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1)
+                          : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      expanded ? Icons.expand_less : Icons.expand_more,
+                      color: expanded 
+                          ? Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}'))
+                          : Colors.grey[600],
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+                    onPressed: () => _showDeckPackOptions(deckPack),
+                  ),
+                ],
+              ),
+              onTap: () => _togglePackExpansion(deckPack.id),
             ),
           ),
-        ),
-
-        title: Text(
-          deckPack.name,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        subtitle: Text(
-          deckPack.description.isNotEmpty
-              ? deckPack.description
-              : '${deckPack.deckCount} ${deckPack.deckCount == 1 ? 'deck' : 'decks'}',
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: IconButton(
-          icon: Icon(Icons.more_vert, color: Colors.grey[600]),
-          onPressed: () => _showDeckPackOptions(deckPack),
-        ),
-        onTap: () => _openDeckPack(deckPack),
+          
+          // Expanded content showing decks
+          if (expanded) ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: _buildDeckPackDetails(deckPack),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  void _openDeckPack(DeckPack deckPack) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DeckPackDetailScreen(deckPack: deckPack),
+  Widget _buildDeckPackDetails(DeckPack deckPack) {
+    final decks = _decksInPacks[deckPack.id] ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (decks.isNotEmpty) ...[
+          // Section Header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.school,
+                  size: 20,
+                  color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Decks in this pack (${decks.length})',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Decks List
+          ...decks.map((deck) => _buildDeckCard(deck, deckPack)).toList(),
+          const SizedBox(height: 16),
+        ],
+        
+        // Add New Deck Button
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1),
+                Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.2),
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _createNewDeck(deckPack),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_circle_outline,
+                      color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Add New Deck',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDeckCard(Deck deck, DeckPack deckPack) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.black.withOpacity(0.2)
+                : Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark 
+              ? Colors.grey[700]!
+              : Colors.grey[200]!,
+          width: 1,
+        ),
       ),
-    ).then((_) => _loadDeckPacks());
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openDeck(deck),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Deck Icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}')),
+                        Color(int.parse('0xFF${deck.coverColor ?? '1976D2'}')),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}')).withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.school,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Deck Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        deck.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).textTheme.titleMedium?.color,
+                        ),
+                      ),
+                      if (deck.description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          deck.description,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.style,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${deck.cardCount} ${deck.cardCount == 1 ? 'card' : 'cards'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(deck.updatedAt),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Action Buttons
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _removeDeckFromPack(deck, deckPack),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.red[400],
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 }

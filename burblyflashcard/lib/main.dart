@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'firebase_options.dart';
 import 'features/auth/auth_service.dart';
 import 'features/auth/screens/welcome_screen.dart';
@@ -9,7 +10,7 @@ import 'features/flashcards/screens/flashcard_home_screen.dart';
 import 'core/core.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
-import 'core/services/theme_service.dart';
+import 'core/services/adaptive_theme_service.dart';
 import 'core/services/pet_service.dart';
 
 void main() async {
@@ -25,9 +26,6 @@ void main() async {
     
     // Initialize NotificationService
     await NotificationService().initialize();
-    
-    // Initialize ThemeService
-    await ThemeService().initialize();
     
     // Initialize PetService
     await PetService().initialize();
@@ -48,20 +46,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeService(),
-      builder: (context, child) {
-        return MaterialApp(
-          title: 'Burbly Flashcard',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeService().currentTheme,
-          home: const WelcomeScreen(),
-          routes: {
-            '/home': (context) => const DeckPackListScreen(),
-            '/flashcards': (context) => const FlashcardHomeScreen(),
-          },
-        );
-      },
+    return AdaptiveTheme(
+      light: AdaptiveThemeService.lightTheme,
+      dark: AdaptiveThemeService.darkTheme,
+      initial: AdaptiveThemeMode.system,
+      builder: (theme, darkTheme) => MaterialApp(
+        title: 'Burbly Flashcard',
+        debugShowCheckedModeBanner: false,
+        theme: theme,
+        darkTheme: darkTheme,
+        home: const WelcomeScreen(),
+        routes: {
+          '/home': (context) => const DeckPackListScreen(),
+          '/flashcards': (context) => const FlashcardHomeScreen(),
+        },
+      ),
     );
   }
 }
