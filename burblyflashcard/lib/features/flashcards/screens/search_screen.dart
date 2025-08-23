@@ -66,46 +66,81 @@ class _SearchScreenState extends State<SearchScreen> {
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Column(
         children: [
-                     // Search Bar
-           Container(
-             padding: const EdgeInsets.all(16),
-             child: TextField(
-               controller: _searchController,
-               autofocus: false,
-               decoration: InputDecoration(
-                 hintText: 'Search decks, flashcards, and notes...',
-                 prefixIcon: Icon(
-                   Icons.search,
-                   color: Theme.of(context).primaryColor,
-                 ),
-                 suffixIcon: _searchController.text.isNotEmpty
-                     ? IconButton(
-                         icon: const Icon(Icons.clear),
-                         onPressed: () {
-                           _searchController.clear();
-                           _performSearch('');
-                         },
-                       )
-                     : null,
-               ),
-               textInputAction: TextInputAction.search,
-               onChanged: (value) {
-                 if (value.length >= 2) {
-                   _performSearch(value);
-                 } else if (value.isEmpty) {
-                   _performSearch('');
-                 }
-               },
-               onSubmitted: (value) {
-                 if (value.isNotEmpty) {
-                   _performSearch(value);
-                 }
-               },
-             ),
-           ),
+          // Enhanced Search Bar
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.05),
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Search decks, flashcards, and notes...',
+                hintStyle: TextStyle(
+                  color: Theme.of(context).hintColor.withOpacity(0.7),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).primaryColor,
+                  size: 24,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _performSearch('');
+                        },
+                        tooltip: 'Clear search',
+                      )
+                    : null,
+                filled: true,
+                fillColor: Theme.of(context).cardColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).primaryColor,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              textInputAction: TextInputAction.search,
+              onChanged: (value) {
+                if (value.length >= 2) {
+                  _performSearch(value);
+                } else if (value.isEmpty) {
+                  _performSearch('');
+                }
+              },
+              onSubmitted: (value) {
+                if (value.isNotEmpty) {
+                  _performSearch(value);
+                }
+              },
+            ),
+          ),
 
           // Search Results
           Expanded(
@@ -118,21 +153,65 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildSearchResults() {
     if (!_hasSearched) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search,
-              size: 64,
-              color: Colors.grey,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.search,
+                size: 64,
+                color: Theme.of(context).primaryColor,
+              ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
-              'Search for decks, flashcards, and notes',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+              'Search Your Content',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Find decks, flashcards, and notes quickly',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.tips_and_updates,
+                    size: 20,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Start typing to search...',
+                    style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -141,8 +220,29 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 60,
+              height: 60,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Searching...',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -151,21 +251,65 @@ class _SearchScreenState extends State<SearchScreen> {
     final notes = _searchResults['notes'] as List<Note>? ?? [];
 
     if (decks.isEmpty && flashcards.isEmpty && notes.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.search_off,
+                size: 64,
+                color: Colors.orange,
+              ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
-              'No results found',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+              'No Results Found',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Colors.orange,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Try different keywords or check your spelling',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.orange.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 20,
+                    color: Colors.orange,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Search suggestions: deck, card, note',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -205,13 +349,12 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSectionHeader(String title, int count) {
     return Row(
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+                 Text(
+           title,
+           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+             fontWeight: FontWeight.bold,
+           ),
+         ),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -219,14 +362,13 @@ class _SearchScreenState extends State<SearchScreen> {
             color: Theme.of(context).primaryColor,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            count.toString(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+                     child: Text(
+             count.toString(),
+             style: Theme.of(context).textTheme.labelSmall?.copyWith(
+               color: Colors.white,
+               fontWeight: FontWeight.bold,
+             ),
+           ),
         ),
       ],
     );
@@ -248,22 +390,24 @@ class _SearchScreenState extends State<SearchScreen> {
             color: Colors.white,
           ),
         ),
-        title: Text(
-          deck.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          deck.description,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Text(
-          '${deck.cardCount} cards',
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
+                 title: Text(
+           deck.name,
+           style: Theme.of(context).textTheme.titleLarge?.copyWith(
+             fontWeight: FontWeight.w600,
+           ),
+         ),
+                 subtitle: Text(
+           deck.description,
+           style: Theme.of(context).textTheme.bodyMedium,
+           maxLines: 2,
+           overflow: TextOverflow.ellipsis,
+         ),
+                 trailing: Text(
+           '${deck.cardCount} cards',
+           style: Theme.of(context).textTheme.labelMedium?.copyWith(
+             color: Colors.grey,
+           ),
+         ),
         onTap: () {
           Navigator.push(
             context,

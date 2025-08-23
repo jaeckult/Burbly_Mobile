@@ -126,7 +126,16 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
   void _togglePackExpansion(String packId) {
     setState(() {
-      _expandedPacks[packId] = !(_expandedPacks[packId] ?? false);
+      // If the pack is already expanded, collapse it
+      if (_expandedPacks[packId] == true) {
+        _expandedPacks[packId] = false;
+      } else {
+        // Collapse all other packs first, then expand the selected one
+        _expandedPacks.forEach((key, value) {
+          _expandedPacks[key] = false;
+        });
+        _expandedPacks[packId] = true;
+      }
     });
   }
 
@@ -392,152 +401,175 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     );
   }
 
-  Widget _buildDrawer() {
-    final user = FirebaseAuth.instance.currentUser;
+ Widget _buildDrawer() {
+  final user = FirebaseAuth.instance.currentUser;
 
-    return Drawer(
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            accountName: Text(
-              _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
-            ),
-            accountEmail: Text(
-              _isGuestMode ? 'Offline mode' : (user?.email ?? ''),
-            ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: _isGuestMode
-                  ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                  : user?.photoURL != null
-                  ? ClipOval(
-                      child: Image.network(
-                        user!.photoURL!,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : const Icon(Icons.person, size: 40, color: Colors.grey),
-            ),
-            decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+  return Drawer(
+    child: Column(
+      children: [
+        UserAccountsDrawerHeader(
+          accountName: Text(
+            _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
           ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
+          accountEmail: Text(
+            _isGuestMode ? 'Offline mode' : (user?.email ?? ''),
+          ),
+          currentAccountPicture: CircleAvatar(
+            backgroundColor: Colors.white,
+            child: _isGuestMode
+                ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                : user?.photoURL != null
+                    ? ClipOval(
+                        child: Image.network(
+                          user!.photoURL!,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : const Icon(Icons.person, size: 40, color: Colors.grey),
+          ),
+          decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+          margin: EdgeInsets.zero, // remove default margin
+        ),
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              ListTile(
+                dense: true, // makes tile more compact
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.home),
+                title: const Text('Deck Packs'),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.school),
+                title: const Text('My Decks'),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.note),
+                title: const Text('Notes'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotesScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.analytics),
+                title: const Text('Statistics'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => StatsPage()),
+                  );
+                },
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.notifications),
+                title: const Text('Notification Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isDarkMode = !_isDarkMode;
+                    AdaptiveThemeService.toggleTheme(context);
+                  });
+                },
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.pets),
+                title: const Text('Pet Management'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showPetManagement();
+                },
+              ),
+              const Divider(height: 1), // smaller divider
+              if (_isGuestMode) ...[
                 ListTile(
-                  leading: const Icon(Icons.home),
-                  title: const Text('Deck Packs'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.school),
-                  title: const Text('My Decks'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.note),
-                  title: const Text('Notes'),
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.cloud_sync),
+                  title: const Text('Sign in with Google'),
+                  subtitle: const Text('Sync your data'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotesScreen(),
-                      ),
-                    );
+                    _signInWithGoogle();
+                  },
+                ),
+              ] else ...[
+                ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.backup),
+                  title: const Text('Backup to Cloud'),
+                  subtitle: const Text('Sync your data'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _backupToCloud();
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.analytics),
-                  title: const Text('Statistics'),
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Sign out'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => StatsPage()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.notifications),
-                  title: const Text('Notification Settings'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationSettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
-                  title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _isDarkMode = !_isDarkMode;
-                      AdaptiveThemeService.toggleTheme(context);
-                    });
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.pets),
-                  title: const Text('Pet Management'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showPetManagement();
-                  },
-                ),
-                const Divider(),
-                if (_isGuestMode) ...[
-                  ListTile(
-                    leading: const Icon(Icons.cloud_sync),
-                    title: const Text('Sign in with Google'),
-                    subtitle: const Text('Sync your data'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _signInWithGoogle();
-                    },
-                  ),
-                ] else ...[
-                  ListTile(
-                    leading: const Icon(Icons.backup),
-                    title: const Text('Backup to Cloud'),
-                    subtitle: const Text('Sync your data'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _backupToCloud();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text('Sign out'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _signOut();
-                    },
-                  ),
-                ],
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text('About'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showAboutDialog();
+                    _signOut();
                   },
                 ),
               ],
-            ),
+              const Divider(height: 1),
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const Icon(Icons.info),
+                title: const Text('About'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAboutDialog();
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -555,6 +587,19 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           ),
         ),
         actions: [
+          // Search button
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchScreen(),
+                ),
+              );
+            },
+            icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
+            tooltip: 'Search',
+          ),
           // Notification settings button
           IconButton(
             onPressed: () {
@@ -608,41 +653,9 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         children: [
           
           
-          // Notification widget
+                    // Notification widget
           const NotificationWidget(),
           
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              readOnly: true,
-              decoration: InputDecoration(
-                hintText: 'Search deck packs and decks...',
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Theme.of(context).hintColor,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    Icons.tune,
-                    color: Theme.of(context).hintColor,
-                  ),
-                  onPressed: () {
-                    // TODO: Add filter options
-                  },
-                ),
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SearchScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-
           // Content
           Expanded(
             child: _deckPacks.isEmpty
@@ -662,17 +675,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                             const SizedBox(width: 8),
                             Text(
                               '${_deckPacks.length} ${_deckPacks.length == 1 ? 'Deck Pack' : 'Deck Packs'}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 color: Theme.of(context).primaryColor,
                               ),
                             ),
                             const Spacer(),
                             Text(
                               '${_allDecks.length} total decks',
-                              style: TextStyle(
-                                fontSize: 14,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -698,9 +708,11 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           // Swipe hint at bottom
           Container(
             padding: const EdgeInsets.all(16),
-            child: Text(
+            child:             Text(
               'Tap to expand deck packs and view decks',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Colors.grey[600],
+              ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -756,28 +768,37 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
     final decks = _decksInPacks[deckPack.id] ?? [];
     final expanded = _expandedPacks[deckPack.id] ?? false;
+    final packColor = Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).brightness == Brightness.dark 
                 ? Colors.black.withOpacity(0.3)
-                : Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+                : packColor.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+            spreadRadius: 0,
           ),
+          if (Theme.of(context).brightness == Brightness.light)
+            BoxShadow(
+              color: packColor.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
         ],
         border: Border.all(
           color: expanded 
-              ? Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.3)
+              ? packColor.withOpacity(0.4)
               : Theme.of(context).brightness == Brightness.dark 
                   ? Colors.grey[700]!
-                  : Colors.grey[200]!,
-          width: expanded ? 2 : 1,
+                  : packColor.withOpacity(0.15),
+          width: expanded ? 2.5 : 1.5,
         ),
       ),
       child: Column(
@@ -786,16 +807,25 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           Container(
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1),
-                  Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.05),
-                ],
+                colors: Theme.of(context).brightness == Brightness.light
+                    ? [
+                        packColor.withOpacity(0.12),
+                        packColor.withOpacity(0.06),
+                        packColor.withOpacity(0.02),
+                      ]
+                    : [
+                        packColor.withOpacity(0.1),
+                        packColor.withOpacity(0.05),
+                      ],
+                stops: Theme.of(context).brightness == Brightness.light
+                    ? [0.0, 0.6, 1.0]
+                    : null,
               ),
             ),
             child: ListTile(
@@ -807,15 +837,15 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
-                      Color(int.parse('0xFF${deckPack.coverColor ?? '1E88E5'}')),
+                      packColor,
+                      packColor.darken(0.2),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.3),
+                      color: packColor.withOpacity(0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -835,10 +865,8 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
               ),
               title: Text(
                 deckPack.name,
-                style: TextStyle(
-                  fontSize: 18,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
               subtitle: Column(
@@ -847,7 +875,9 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   if (deckPack.description.isNotEmpty) ...[
                     Text(
                       deckPack.description,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[700],
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -858,15 +888,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                       Icon(
                         Icons.folder,
                         size: 16,
-                        color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                        color: packColor,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${decks.length} ${decks.length == 1 ? 'deck' : 'decks'}',
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
+                          color: packColor,
                         ),
                       ),
                     ],
@@ -877,23 +906,23 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-  padding: const EdgeInsets.all(8),
-  decoration: BoxDecoration(
-    color: expanded
-        ? (Theme.of(context).colorScheme.primary).withOpacity(0.1)
-        : Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[800]
-            : Colors.grey[100],
-    borderRadius: BorderRadius.circular(8),
-  ),
-  child: Icon(
-    expanded ? Icons.expand_less : Icons.expand_more,
-    color: expanded
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).iconTheme.color,
-    size: 20,
-  ),
-),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: expanded
+                          ? (Theme.of(context).colorScheme.primary).withOpacity(0.1)
+                          : Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[800]
+                              : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      expanded ? Icons.expand_less : Icons.expand_more,
+                      color: expanded
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).iconTheme.color,
+                      size: 20,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   IconButton(
                     icon: Icon(Icons.more_vert, color: Colors.grey[600]),
@@ -905,13 +934,32 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
             ),
           ),
           
-          // Expanded content showing decks
-          if (expanded) ...[
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: _buildDeckPackDetails(deckPack),
-            ),
-          ],
+          // Expanded content with animation and hierarchical indentation
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: expanded
+                ? Container(
+                    padding: const EdgeInsets.fromLTRB(40, 20, 20, 20), // Increased left padding for hierarchy
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? packColor.withOpacity(0.04)
+                          : packColor.withOpacity(0.02),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                      border: Border(
+                        top: BorderSide(
+                          color: packColor.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: _buildDeckPackDetails(deckPack),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -928,38 +976,27 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     children: [
       if (decks.isNotEmpty) ...[
         // Section Header
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: baseColor.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: baseColor.withOpacity(0.1),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.school,
-                size: 20,
-                color: baseColor,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Decks in this pack (${decks.length})',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: baseColor,
-                ),
-              ),
-            ],
-          ),
-        ),
+        
 
-        // Decks List
-        ...decks.map((deck) => _buildDeckCard(deck, deckPack)).toList(),
+        // Decks List with subtle dividers for better hierarchy
+        Column(
+          children: decks.asMap().entries.map((entry) {
+            final index = entry.key;
+            final deck = entry.value;
+            return Column(
+              children: [
+                _buildDeckCard(deck, deckPack),
+                if (index < decks.length - 1)
+                  Divider(
+                    color: baseColor.withOpacity(0.1),
+                    thickness: 1,
+                    indent: 16,
+                    endIndent: 16,
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
         const SizedBox(height: 16),
       ],
 
@@ -968,19 +1005,38 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              baseColor.withOpacity(0.1),
-              baseColor.withOpacity(0.05),
-            ],
+            colors: Theme.of(context).brightness == Brightness.light
+                ? [
+                    baseColor.withOpacity(0.15),
+                    baseColor.withOpacity(0.08),
+                    baseColor.withOpacity(0.03),
+                  ]
+                : [
+                    baseColor.withOpacity(0.1),
+                    baseColor.withOpacity(0.05),
+                  ],
+            stops: Theme.of(context).brightness == Brightness.light
+                ? [0.0, 0.7, 1.0]
+                : null,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: baseColor.withOpacity(0.2),
+            color: baseColor.withOpacity(0.25),
             style: BorderStyle.solid,
+            width: 1.5,
           ),
           color: Theme.of(context).brightness == Brightness.dark
               ? Colors.grey[800]
               : null,
+          boxShadow: [
+            if (Theme.of(context).brightness == Brightness.light)
+              BoxShadow(
+                color: baseColor.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+          ],
         ),
         child: Material(
           color: Colors.transparent,
@@ -1000,9 +1056,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Add New Deck',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: baseColor,
                     ),
                   ),
@@ -1017,25 +1071,35 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 }
 
   Widget _buildDeckCard(Deck deck, DeckPack deckPack) {
+    final deckColor = Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}'));
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).brightness == Brightness.dark 
                 ? Colors.black.withOpacity(0.2)
-                : Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+                : deckColor.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
+          if (Theme.of(context).brightness == Brightness.light)
+            BoxShadow(
+              color: deckColor.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
         ],
         border: Border.all(
           color: Theme.of(context).brightness == Brightness.dark 
               ? Colors.grey[700]!
-              : Colors.grey[200]!,
-          width: 1,
+              : deckColor.withOpacity(0.2),
+          width: 1.5,
         ),
       ),
       child: Material(
@@ -1085,18 +1149,13 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                     children: [
                       Text(
                         deck.name,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).textTheme.titleMedium?.color,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       if (deck.description.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           deck.description,
-                          style: TextStyle(
-                            fontSize: 13,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Colors.grey[600],
                           ),
                           maxLines: 2,
@@ -1105,38 +1164,33 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                       ],
                       const SizedBox(height: 6),
                       Row(
-                        children: [
-                          Icon(
-                            Icons.style,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${deck.cardCount} ${deck.cardCount == 1 ? 'card' : 'cards'}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(deck.updatedAt),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+  children: [
+    Icon(Icons.style, size: 14, color: Colors.grey[500]),
+    const SizedBox(width: 4),
+    Flexible(
+      child: Text(
+        '${deck.cardCount} ${deck.cardCount == 1 ? 'card' : 'cards'}',
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+        overflow: TextOverflow.ellipsis, // important to prevent overflow
+      ),
+    ),
+    const SizedBox(width: 12),
+    Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+    const SizedBox(width: 4),
+    Flexible(
+      child: Text(
+        _formatDate(deck.updatedAt),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.grey[500],
+            ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+  ],
+),
+],
                   ),
                 ),
                 
@@ -1145,23 +1199,22 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     GestureDetector(
-  onTap: () => _removeDeckFromPack(deck, deckPack),
-  child: Container(
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-      color: Theme.of(context).brightness == Brightness.dark
-          ? Colors.red.withOpacity(0.2)
-          : Colors.red[50],
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Icon(
-      Icons.remove_circle_outline,
-      color: Colors.red, // consistent with the red theme
-      size: 18,
-    ),
-  ),
-)
-
+                      onTap: () => _removeDeckFromPack(deck, deckPack),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.red.withOpacity(0.2)
+                              : Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.red, // consistent with the red theme
+                          size: 18,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1185,5 +1238,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+}
+
+extension ColorExtension on Color {
+  Color darken(double amount) {
+    assert(amount >= 0 && amount <= 1);
+    final hsl = HSLColor.fromColor(this);
+    final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+    return hslDark.toColor();
   }
 }
