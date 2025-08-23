@@ -60,18 +60,49 @@ class AdaptiveThemeService {
       // Input Decoration
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Colors.grey[50],
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.red, width: 2.5),
+        ),
+        hintStyle: TextStyle(
+          color: Colors.grey[500],
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+        labelStyle: TextStyle(
+          color: Colors.grey[600],
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: Color(0xFF2196F3),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixIconColor: Colors.grey[600],
+        suffixIconColor: Colors.grey[600],
+        errorStyle: const TextStyle(
+          color: Colors.red,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
       
@@ -148,18 +179,49 @@ class AdaptiveThemeService {
       // Input Decoration
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF2A2A2A),
+        fillColor: const Color(0xFF1A1A1A),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF404040), width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF404040)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF404040), width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.red, width: 2.5),
+        ),
+        hintStyle: const TextStyle(
+          color: Color(0xFF808080),
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+        labelStyle: const TextStyle(
+          color: Color(0xFFB0B0B0),
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: Color(0xFF2196F3),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixIconColor: const Color(0xFF808080),
+        suffixIconColor: const Color(0xFF808080),
+        errorStyle: const TextStyle(
+          color: Colors.red,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
       
@@ -194,7 +256,29 @@ class AdaptiveThemeService {
 
   // Toggle theme
   static void toggleTheme(BuildContext context) {
-    AdaptiveTheme.of(context).toggleThemeMode();
+    try {
+      final currentMode = AdaptiveTheme.of(context).mode;
+      AdaptiveThemeMode newMode;
+      
+      switch (currentMode) {
+        case AdaptiveThemeMode.light:
+          newMode = AdaptiveThemeMode.dark;
+          break;
+        case AdaptiveThemeMode.dark:
+          newMode = AdaptiveThemeMode.light;
+          break;
+        case AdaptiveThemeMode.system:
+          // If system mode, switch to light mode
+          newMode = AdaptiveThemeMode.light;
+          break;
+        default:
+          newMode = AdaptiveThemeMode.light;
+      }
+      
+      AdaptiveTheme.of(context).setThemeMode(newMode);
+    } catch (e) {
+      print('Error toggling theme: $e');
+    }
   }
 
   // Set specific theme mode
@@ -204,9 +288,14 @@ class AdaptiveThemeService {
 
   // Check if dark mode is enabled
   static bool isDarkMode(BuildContext context) {
-    final mode = AdaptiveTheme.of(context).mode;
-    return mode == AdaptiveThemeMode.dark || 
-           (mode == AdaptiveThemeMode.system && 
-            MediaQuery.of(context).platformBrightness == Brightness.dark);
+    try {
+      final mode = AdaptiveTheme.of(context).mode;
+      return mode == AdaptiveThemeMode.dark || 
+             (mode == AdaptiveThemeMode.system && 
+              MediaQuery.of(context).platformBrightness == Brightness.dark);
+    } catch (e) {
+      // Fallback to system brightness if adaptive theme is not available
+      return MediaQuery.of(context).platformBrightness == Brightness.dark;
+    }
   }
 }

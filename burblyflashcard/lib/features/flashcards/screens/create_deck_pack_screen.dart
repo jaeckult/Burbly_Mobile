@@ -110,11 +110,22 @@ class _CreateDeckPackScreenState extends State<CreateDeckPackScreen> {
             // Name Field
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Pack Name',
                 hintText: 'Enter deck pack name',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.folder),
+                prefixIcon: Icon(
+                  Icons.folder,
+                  color: Theme.of(context).primaryColor,
+                ),
+                suffixIcon: _nameController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _nameController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -123,23 +134,53 @@ class _CreateDeckPackScreenState extends State<CreateDeckPackScreen> {
                 if (value.trim().length < 2) {
                   return 'Pack name must be at least 2 characters';
                 }
+                if (value.trim().length > 50) {
+                  return 'Pack name must be less than 50 characters';
+                }
                 return null;
               },
               textInputAction: TextInputAction.next,
+              onChanged: (value) => setState(() {}),
+              textCapitalization: TextCapitalization.words,
+              maxLength: 50,
+              buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                return isFocused 
+                    ? Text('$currentLength/$maxLength', style: TextStyle(color: Theme.of(context).hintColor))
+                    : null;
+              },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Description Field
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Description',
                 hintText: 'Enter pack description (optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.description),
+                prefixIcon: Icon(
+                  Icons.description,
+                  color: Theme.of(context).primaryColor,
+                ),
+                suffixIcon: _descriptionController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _descriptionController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
               ),
               maxLines: 3,
-              textInputAction: TextInputAction.next,
+              textInputAction: TextInputAction.done,
+              onChanged: (value) => setState(() {}),
+              textCapitalization: TextCapitalization.sentences,
+              maxLength: 200,
+              buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                return isFocused 
+                    ? Text('$currentLength/$maxLength', style: TextStyle(color: Theme.of(context).hintColor))
+                    : null;
+              },
             ),
             const SizedBox(height: 24),
 

@@ -69,38 +69,43 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search decks, flashcards, and notes...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _performSearch('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-              ),
-              onChanged: (value) {
-                if (value.length >= 2) {
-                  _performSearch(value);
-                } else if (value.isEmpty) {
-                  _performSearch('');
-                }
-              },
-            ),
-          ),
+                     // Search Bar
+           Container(
+             padding: const EdgeInsets.all(16),
+             child: TextField(
+               controller: _searchController,
+               autofocus: false,
+               decoration: InputDecoration(
+                 hintText: 'Search decks, flashcards, and notes...',
+                 prefixIcon: Icon(
+                   Icons.search,
+                   color: Theme.of(context).primaryColor,
+                 ),
+                 suffixIcon: _searchController.text.isNotEmpty
+                     ? IconButton(
+                         icon: const Icon(Icons.clear),
+                         onPressed: () {
+                           _searchController.clear();
+                           _performSearch('');
+                         },
+                       )
+                     : null,
+               ),
+               textInputAction: TextInputAction.search,
+               onChanged: (value) {
+                 if (value.length >= 2) {
+                   _performSearch(value);
+                 } else if (value.isEmpty) {
+                   _performSearch('');
+                 }
+               },
+               onSubmitted: (value) {
+                 if (value.isNotEmpty) {
+                   _performSearch(value);
+                 }
+               },
+             ),
+           ),
 
           // Search Results
           Expanded(

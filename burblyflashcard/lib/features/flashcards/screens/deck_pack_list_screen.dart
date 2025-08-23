@@ -31,6 +31,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   Map<String, bool> _expandedPacks = {};
   bool _isLoading = true;
   bool _isGuestMode = false;
+  bool _isDarkMode = false;
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
       }
 
       _isGuestMode = await _dataService.isGuestMode();
+      _isDarkMode = AdaptiveThemeService.isDarkMode(context);
       await _loadDeckPacks();
       await _loadAllDecks();
       setState(() => _isLoading = false);
@@ -472,11 +474,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(AdaptiveThemeService.isDarkMode(context) ? Icons.light_mode : Icons.dark_mode),
-                  title: Text(AdaptiveThemeService.isDarkMode(context) ? 'Light Mode' : 'Dark Mode'),
+                  leading: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                  title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode'),
                   onTap: () {
                     Navigator.pop(context);
-                    AdaptiveThemeService.toggleTheme(context);
+                    setState(() {
+                      _isDarkMode = !_isDarkMode;
+                      AdaptiveThemeService.toggleTheme(context);
+                    });
                   },
                 ),
                 ListTile(
@@ -566,13 +571,16 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           // Theme toggle button
           IconButton(
             onPressed: () {
-              AdaptiveThemeService.toggleTheme(context);
+              setState(() {
+                _isDarkMode = !_isDarkMode;
+                AdaptiveThemeService.toggleTheme(context);
+              });
             },
             icon: Icon(
-              AdaptiveThemeService.isDarkMode(context) ? Icons.light_mode : Icons.dark_mode,
+              _isDarkMode ? Icons.light_mode : Icons.dark_mode,
               color: Theme.of(context).appBarTheme.foregroundColor,
             ),
-            tooltip: AdaptiveThemeService.isDarkMode(context) ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            tooltip: _isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
           ),
         ],
       ),
@@ -606,33 +614,32 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           // Search Bar
           Container(
             padding: const EdgeInsets.all(16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).inputDecorationTheme.fillColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).hintColor,
-                  ),
-                  border: InputBorder.none,
-                  prefixIcon: Icon(
-                    Icons.search, 
-                    color: Theme.of(context).hintColor,
-                  ),
+            child: TextField(
+              readOnly: true,
+              decoration: InputDecoration(
+                hintText: 'Search deck packs and decks...',
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).hintColor,
                 ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SearchScreen(),
-                    ),
-                  );
-                },
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    Icons.tune,
+                    color: Theme.of(context).hintColor,
+                  ),
+                  onPressed: () {
+                    // TODO: Add filter options
+                  },
+                ),
               ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SearchScreen(),
+                  ),
+                );
+              },
             ),
           ),
 
@@ -870,21 +877,23 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: expanded 
-                          ? Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1)
-                          : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
-                      color: expanded 
-                          ? Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}'))
-                          : Colors.grey[600],
-                      size: 20,
-                    ),
-                  ),
+  padding: const EdgeInsets.all(8),
+  decoration: BoxDecoration(
+    color: expanded
+        ? (Theme.of(context).colorScheme.primary).withOpacity(0.1)
+        : Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]
+            : Colors.grey[100],
+    borderRadius: BorderRadius.circular(8),
+  ),
+  child: Icon(
+    expanded ? Icons.expand_less : Icons.expand_more,
+    color: expanded
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).iconTheme.color,
+    size: 20,
+  ),
+),
                   const SizedBox(width: 8),
                   IconButton(
                     icon: Icon(Icons.more_vert, color: Colors.grey[600]),
@@ -908,98 +917,104 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     );
   }
 
-  Widget _buildDeckPackDetails(DeckPack deckPack) {
-    final decks = _decksInPacks[deckPack.id] ?? [];
+ Widget _buildDeckPackDetails(DeckPack deckPack) {
+  final decks = _decksInPacks[deckPack.id] ?? [];
+  final Color baseColor = deckPack.coverColor != null
+      ? Color(int.parse('0xFF${deckPack.coverColor}'))
+      : Theme.of(context).colorScheme.primary;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (decks.isNotEmpty) ...[
-          // Section Header
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.school,
-                  size: 20,
-                  color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Decks in this pack (${decks.length})',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Decks List
-          ...decks.map((deck) => _buildDeckCard(deck, deckPack)).toList(),
-          const SizedBox(height: 16),
-        ],
-        
-        // Add New Deck Button
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (decks.isNotEmpty) ...[
+        // Section Header
         Container(
-          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.1),
-                Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.05),
-              ],
-            ),
+            color: baseColor.withOpacity(0.05),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')).withOpacity(0.2),
-              style: BorderStyle.solid,
+              color: baseColor.withOpacity(0.1),
             ),
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _createNewDeck(deckPack),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_circle_outline,
-                      color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add New Deck',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}')),
-                      ),
-                    ),
-                  ],
+          child: Row(
+            children: [
+              Icon(
+                Icons.school,
+                size: 20,
+                color: baseColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Decks in this pack (${decks.length})',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: baseColor,
                 ),
+              ),
+            ],
+          ),
+        ),
+
+        // Decks List
+        ...decks.map((deck) => _buildDeckCard(deck, deckPack)).toList(),
+        const SizedBox(height: 16),
+      ],
+
+      // Add New Deck Button
+      Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              baseColor.withOpacity(0.1),
+              baseColor.withOpacity(0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: baseColor.withOpacity(0.2),
+            style: BorderStyle.solid,
+          ),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[800]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _createNewDeck(deckPack),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_circle_outline,
+                    color: baseColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Add New Deck',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: baseColor,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildDeckCard(Deck deck, DeckPack deckPack) {
     return Container(
@@ -1130,20 +1145,23 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: () => _removeDeckFromPack(deck, deckPack),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.remove_circle_outline,
-                          color: Colors.red[400],
-                          size: 18,
-                        ),
-                      ),
-                    ),
+  onTap: () => _removeDeckFromPack(deck, deckPack),
+  child: Container(
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Colors.red.withOpacity(0.2)
+          : Colors.red[50],
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(
+      Icons.remove_circle_outline,
+      color: Colors.red, // consistent with the red theme
+      size: 18,
+    ),
+  ),
+)
+
                   ],
                 ),
               ],
