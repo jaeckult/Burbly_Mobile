@@ -25,6 +25,15 @@ void main() async {
     // Initialize core services
     await DataService().initialize();
     
+    // Verify data persistence after initialization
+    try {
+      final dataService = DataService();
+      final integrityCheck = await dataService.checkDataIntegrity();
+      print('Data integrity check completed: ${integrityCheck['status']}');
+    } catch (e) {
+      print('Warning: Could not verify data integrity: $e');
+    }
+    
     // Initialize NotificationService with error handling
     try {
       await NotificationService().initialize();

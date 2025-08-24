@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/background_service.dart';
+import '../../../core/services/data_service.dart'; // Added import for DataService
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -942,6 +943,116 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                               },
                               icon: const Icon(Icons.location_on),
                               label: const Text('Set UK'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  final dataService = DataService();
+                                  final integrityCheck = await dataService.checkDataIntegrity();
+                                  if (mounted) {
+                                    final status = integrityCheck['status'] as String;
+                                    final totalItems = integrityCheck['totalItems'] as int;
+                                    final recommendation = integrityCheck['recommendation'] as String;
+                                    
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Data integrity: $status ($totalItems items) - $recommendation'),
+                                        backgroundColor: status == 'healthy' ? Colors.green : Colors.orange,
+                                        duration: const Duration(seconds: 5),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error checking data integrity: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.storage),
+                              label: const Text('Check Data Integrity'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  final dataService = DataService();
+                                  final counts = await dataService.getDataCounts();
+                                  if (mounted) {
+                                    final totalItems = counts.values.reduce((a, b) => a + b);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Data counts: $totalItems total items'),
+                                        backgroundColor: totalItems > 0 ? Colors.green : Colors.orange,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error getting data counts: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.analytics),
+                              label: const Text('Data Counts'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  final dataService = DataService();
+                                  final recoveryResult = await dataService.attemptDataRecovery();
+                                  if (mounted) {
+                                    final success = recoveryResult['success'] as bool;
+                                    final message = recoveryResult['message'] as String;
+                                    final totalItems = recoveryResult['totalItems'] as int? ?? 0;
+                                    
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Recovery: $message ($totalItems items)'),
+                                        backgroundColor: success ? Colors.green : Colors.orange,
+                                        duration: const Duration(seconds: 5),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error during recovery: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.restore),
+                              label: const Text('Attempt Recovery'),
                             ),
                           ),
                         ],

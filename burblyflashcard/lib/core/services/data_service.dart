@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../models/deck.dart';
 import '../models/flashcard.dart';
 import '../models/deck_pack.dart';
@@ -39,13 +40,6 @@ class DataService {
       if (!Hive.isBoxOpen(_decksBoxName)) {
         await Hive.initFlutter();
         
-        // Clear any existing boxes to avoid type ID conflicts
-        await Hive.deleteBoxFromDisk(_decksBoxName);
-        await Hive.deleteBoxFromDisk(_flashcardsBoxName);
-        await Hive.deleteBoxFromDisk(_deckPacksBoxName);
-        await Hive.deleteBoxFromDisk(_notesBoxName);
-        await Hive.deleteBoxFromDisk(_studySessionsBoxName);
-        
         // Register adapters only if not already registered
         if (!Hive.isAdapterRegistered(0)) {
           Hive.registerAdapter(DeckAdapter());
@@ -76,7 +70,7 @@ class DataService {
         }
       }
       
-      // Open boxes
+      // Open boxes - this will preserve existing data
       _decksBox = await Hive.openBox<Deck>(_decksBoxName);
       _flashcardsBox = await Hive.openBox<Flashcard>(_flashcardsBoxName);
       _deckPacksBox = await Hive.openBox<DeckPack>(_deckPacksBoxName);
@@ -84,9 +78,54 @@ class DataService {
       _studySessionsBox = await Hive.openBox<StudySession>(_studySessionsBoxName);
       
       _isInitialized = true;
+      
+      // Log data status for debugging
+      print('DataService initialized successfully');
+      print('Decks: ${_decksBox.length}');
+      print('Flashcards: ${_flashcardsBox.length}');
+      print('Deck Packs: ${_deckPacksBox.length}');
+      print('Notes: ${_notesBox.length}');
+      print('Study Sessions: ${_studySessionsBox.length}');
+      
+      // Check if this might be a hot restart
+      if (kDebugMode) {
+        await _handlePotentialHotRestart();
+      }
     } catch (e) {
       _isInitialized = false;
+      print('Error initializing DataService: $e');
       throw Exception('Failed to initialize DataService: ${e.toString()}');
+    }
+  }
+
+  // Handle potential hot restart scenarios
+  Future<void> _handlePotentialHotRestart() async {
+    try {
+      // Check if we have data but it seems like a fresh start
+      final totalItems = _decksBox.length + _flashcardsBox.length + _deckPacksBox.length + _notesBox.length + _studySessionsBox.length;
+      
+      if (totalItems == 0) {
+        print('⚠️  WARNING: No data found after initialization. This might indicate:');
+        print('   - First app launch');
+        print('   - Data was cleared manually');
+        print('   - Hot restart issue');
+        print('   - Storage permission issue');
+        
+        // Try to check if this is really the first launch
+        final prefs = await SharedPreferences.getInstance();
+        final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+        
+        if (isFirstLaunch) {
+          print('✅ This appears to be the first app launch');
+          await prefs.setBool('isFirstLaunch', false);
+        } else {
+          print('❌ This is NOT the first launch but no data found - potential issue!');
+        }
+      } else {
+        print('✅ Data found: $totalItems items - persistence working correctly');
+      }
+    } catch (e) {
+      print('Error handling hot restart check: $e');
     }
   }
 
@@ -98,8 +137,158 @@ class DataService {
 
   // Force reinitialize if needed
   Future<void> reinitialize() async {
+    if (_isInitialized) {
+      // Safely close existing boxes first
+      await _safeCloseBoxes();
+    }
     _isInitialized = false;
     await initialize();
+  }
+
+  // Safely close all boxes
+  Future<void> _safeCloseBoxes() async {
+    try {
+      if (_decksBox.isOpen) await _decksBox.close();
+      if (_flashcardsBox.isOpen) await _flashcardsBox.close();
+      if (_deckPacksBox.isOpen) await _deckPacksBox.close();
+      if (_notesBox.isOpen) await _notesBox.close();
+      if (_studySessionsBox.isOpen) await _studySessionsBox.close();
+    } catch (e) {
+      print('Error closing boxes: $e');
+    }
+  }
+
+  // Method to check data integrity
+  Future<Map<String, int>> getDataCounts() async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+    
+    return {
+      'decks': _decksBox.length,
+      'flashcards': _flashcardsBox.length,
+      'deckPacks': _deckPacksBox.length,
+      'notes': _notesBox.length,
+      'studySessions': _studySessionsBox.length,
+    };
+  }
+
+  // Method to verify data persistence
+  Future<bool> verifyDataPersistence() async {
+    try {
+      final counts = await getDataCounts();
+      final totalItems = counts.values.reduce((a, b) => a + b);
+      
+      print('Data persistence verification:');
+      print('Total items: $totalItems');
+      counts.forEach((key, value) => print('$key: $value'));
+      
+      return totalItems > 0; // Return true if we have any data
+    } catch (e) {
+      print('Error verifying data persistence: $e');
+      return false;
+    }
+  }
+
+  // Method to check data integrity and provide recovery info
+  Future<Map<String, dynamic>> checkDataIntegrity() async {
+    try {
+      final counts = await getDataCounts();
+      final totalItems = counts.values.reduce((a, b) => a + b);
+      
+      // Check if boxes are accessible
+      final boxesAccessible = areBoxesAccessible;
+      
+      // Check if we're in debug mode
+      final isDebugMode = kDebugMode;
+      
+      // Check if this might be a hot restart
+      final isHotRestart = isDebugMode && totalItems == 0;
+      
+      final result = {
+        'totalItems': totalItems,
+        'boxesAccessible': boxesAccessible,
+        'isDebugMode': isDebugMode,
+        'isHotRestart': isHotRestart,
+        'counts': counts,
+        'status': totalItems > 0 ? 'healthy' : 'empty',
+        'recommendation': totalItems > 0 ? 'Data looks good' : 'Check for data loss'
+      };
+      
+      print('=== DATA INTEGRITY CHECK ===');
+      print('Total items: $totalItems');
+      print('Boxes accessible: $boxesAccessible');
+      print('Debug mode: $isDebugMode');
+      print('Potential hot restart: $isHotRestart');
+      print('Status: ${result['status']}');
+      print('Recommendation: ${result['recommendation']}');
+      print('=============================');
+      
+      return result;
+    } catch (e) {
+      print('Error checking data integrity: $e');
+      return {
+        'error': e.toString(),
+        'status': 'error'
+      };
+    }
+  }
+
+  // Method to attempt data recovery
+  Future<Map<String, dynamic>> attemptDataRecovery() async {
+    try {
+      print('=== ATTEMPTING DATA RECOVERY ===');
+      
+      // Check if boxes are accessible
+      if (!areBoxesAccessible) {
+        print('❌ Boxes not accessible - attempting reinitialization');
+        await reinitialize();
+      }
+      
+      // Check data counts again
+      final counts = await getDataCounts();
+      final totalItems = counts.values.reduce((a, b) => a + b);
+      
+      if (totalItems > 0) {
+        print('✅ Data recovery successful! Found $totalItems items');
+        return {
+          'success': true,
+          'message': 'Data recovery successful',
+          'totalItems': totalItems,
+          'counts': counts
+        };
+      } else {
+        print('❌ No data found after recovery attempt');
+        
+        // Check if this might be a storage permission issue
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('test_key', 'test_value');
+          final testValue = prefs.getString('test_key');
+          if (testValue == 'test_value') {
+            print('✅ SharedPreferences working - storage permissions OK');
+          } else {
+            print('❌ SharedPreferences not working - storage permission issue');
+          }
+        } catch (e) {
+          print('❌ Storage permission test failed: $e');
+        }
+        
+        return {
+          'success': false,
+          'message': 'No data found after recovery attempt',
+          'totalItems': 0,
+          'counts': counts
+        };
+      }
+    } catch (e) {
+      print('❌ Data recovery failed: $e');
+      return {
+        'success': false,
+        'message': 'Recovery failed: $e',
+        'error': e.toString()
+      };
+    }
   }
 
   // Check if user is in guest mode
