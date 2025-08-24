@@ -9,6 +9,10 @@ import 'search_screen.dart';
 import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
 import '../../stats/stats_page.dart';
+import '../../pets/widgets/pet_companion_widget.dart';
+import '../../pets/screens/pet_management_screen.dart';
+import '../../../core/services/pet_notification_service.dart';
+import '../../../core/utils/snackbar_utils.dart';
 
 
 class FlashcardHomeScreen extends StatefulWidget {
@@ -21,6 +25,7 @@ class FlashcardHomeScreen extends StatefulWidget {
 class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   final DataService _dataService = DataService();
   final AuthService _authService = AuthService();
+  final PetNotificationService _petNotificationService = PetNotificationService();
   List<Deck> _decks = [];
   bool _isLoading = true;
   bool _isGuestMode = false;
@@ -29,6 +34,34 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   void initState() {
     super.initState();
     _initializeData();
+    _registerPetNotifications();
+  }
+
+  @override
+  void dispose() {
+    _petNotificationService.unregisterCallback();
+    super.dispose();
+  }
+
+  void _registerPetNotifications() {
+    _petNotificationService.registerCallback((message, type) {
+      if (mounted) {
+        switch (type) {
+          case 'success':
+            SnackbarUtils.showSuccessSnackbar(context, message);
+            break;
+          case 'warning':
+            SnackbarUtils.showWarningSnackbar(context, message);
+            break;
+          case 'error':
+            SnackbarUtils.showErrorSnackbar(context, message);
+            break;
+          case 'info':
+            SnackbarUtils.showInfoSnackbar(context, message);
+            break;
+        }
+      }
+    });
   }
 
   Future<void> _initializeData() async {
@@ -63,21 +96,17 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         setState(() => _isGuestMode = false);
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Successfully signed in! Use the backup button to sync your data.'),
-              backgroundColor: Colors.green,
-            ),
+          SnackbarUtils.showSuccessSnackbar(
+            context,
+            'Successfully signed in! Use the backup button to sync your data.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign-in failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Sign-in failed: ${e.toString()}',
         );
       }
     }
@@ -88,20 +117,16 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
       await _dataService.backupToFirestore();
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Backup completed successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        SnackbarUtils.showSuccessSnackbar(
+          context,
+          'Backup completed successfully!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Backup failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Backup failed: ${e.toString()}',
         );
       }
     }
@@ -116,20 +141,16 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
       setState(() => _isGuestMode = true);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signed out successfully'),
-            backgroundColor: Colors.blue,
-          ),
+        SnackbarUtils.showInfoSnackbar(
+          context,
+          'Signed out successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign-out failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Sign-out failed: ${e.toString()}',
         );
       }
     }
@@ -268,6 +289,19 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     );
                   },
                 ),
+                ListTile(
+                  leading: const Icon(Icons.pets),
+                  title: const Text('Pet Management'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PetManagementScreen(),
+                      ),
+                    );
+                  },
+                ),
 
                 const Divider(),
                 if (_isGuestMode) ...[
@@ -317,26 +351,34 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   }
 
   Widget _buildBody() {
-    if (_decks.isEmpty) {
-      return _buildEmptyState();
-    }
-    
-    return RefreshIndicator(
-      onRefresh: _loadDecks,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.8,
+    return Column(
+      children: [
+        // Pet Companion Widget at the top
+        const PetCompanionWidget(),
+        
+        // Decks content
+        Expanded(
+          child: _decks.isEmpty
+              ? _buildEmptyState()
+              : RefreshIndicator(
+                  onRefresh: _loadDecks,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemCount: _decks.length,
+                    itemBuilder: (context, index) {
+                      final deck = _decks[index];
+                      return _buildDeckCard(deck);
+                    },
+                  ),
+                ),
         ),
-        itemCount: _decks.length,
-        itemBuilder: (context, index) {
-          final deck = _decks[index];
-          return _buildDeckCard(deck);
-        },
-      ),
+      ],
     );
   }
 

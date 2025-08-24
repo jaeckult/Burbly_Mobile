@@ -27,6 +27,7 @@ class NotificationService {
   static const String dailyReminderChannelId = 'daily_reminder_channel';
   static const String overdueCardsChannelId = 'overdue_cards_channel';
   static const String studyStreakChannelId = 'study_streak_channel';
+  static const String petNotificationChannelId = 'pet_notification_channel';
   static const String immediateChannelId = 'immediate_channel';
 
   Future<void> initialize() async {
@@ -132,6 +133,18 @@ class NotificationService {
           studyStreakChannelId,
           'Study Streaks',
           description: 'Celebrate your study streaks',
+          importance: Importance.defaultImportance,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+
+      // Pet notifications channel
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          petNotificationChannelId,
+          'Pet Notifications',
+          description: 'Notifications from your study pet',
           importance: Importance.defaultImportance,
           enableVibration: true,
           playSound: true,
@@ -344,6 +357,87 @@ class NotificationService {
       print('Scheduled study streak reminder for ${scheduledTime.toString()}');
     } catch (e) {
       print('Error scheduling study streak reminder: $e');
+    }
+  }
+
+  // Pet notification methods
+  Future<void> schedulePetNotification(String message, {int delayHours = 2}) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        petNotificationChannelId,
+        'Pet Notifications',
+        channelDescription: 'Notifications from your study pet',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+        playSound: true,
+        category: AndroidNotificationCategory.reminder,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      // Schedule for specified delay from now
+      final scheduledTime = tz.TZDateTime.now(tz.local).add(Duration(hours: delayHours));
+      
+      final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
+      await _notifications.zonedSchedule(
+        notificationId,
+        'Your Pet Misses You! 🐾',
+        message,
+        scheduledTime,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      
+      print('Scheduled pet notification for ${scheduledTime.toString()}: $message');
+    } catch (e) {
+      print('Error scheduling pet notification: $e');
+    }
+  }
+
+  Future<void> showPetNotification(String message) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        petNotificationChannelId,
+        'Pet Notifications',
+        channelDescription: 'Notifications from your study pet',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+        playSound: true,
+        category: AndroidNotificationCategory.reminder,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
+      await _notifications.show(
+        notificationId,
+        'Your Pet Misses You! 🐾',
+        message,
+        details,
+      );
+      
+      print('Showed pet notification: $message');
+    } catch (e) {
+      print('Error showing pet notification: $e');
     }
   }
 

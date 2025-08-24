@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/pet.dart';
 import '../../../core/services/pet_service.dart';
-import 'pet_care_screen.dart';
+import '../../../core/services/pet_notification_service.dart';
+import '../../../core/utils/snackbar_utils.dart';
 
 class PetManagementScreen extends StatefulWidget {
   const PetManagementScreen({super.key});
@@ -12,6 +13,7 @@ class PetManagementScreen extends StatefulWidget {
 
 class _PetManagementScreenState extends State<PetManagementScreen> {
   final PetService _petService = PetService();
+  final PetNotificationService _petNotificationService = PetNotificationService();
   List<Pet> _pets = [];
   bool _isLoading = true;
 
@@ -63,14 +65,14 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Pets Yet',
+            'No Pet Yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Adopt your first pet to get started!',
+            'Adopt your study companion! (Only one pet per user)',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
@@ -80,7 +82,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
           ElevatedButton.icon(
             onPressed: () => _showAdoptPetDialog(),
             icon: const Icon(Icons.add),
-            label: const Text('Adopt Your First Pet'),
+            label: const Text('Adopt Your Pet'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -116,9 +118,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
             ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
             : BorderSide.none,
       ),
-      child: InkWell(
-        onTap: () => _openPetCare(pet),
-        borderRadius: BorderRadius.circular(16),
+      child: Container(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -255,24 +255,15 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     );
   }
 
-  void _openPetCare(Pet pet) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PetCareScreen(pet: pet),
-      ),
-    ).then((_) => _loadPets());
-  }
+
 
   void _setActivePet(Pet pet) async {
     await _petService.setActivePet(pet.id);
     await _loadPets();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${pet.name} is now your active pet!'),
-          backgroundColor: Colors.green,
-        ),
+      SnackbarUtils.showSuccessSnackbar(
+        context,
+        '${pet.name} is now your active pet!',
       );
     }
   }
@@ -285,14 +276,6 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.pets),
-              title: const Text('Care for Pet'),
-              onTap: () {
-                Navigator.pop(context);
-                _openPetCare(pet);
-              },
-            ),
             if (!pet.isActive)
               ListTile(
                 leading: const Icon(Icons.star),
@@ -404,16 +387,20 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     await _petService.deletePet(pet.id);
     await _loadPets();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${pet.name} has been released.'),
-          backgroundColor: Colors.red,
-        ),
+      SnackbarUtils.showErrorSnackbar(
+        context,
+        '${pet.name} has been released.',
       );
     }
   }
 
   void _showAdoptPetDialog() {
+    // Check if user already has a pet
+    if (_pets.isNotEmpty) {
+      _petNotificationService.showPetLimitNotification();
+      return;
+    }
+    
     showDialog(
       context: context,
       builder: (context) => const AdoptPetDialog(),
@@ -489,6 +476,7 @@ class _AdoptPetDialogState extends State<AdoptPetDialog> {
   final TextEditingController _nameController = TextEditingController();
   PetType _selectedType = PetType.cat;
   final PetService _petService = PetService();
+  final PetNotificationService _petNotificationService = PetNotificationService();
 
   @override
   void dispose() {
@@ -499,7 +487,7 @@ class _AdoptPetDialogState extends State<AdoptPetDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Adopt a Pet'),
+      title: const Text('Adopt Your Study Pet'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -512,6 +500,14 @@ class _AdoptPetDialogState extends State<AdoptPetDialog> {
           ),
           const SizedBox(height: 16),
           const Text('Choose your pet type:'),
+          const SizedBox(height: 8),
+          Text(
+            'Note: Only one pet per user is allowed',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.orange,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -545,25 +541,26 @@ class _AdoptPetDialogState extends State<AdoptPetDialog> {
   void _adoptPet() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a name for your pet')),
+      SnackbarUtils.showWarningSnackbar(
+        context,
+        'Please enter a name for your pet',
       );
       return;
     }
 
-    await _petService.createPet(
+    final pet = await _petService.createPet(
       name: name,
       type: _selectedType,
     );
 
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome $name! 🎉'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      
+      if (pet != null) {
+        _petNotificationService.showPetAdoptionNotification(name);
+      } else {
+        _petNotificationService.showPetLimitNotification();
+      }
     }
   }
 }

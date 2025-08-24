@@ -633,6 +633,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('New Pack'),
+        elevation: 5,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import 'data_service.dart';
+import 'pet_service.dart';
 
 class BackgroundService {
   static final BackgroundService _instance = BackgroundService._internal();
@@ -44,6 +45,9 @@ class BackgroundService {
       
       // Check if we need to reschedule daily reminders
       await _checkDailyReminders();
+      
+      // Check pet notifications
+      await _checkPetNotifications();
     } catch (e) {
       print('Error in background service: $e');
     }
@@ -130,6 +134,34 @@ class BackgroundService {
       }
     } catch (e) {
       print('Error checking daily reminders: $e');
+    }
+  }
+
+  // Check pet notifications
+  Future<void> _checkPetNotifications() async {
+    try {
+      final petService = PetService();
+      await petService.initialize();
+      final currentPet = petService.getCurrentPet();
+      
+      if (currentPet != null) {
+        final stats = petService.getPetStats(currentPet);
+        final hoursSinceLastVisit = stats['hoursSincePlayed'] as int;
+        
+        // Send pet notification if user hasn't visited for a while
+        if (hoursSinceLastVisit >= 6) {
+          final message = petService.getPersonalizedNotificationMessage(currentPet);
+          await _notificationService.schedulePetNotification(message, delayHours: 1);
+        }
+        
+        // Send status-based notifications
+        if (stats['hunger'] > 70 || stats['happiness'] < 30) {
+          final statusMessage = petService.getPetStatusMessage(currentPet);
+          await _notificationService.schedulePetNotification(statusMessage, delayHours: 2);
+        }
+      }
+    } catch (e) {
+      print('Error checking pet notifications: $e');
     }
   }
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../core/core.dart';
+import '../../../core/services/pet_service.dart';
+import '../../../core/services/pet_notification_service.dart';
+import '../../../core/utils/snackbar_utils.dart';
 
 class EnhancedStudyScreen extends StatefulWidget {
   final Deck deck;
@@ -18,6 +21,7 @@ class EnhancedStudyScreen extends StatefulWidget {
 
 class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   final DataService _dataService = DataService();
+  final PetNotificationService _petNotificationService = PetNotificationService();
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
@@ -104,6 +108,36 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
     // Track answer quality
     if (quality >= 3) {
       _correctAnswers++;
+      
+              // Feed pet when user answers correctly
+        try {
+          final petService = PetService();
+          await petService.initialize();
+          final currentPet = petService.getCurrentPet();
+          if (currentPet != null) {
+            // Calculate points based on quality (3-5 = 1-3 points)
+            final points = quality - 2;
+            final oldHunger = currentPet.hunger;
+            final oldHappiness = currentPet.happiness;
+            
+            await petService.feedPetOnCorrectAnswer(currentPet, points);
+            
+            // Show notification for pet feeding
+            final updatedPet = petService.getCurrentPet();
+            if (updatedPet != null) {
+              final hungerReduced = oldHunger - updatedPet.hunger;
+              final happinessGained = updatedPet.happiness - oldHappiness;
+              
+              _petNotificationService.showPetFeedingNotification(
+                updatedPet.name,
+                hungerReduced,
+                happinessGained,
+              );
+            }
+          }
+        } catch (e) {
+          print('Error feeding pet: $e');
+        }
     } else {
       _incorrectAnswers++;
     }
@@ -118,11 +152,9 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       _nextCard();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating card: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error updating card: ${e.toString()}',
         );
       }
     } finally {

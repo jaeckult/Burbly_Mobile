@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/pet_notification_service.dart';
 
 class AnkiStudyScreen extends StatefulWidget {
   final Deck deck;
@@ -19,6 +20,7 @@ class AnkiStudyScreen extends StatefulWidget {
 
 class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   final DataService _dataService = DataService();
+  final PetNotificationService _petNotificationService = PetNotificationService();
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
@@ -425,6 +427,32 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       _cardsReviewed++;
       if (quality >= 3) {
         _cardsCorrect++;
+        
+        // Feed pet when user answers correctly
+        final petService = PetService();
+        await petService.initialize();
+        final currentPet = petService.getCurrentPet();
+        if (currentPet != null) {
+          // Calculate points based on quality (3-5 = 1-3 points)
+          final points = quality - 2;
+          final oldHunger = currentPet.hunger;
+          final oldHappiness = currentPet.happiness;
+          
+          await petService.feedPetOnCorrectAnswer(currentPet, points);
+          
+          // Show notification for pet feeding
+          final updatedPet = petService.getCurrentPet();
+          if (updatedPet != null) {
+            final hungerReduced = oldHunger - updatedPet.hunger;
+            final happinessGained = updatedPet.happiness - oldHappiness;
+            
+            _petNotificationService.showPetFeedingNotification(
+              updatedPet.name,
+              hungerReduced,
+              happinessGained,
+            );
+          }
+        }
       } else {
         _cardsIncorrect++;
       }

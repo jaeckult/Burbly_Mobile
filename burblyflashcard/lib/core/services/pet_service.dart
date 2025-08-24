@@ -31,12 +31,18 @@ class PetService {
     );
   }
 
-  // Create a new pet
-  Future<Pet> createPet({
+  // Create a new pet (only one pet per user allowed)
+  Future<Pet?> createPet({
     required String name,
     required PetType type,
   }) async {
     if (!_isInitialized) await initialize();
+
+    // Check if user already has a pet
+    if (_petsBox.values.isNotEmpty) {
+      print('User already has a pet. Only one pet per user is allowed.');
+      return null;
+    }
 
     final now = DateTime.now();
     final pet = Pet(
@@ -99,6 +105,97 @@ class PetService {
     }
 
     await updatePet(updatedPet);
+  }
+
+  // Feed pet based on flashcard answers (called when user answers correctly)
+  Future<void> feedPetOnCorrectAnswer(Pet pet, int points) async {
+    // Calculate feeding based on points (more points = more feeding)
+    final feedingAmount = (points * 0.5).clamp(5, 25).round(); // 5-25 hunger reduction
+    final happinessGain = (points * 0.3).clamp(2, 15).round(); // 2-15 happiness gain
+    
+    final updatedPet = pet.copyWith(
+      hunger: (pet.hunger - feedingAmount).clamp(0, 100),
+      happiness: (pet.happiness + happinessGain).clamp(0, 100),
+      lastFed: DateTime.now(),
+    );
+    
+    await updatePet(updatedPet);
+  }
+
+  // Give pet attention when user visits the app
+  Future<void> givePetAttention(Pet pet) async {
+    final now = DateTime.now();
+    final hoursSinceLastAttention = now.difference(pet.lastPlayed).inHours;
+    
+    // Only give attention if it's been at least 1 hour since last attention
+    if (hoursSinceLastAttention >= 1) {
+      final attentionGain = 15; // Fixed happiness gain for attention
+      
+      final updatedPet = pet.copyWith(
+        happiness: (pet.happiness + attentionGain).clamp(0, 100),
+        lastPlayed: now,
+      );
+      
+      await updatePet(updatedPet);
+    }
+  }
+
+  // Get pet symbol/emoji based on type
+  String getPetSymbol(PetType type) {
+    switch (type) {
+      case PetType.cat:
+        return '🐱';
+      case PetType.dog:
+        return '🐕';
+      case PetType.rabbit:
+        return '🐰';
+      case PetType.bird:
+        return '🐦';
+      case PetType.fish:
+        return '🐠';
+      case PetType.hamster:
+        return '🐹';
+      case PetType.turtle:
+        return '🐢';
+      case PetType.dragon:
+        return '🐉';
+    }
+  }
+
+  // Get personalized notification message
+  String getPersonalizedNotificationMessage(Pet pet) {
+    final hoursSinceLastVisit = DateTime.now().difference(pet.lastPlayed).inHours;
+    final petSymbol = getPetSymbol(pet.type);
+    
+    if (hoursSinceLastVisit >= 24) {
+      return "$petSymbol Hey ${pet.name} here! Where have you been? I missed you! 😢";
+    } else if (hoursSinceLastVisit >= 12) {
+      return "$petSymbol Hi ${pet.name} here! I was wondering where you went! 😊";
+    } else if (hoursSinceLastVisit >= 6) {
+      return "$petSymbol Hey ${pet.name} here! Are you coming back soon? 🐾";
+    } else if (hoursSinceLastVisit >= 2) {
+      return "$petSymbol ${pet.name} here! I'm getting a bit lonely... 😔";
+    } else {
+      return "$petSymbol ${pet.name} here! I'm ready to study with you! 📚";
+    }
+  }
+
+  // Get pet status message for notifications
+  String getPetStatusMessage(Pet pet) {
+    final stats = getPetStats(pet);
+    final petSymbol = getPetSymbol(pet.type);
+    
+    if (stats['hunger'] > 70) {
+      return "$petSymbol ${pet.name} is very hungry! Feed me by answering flashcards correctly! 🍽️";
+    } else if (stats['happiness'] < 30) {
+      return "$petSymbol ${pet.name} is feeling sad! Come visit me and give me attention! 😢";
+    } else if (stats['energy'] < 30) {
+      return "$petSymbol ${pet.name} is tired! Let me rest a bit... 😴";
+    } else if (stats['hoursSinceStudied'] > 48) {
+      return "$petSymbol ${pet.name} misses studying with you! Let's learn together! 📚";
+    } else {
+      return "$petSymbol ${pet.name} is doing great! Keep up the good work! 🌟";
+    }
   }
 
   // Update study streak

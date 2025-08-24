@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/utils/snackbar_utils.dart';
 
 class StudyScreen extends StatefulWidget {
   final Deck deck;
@@ -273,21 +274,17 @@ class _StudyScreenState extends State<StudyScreen> {
               
               if (mounted) {
                 Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Study session completed! You reviewed ${widget.flashcards.length} cards.'),
-              backgroundColor: Colors.green,
-            ),
+          SnackbarUtils.showSuccessSnackbar(
+            context,
+            'Study session completed! You reviewed ${widget.flashcards.length} cards.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating card: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error updating card: ${e.toString()}',
         );
       }
     } finally {
