@@ -64,8 +64,13 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
       // Get the deck pack color if one is selected
       String? deckColor;
       if (_selectedPackId != null) {
-        final selectedPack = _availablePacks.firstWhere((pack) => pack.id == _selectedPackId);
-        deckColor = selectedPack.coverColor;
+        try {
+          final selectedPack = _availablePacks.firstWhere((pack) => pack.id == _selectedPackId);
+          deckColor = selectedPack.coverColor;
+        } catch (e) {
+          print('Warning: Selected pack not found, using default color');
+          // Continue without a specific color
+        }
       }
       
       final deck = await _dataService.createDeck(

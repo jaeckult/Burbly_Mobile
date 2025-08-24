@@ -688,8 +688,15 @@ class DataService {
     final totalSessions = sessions.length;
     final totalDecks = decks.length;
     final totalCards = decks.fold(0, (sum, deck) => sum + deck.cardCount);
-    final averageScore = sessions.map((s) => s.averageScore).reduce((a, b) => a + b) / totalSessions;
-    final totalStudyTime = sessions.map((s) => s.studyTimeSeconds).reduce((a, b) => a + b);
+    
+    // Calculate averages only if there are sessions
+    double averageScore = 0.0;
+    int totalStudyTime = 0;
+    
+    if (sessions.isNotEmpty) {
+      averageScore = sessions.map((s) => s.averageScore).reduce((a, b) => a + b) / totalSessions;
+      totalStudyTime = sessions.map((s) => s.studyTimeSeconds).reduce((a, b) => a + b);
+    }
 
     return {
       'totalSessions': totalSessions,

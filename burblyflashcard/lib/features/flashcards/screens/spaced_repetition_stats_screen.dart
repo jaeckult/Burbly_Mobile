@@ -200,7 +200,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: sortedIntervals.map((interval) {
                       final count = intervalMap[interval]!;
-                      final maxCount = intervalMap.values.reduce((a, b) => a > b ? a : b);
+                      final maxCount = intervalMap.values.isEmpty ? 1 : intervalMap.values.reduce((a, b) => a > b ? a : b);
                       final height = count / maxCount * 150;
                       final label = interval == 1 ? 'Learning' : '${interval}d';
                       

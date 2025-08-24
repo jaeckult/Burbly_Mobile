@@ -380,20 +380,46 @@ class DataService {
     }
 
     try {
+      print('Starting backup to Firestore...');
+      
+      // Backup all deck packs first (they contain deck relationships)
+      final allDeckPacks = _deckPacksBox.values.toList();
+      print('Backing up ${allDeckPacks.length} deck packs...');
+      for (final deckPack in allDeckPacks) {
+        await _saveDeckPackToFirestore(deckPack);
+      }
+
       // Backup all decks
       final allDecks = _decksBox.values.toList();
+      print('Backing up ${allDecks.length} decks...');
       for (final deck in allDecks) {
         await _saveDeckToFirestore(deck);
-        await _decksBox.put(deck.id, deck.copyWith(isSynced: true));
       }
 
       // Backup all flashcards
       final allFlashcards = _flashcardsBox.values.toList();
+      print('Backing up ${allFlashcards.length} flashcards...');
       for (final flashcard in allFlashcards) {
         await _saveFlashcardToFirestore(flashcard);
-        await _flashcardsBox.put(flashcard.id, flashcard.copyWith(isSynced: true));
       }
+
+      // Backup all notes
+      final allNotes = _notesBox.values.toList();
+      print('Backing up ${allNotes.length} notes...');
+      for (final note in allNotes) {
+        await _saveNoteToFirestore(note);
+      }
+
+      // Backup all study sessions
+      final allStudySessions = _studySessionsBox.values.toList();
+      print('Backing up ${allStudySessions.length} study sessions...');
+      for (final session in allStudySessions) {
+        await _saveStudySessionToFirestore(session);
+      }
+
+      print('Backup completed successfully!');
     } catch (e) {
+      print('Backup failed: $e');
       throw Exception('Backup failed: ${e.toString()}');
     }
   }
@@ -406,19 +432,39 @@ class DataService {
     
     if (currentUserId == null) return;
 
+    print('Syncing local data to Firestore...');
+
+    // Sync deck packs
+    final localDeckPacks = _deckPacksBox.values.toList();
+    for (final deckPack in localDeckPacks) {
+      await _saveDeckPackToFirestore(deckPack);
+    }
+
     // Sync decks
-    final localDecks = _decksBox.values.where((deck) => !deck.isSynced).toList();
+    final localDecks = _decksBox.values.toList();
     for (final deck in localDecks) {
       await _saveDeckToFirestore(deck);
-      await _decksBox.put(deck.id, deck.copyWith(isSynced: true));
     }
 
     // Sync flashcards
-    final localFlashcards = _flashcardsBox.values.where((card) => !card.isSynced).toList();
+    final localFlashcards = _flashcardsBox.values.toList();
     for (final flashcard in localFlashcards) {
       await _saveFlashcardToFirestore(flashcard);
-      await _flashcardsBox.put(flashcard.id, flashcard.copyWith(isSynced: true));
     }
+
+    // Sync notes
+    final localNotes = _notesBox.values.toList();
+    for (final note in localNotes) {
+      await _saveNoteToFirestore(note);
+    }
+
+    // Sync study sessions
+    final localStudySessions = _studySessionsBox.values.toList();
+    for (final session in localStudySessions) {
+      await _saveStudySessionToFirestore(session);
+    }
+
+    print('Local data sync completed!');
   }
 
   // Load data from Firestore
@@ -429,6 +475,21 @@ class DataService {
     
     if (currentUserId == null) return;
 
+    print('Loading data from Firestore...');
+
+    // Load deck packs first (they contain deck relationships)
+    final deckPacksSnapshot = await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('deck_packs')
+        .get();
+
+    for (final doc in deckPacksSnapshot.docs) {
+      final deckPack = DeckPack.fromMap(doc.data());
+      await _deckPacksBox.put(deckPack.id, deckPack);
+    }
+    print('Loaded ${deckPacksSnapshot.docs.length} deck packs');
+
     // Load decks
     final decksSnapshot = await _firestore
         .collection('users')
@@ -438,8 +499,9 @@ class DataService {
 
     for (final doc in decksSnapshot.docs) {
       final deck = Deck.fromMap(doc.data());
-      await _decksBox.put(deck.id, deck.copyWith(isSynced: true));
+      await _decksBox.put(deck.id, deck);
     }
+    print('Loaded ${decksSnapshot.docs.length} decks');
 
     // Load flashcards
     final flashcardsSnapshot = await _firestore
@@ -450,8 +512,37 @@ class DataService {
 
     for (final doc in flashcardsSnapshot.docs) {
       final flashcard = Flashcard.fromMap(doc.data());
-      await _flashcardsBox.put(flashcard.id, flashcard.copyWith(isSynced: true));
+      await _flashcardsBox.put(flashcard.id, flashcard);
     }
+    print('Loaded ${flashcardsSnapshot.docs.length} flashcards');
+
+    // Load notes
+    final notesSnapshot = await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('notes')
+        .get();
+
+    for (final doc in notesSnapshot.docs) {
+      final note = Note.fromMap(doc.data());
+      await _notesBox.put(note.id, note);
+    }
+    print('Loaded ${notesSnapshot.docs.length} notes');
+
+    // Load study sessions
+    final studySessionsSnapshot = await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('study_sessions')
+        .get();
+
+    for (final doc in studySessionsSnapshot.docs) {
+      final session = StudySession.fromJson(doc.data());
+      await _studySessionsBox.put(session.id, session);
+    }
+    print('Loaded ${studySessionsSnapshot.docs.length} study sessions');
+
+    print('Data loading completed!');
   }
 
   // ===== FIRESTORE OPERATIONS =====
@@ -476,6 +567,39 @@ class DataService {
         .collection('flashcards')
         .doc(flashcard.id)
         .set(flashcard.toMap());
+  }
+
+  Future<void> _saveDeckPackToFirestore(DeckPack deckPack) async {
+    if (currentUserId == null) return;
+    
+    await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('deck_packs')
+        .doc(deckPack.id)
+        .set(deckPack.toMap());
+  }
+
+  Future<void> _saveNoteToFirestore(Note note) async {
+    if (currentUserId == null) return;
+    
+    await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('notes')
+        .doc(note.id)
+        .set(note.toMap());
+  }
+
+  Future<void> _saveStudySessionToFirestore(StudySession session) async {
+    if (currentUserId == null) return;
+    
+    await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('study_sessions')
+        .doc(session.id)
+        .set(session.toJson());
   }
 
   Future<void> _deleteDeckFromFirestore(String deckId) async {
@@ -797,8 +921,15 @@ class DataService {
     final totalSessions = sessions.length;
     final totalDecks = decks.length;
     final totalCards = decks.fold(0, (sum, deck) => sum + deck.cardCount);
-    final averageScore = sessions.map((s) => s.averageScore).reduce((a, b) => a + b) / totalSessions;
-    final totalStudyTime = sessions.map((s) => s.studyTimeSeconds).reduce((a, b) => a + b);
+    
+    // Calculate averages only if there are sessions
+    double averageScore = 0.0;
+    int totalStudyTime = 0;
+    
+    if (sessions.isNotEmpty) {
+      averageScore = sessions.map((s) => s.averageScore).reduce((a, b) => a + b) / totalSessions;
+      totalStudyTime = sessions.map((s) => s.studyTimeSeconds).reduce((a, b) => a + b);
+    }
 
     return {
       'totalSessions': totalSessions,
@@ -820,6 +951,21 @@ class DataService {
     return _studySessionsBox.values
         .where((session) => session.date.isAfter(cutoffDate))
         .toList();
+  }
+
+  // Check if there's data to backup
+  Future<Map<String, int>> getBackupStats() async {
+    if (!_isInitialized) {
+      return {};
+    }
+
+    return {
+      'deck_packs': _deckPacksBox.length,
+      'decks': _decksBox.length,
+      'flashcards': _flashcardsBox.length,
+      'notes': _notesBox.length,
+      'study_sessions': _studySessionsBox.length,
+    };
   }
 
   // Close boxes

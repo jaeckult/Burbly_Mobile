@@ -19,6 +19,12 @@ class PetService {
   // Get current active pet
   Pet? getCurrentPet() {
     if (!_isInitialized) return null;
+    
+    // Check if there are any pets at all
+    if (_petsBox.values.isEmpty) {
+      return null;
+    }
+    
     return _petsBox.values.firstWhere(
       (pet) => pet.isActive,
       orElse: () => _petsBox.values.first,
