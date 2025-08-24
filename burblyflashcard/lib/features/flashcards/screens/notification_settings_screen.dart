@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/background_service.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -12,6 +13,7 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
   final NotificationService _notificationService = NotificationService();
+  final BackgroundService _backgroundService = BackgroundService();
   
   TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0); // Default 9:00 AM
   List<int> _selectedDays = [1, 2, 3, 4, 5, 6, 7]; // All days by default
@@ -20,6 +22,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   bool _overdueRemindersEnabled = false;
   bool _streakRemindersEnabled = false;
   bool _isLoading = true;
+  Map<String, dynamic> _notificationStats = {};
 
   final List<String> _dayNames = [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 
@@ -49,6 +52,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       final prefs = await SharedPreferences.getInstance();
       _overdueRemindersEnabled = prefs.getBool('overdue_reminders_enabled') ?? true;
       _streakRemindersEnabled = prefs.getBool('streak_reminders_enabled') ?? true;
+      
+      // Load notification statistics
+      _notificationStats = await _backgroundService.getNotificationStats();
     } catch (e) {
       print('Error loading notification settings: $e');
     } finally {
@@ -77,15 +83,24 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       await prefs.setBool('overdue_reminders_enabled', _overdueRemindersEnabled);
       await prefs.setBool('streak_reminders_enabled', _streakRemindersEnabled);
 
+      // Refresh notification stats
+      _notificationStats = await _backgroundService.getNotificationStats();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved successfully!')),
+          const SnackBar(
+            content: Text('Settings saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving settings: $e')),
+          SnackBar(
+            content: Text('Error saving settings: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -103,6 +118,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         ),
       );
     }
+    
+    // Refresh stats after permission change
+    _notificationStats = await _backgroundService.getNotificationStats();
   }
 
   Future<void> _selectTime() async {
@@ -156,6 +174,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       appBar: AppBar(
         title: const Text('Notification Settings'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            onPressed: _loadSettings,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Settings',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -205,6 +230,55 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             
             const SizedBox(height: 16),
 
+            // Notification Statistics Card
+            if (_notificationStats.isNotEmpty) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.analytics, color: Colors.blue),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Notification Status',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatItem(
+                              'Current Streak',
+                              '${_notificationStats['currentStreak'] ?? 0} days',
+                              Icons.local_fire_department,
+                              Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildStatItem(
+                              'Last Study',
+                              _notificationStats['lastStudyDate'] != null 
+                                ? _formatDate(_notificationStats['lastStudyDate'])
+                                : 'Never',
+                              Icons.calendar_today,
+                              Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Daily Reminders Card
             Card(
               child: Padding(
@@ -213,23 +287,22 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-  children: [
-    const Icon(Icons.schedule, color: Colors.blue),
-    const SizedBox(width: 8),
-    Expanded(
-      child: Text(
-        'Daily Study Reminders',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        overflow: TextOverflow.ellipsis, // ensures text doesn’t overflow
-      ),
-    ),
-    Switch(
-      value: _dailyRemindersEnabled,
-      onChanged: _notificationsEnabled ? _toggleDailyReminders : null,
-    ),
-  ],
-),
-
+                      children: [
+                        const Icon(Icons.schedule, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Daily Study Reminders',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Switch(
+                          value: _dailyRemindersEnabled,
+                          onChanged: _notificationsEnabled ? _toggleDailyReminders : null,
+                        ),
+                      ],
+                    ),
                     
                     if (_dailyRemindersEnabled) ...[
                       const SizedBox(height: 16),
@@ -254,52 +327,51 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       ),
                       const SizedBox(height: 8),
                       Wrap(
-  spacing: 8,
-  runSpacing: 8,
-  children: List.generate(7, (index) {
-    final day = index + 1;
-    final isSelected = _selectedDays.contains(day);
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(7, (index) {
+                          final day = index + 1;
+                          final isSelected = _selectedDays.contains(day);
 
-    return GestureDetector(
-      onTap: () => _toggleDay(day),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Colors.grey[300]!,
-            width: 1.5,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          _dayNames[index],
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: isSelected
-                ? Theme.of(context).colorScheme.onPrimaryContainer
-                : Theme.of(context).textTheme.bodyMedium!.color,
-          ),
-        ),
-      ),
-    );
-  }),
-)
-
+                          return GestureDetector(
+                            onTap: () => _toggleDay(day),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primaryContainer
+                                    : Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.grey[300]!,
+                                  width: 1.5,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Text(
+                                _dayNames[index],
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                                      : Theme.of(context).textTheme.bodyMedium!.color,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      )
                     ],
                   ],
                 ),
@@ -386,24 +458,407 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             
             const SizedBox(height: 24),
 
-            // Test Notification Button
-            if (_notificationsEnabled)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await _notificationService.showImmediateNotification(
-                      title: 'Test Notification',
-                      body: 'This is a test notification from Burbly Flashcard!',
-                    );
-                  },
-                  icon: const Icon(Icons.notifications),
-                  label: const Text('Send Test Notification'),
+            // Help Text
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.info, color: Colors.blue),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'How It Works',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '• Daily reminders will notify you at your chosen time on selected days\n'
+                      '• Overdue cards reminders notify you when cards need review\n'
+                      '• Study streak celebrations motivate you to maintain consistency\n'
+                      '• Notifications are automatically managed in the background',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
+            ),
+
+            // Debug Section (only show in debug mode)
+            if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.bug_report, color: Colors.orange),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Debug Tools',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.testBasicNotificationSystem();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Basic notification test completed! Check console for results.'),
+                                        backgroundColor: Colors.deepPurple,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.bug_report),
+                              label: const Text('Basic System Test'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.checkNotificationChannels();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Check console for channel status!'),
+                                        backgroundColor: Colors.cyan,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.info),
+                              label: const Text('Check Channels'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.triggerDailyReminders();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Daily reminders triggered! Check logs for details.'),
+                                        backgroundColor: Colors.blue,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.schedule),
+                              label: const Text('Trigger Daily Reminders'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.testNotification();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Test notification sent!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.notifications),
+                              label: const Text('Test Notification'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.testScheduledNotification();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Test scheduled notification set for 1 minute from now!'),
+                                        backgroundColor: Colors.amber,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.schedule),
+                              label: const Text('Test Scheduled (1min)'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.cancelAndRescheduleDailyReminders();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Daily reminders cancelled and rescheduled!'),
+                                        backgroundColor: Colors.purple,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Cancel & Reschedule'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _notificationService.canScheduleForToday(_selectedTime) 
+                                ? () async {
+                                    try {
+                                      await _notificationService.scheduleReminderForToday(_selectedTime);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Reminder scheduled for today at ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}!'),
+                                            backgroundColor: Colors.teal,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error: $e'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                : null,
+                              icon: Icon(
+                                _notificationService.canScheduleForToday(_selectedTime) 
+                                  ? Icons.today 
+                                  : Icons.schedule,
+                              ),
+                              label: Text(
+                                _notificationService.canScheduleForToday(_selectedTime)
+                                  ? 'Schedule for Today'
+                                  : 'Time Passed Today',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _notificationService.canScheduleForToday(_selectedTime) 
+                                  ? Colors.teal 
+                                  : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _backgroundService.resetStudyStreak();
+                                  await _loadSettings(); // Refresh the display
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Study streak reset!'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Reset Streak'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _backgroundService.setStudyStreak(5);
+                                  await _loadSettings(); // Refresh the display
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Study streak set to 5!'),
+                                        backgroundColor: Colors.purple,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.edit),
+                              label: const Text('Set Streak to 5'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Use these tools to test the notification system. Check console logs for detailed information.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date).inDays;
+    
+    if (difference == 0) {
+      return 'Today';
+    } else if (difference == 1) {
+      return 'Yesterday';
+    } else if (difference < 7) {
+      return '$difference days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 }

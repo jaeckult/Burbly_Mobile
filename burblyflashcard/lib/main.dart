@@ -17,21 +17,33 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
+    // Initialize Firebase first
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
     
-    // Initialize DataService
+    // Initialize core services
     await DataService().initialize();
     
-    // Initialize NotificationService
-    await NotificationService().initialize();
+    // Initialize NotificationService with error handling
+    try {
+      await NotificationService().initialize();
+      print('Notification service initialized successfully');
+    } catch (e) {
+      print('Warning: Notification service failed to initialize: $e');
+      // Continue without notifications rather than crashing the app
+    }
     
-    // Initialize PetService
+    // Initialize other services
     await PetService().initialize();
     
-    // Start background service
-    await BackgroundService().start();
+    // Start background service after notifications are set up
+    try {
+      await BackgroundService().start();
+      print('Background service started successfully');
+    } catch (e) {
+      print('Warning: Background service failed to start: $e');
+    }
     
     runApp(const MyApp());
   } catch (e) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:awesome_dialog/awesome_dialog.dart';
 import '../../../core/core.dart';
 
 class SpacedRepetitionStatsScreen extends StatefulWidget {
@@ -33,95 +32,26 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
     });
   }
 
-  void _showAwesomeDialog({
-    required DialogType dialogType,
-    required String title,
-    required String description,
-    VoidCallback? onOkPressed,
-    VoidCallback? onCancelPressed,
-    bool dismissOnTouchOutside = true,
-  }) {
-    AwesomeDialog(
-      context: context,
-      dialogType: dialogType,
-      animType: AnimType.scale,
-      title: title,
-      desc: description,
-      btnOkColor: Color(int.parse('0xFF${Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}'))
- ?? '2196F3'}')),
-      btnCancelColor: Colors.grey[600],
-      btnOkOnPress: onOkPressed,
-      btnCancelOnPress: onCancelPressed,
-      dismissOnTouchOutside: dismissOnTouchOutside,
-      headerAnimationLoop: false,
-      titleTextStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-      ),
-      descTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: Colors.grey[600],
-      ),
-    ).show();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('SR Stats: ${widget.deck.name}'),
-        backgroundColor: Color(int.parse('0xFF${Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}'))
- ?? '2196F3'}')),
+        backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: () async {
-                _showAwesomeDialog(
-                  dialogType: DialogType.question,
-                  title: 'Refresh Statistics',
-                  description: 'Would you like to refresh the statistics for "${widget.deck.name}"?',
-                  onOkPressed: () async {
-                    await _loadFlashcards();
-                    if (mounted) {
-                      _showAwesomeDialog(
-                        dialogType: DialogType.success,
-                        title: 'Refresh Complete',
-                        description: 'Statistics have been updated successfully.',
-                        dismissOnTouchOutside: true,
-                      );
-                    }
-                  },
-                  onCancelPressed: () {},
-                );
-                return Future.value();
-              },
+              onRefresh: _loadFlashcards,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Overview Cards
-                    GestureDetector(
-                      onTap: () {
-                        final totalCards = _flashcards.length;
-                        final learningCards = _flashcards.where((card) => card.interval == 1).length;
-                        final reviewCards = _flashcards.where((card) => card.interval > 1).length;
-                        final dueCards = _flashcards.where((card) =>
-                            card.nextReview == null || card.nextReview!.isBefore(DateTime.now())).length;
-
-                        _showAwesomeDialog(
-                          dialogType: DialogType.info,
-                          title: 'Deck Overview',
-                          description:
-                              'Total Cards: $totalCards\nLearning: $learningCards\nReview: $reviewCards\nDue Today: $dueCards',
-                          onOkPressed: () {},
-                          dismissOnTouchOutside: true,
-                        );
-                      },
-                      child: _buildOverviewSection(),
-                    ),
+                    _buildOverviewSection(),
                     const SizedBox(height: 24),
                     
                     // Interval Distribution
@@ -159,8 +89,6 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
           'Overview',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: Color(int.parse('0xFF${Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}'))
- ?? '2196F3'}')),
           ),
         ),
         const SizedBox(height: 16),
@@ -662,3 +590,5 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
     }
   }
 }
+
+
