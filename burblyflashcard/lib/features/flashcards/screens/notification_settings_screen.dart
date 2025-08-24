@@ -174,7 +174,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notification Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
             onPressed: _loadSettings,
@@ -490,578 +489,578 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             ),
 
             // Debug Section (only show in debug mode)
-            if (const bool.fromEnvironment('dart.vm.product') == false) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.bug_report, color: Colors.orange),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Debug Tools',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.testBasicNotificationSystem();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Basic notification test completed! Check console for results.'),
-                                        backgroundColor: Colors.deepPurple,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.bug_report),
-                              label: const Text('Basic System Test'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.checkNotificationChannels();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Check console for channel status!'),
-                                        backgroundColor: Colors.cyan,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.info),
-                              label: const Text('Check Channels'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.triggerDailyReminders();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Daily reminders triggered! Check logs for details.'),
-                                        backgroundColor: Colors.blue,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.schedule),
-                              label: const Text('Trigger Daily Reminders'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                                try {
-                                  await _notificationService.testNotification();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Test notification sent!'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                  },
-                  icon: const Icon(Icons.notifications),
-                              label: const Text('Test Notification'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.testScheduledNotification();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Test scheduled notification set for 1 minute from now!'),
-                                        backgroundColor: Colors.amber,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.schedule),
-                              label: const Text('Test Scheduled (1min)'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.cancelAndRescheduleDailyReminders();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Daily reminders cancelled and rescheduled!'),
-                                        backgroundColor: Colors.purple,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Cancel & Reschedule'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _notificationService.canScheduleForToday(_selectedTime) 
-                                ? () async {
-                                    try {
-                                      await _notificationService.scheduleReminderForToday(_selectedTime);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Reminder scheduled for today at ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}!'),
-                                            backgroundColor: Colors.teal,
-                                          ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Error: $e'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  }
-                                : null,
-                              icon: Icon(
-                                _notificationService.canScheduleForToday(_selectedTime) 
-                                  ? Icons.today 
-                                  : Icons.schedule,
-                              ),
-                              label: Text(
-                                _notificationService.canScheduleForToday(_selectedTime)
-                                  ? 'Schedule for Today'
-                                  : 'Time Passed Today',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _notificationService.canScheduleForToday(_selectedTime) 
-                                  ? Colors.teal 
-                                  : Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _backgroundService.resetStudyStreak();
-                                  await _loadSettings(); // Refresh the display
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Study streak reset!'),
-                                        backgroundColor: Colors.orange,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Reset Streak'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _backgroundService.setStudyStreak(5);
-                                  await _loadSettings(); // Refresh the display
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Study streak set to 5!'),
-                                        backgroundColor: Colors.purple,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.edit),
-                              label: const Text('Set Streak to 5'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Use these tools to test the notification system. Check console logs for detailed information.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            if (const bool.fromEnvironment('dart.vm.product') == false) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.debugTimeCalculations(_selectedTime);
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Time calculations shown in console!'),
-                                        backgroundColor: Colors.blue,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.schedule),
-                              label: const Text('Debug Time Calc'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.printPendingNotifications();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Check console for pending notifications!'),
-                                        backgroundColor: Colors.indigo,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.list),
-                              label: const Text('Check Pending'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.setTimezoneForTesting('America/New_York');
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Timezone set to US Eastern!'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.location_on),
-                              label: const Text('Set US Eastern'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await _notificationService.setTimezoneForTesting('Europe/London');
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Timezone set to UK!'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.location_on),
-                              label: const Text('Set UK'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  final dataService = DataService();
-                                  final integrityCheck = await dataService.checkDataIntegrity();
-                                  if (mounted) {
-                                    final status = integrityCheck['status'] as String;
-                                    final totalItems = integrityCheck['totalItems'] as int;
-                                    final recommendation = integrityCheck['recommendation'] as String;
+          //   if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+          //     const SizedBox(height: 16),
+          //     Card(
+          //       child: Padding(
+          //         padding: const EdgeInsets.all(16.0),
+          //         child: Column(
+          //           crossAxisAlignment: CrossAxisAlignment.start,
+          //           children: [
+          //             Row(
+          //               children: [
+          //                 const Icon(Icons.bug_report, color: Colors.orange),
+          //                 const SizedBox(width: 12),
+          //                 const Text(
+          //                   'Debug Tools',
+          //                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.testBasicNotificationSystem();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Basic notification test completed! Check console for results.'),
+          //                               backgroundColor: Colors.deepPurple,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.bug_report),
+          //                     label: const Text('Basic System Test'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.checkNotificationChannels();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Check console for channel status!'),
+          //                               backgroundColor: Colors.cyan,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.info),
+          //                     label: const Text('Check Channels'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.triggerDailyReminders();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Daily reminders triggered! Check logs for details.'),
+          //                               backgroundColor: Colors.blue,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.schedule),
+          //                     label: const Text('Trigger Daily Reminders'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //       child: ElevatedButton.icon(
+          //         onPressed: () async {
+          //                       try {
+          //                         await _notificationService.testNotification();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Test notification sent!'),
+          //                               backgroundColor: Colors.green,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //         },
+          //         icon: const Icon(Icons.notifications),
+          //                     label: const Text('Test Notification'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.testScheduledNotification();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Test scheduled notification set for 1 minute from now!'),
+          //                               backgroundColor: Colors.amber,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.schedule),
+          //                     label: const Text('Test Scheduled (1min)'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.cancelAndRescheduleDailyReminders();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Daily reminders cancelled and rescheduled!'),
+          //                               backgroundColor: Colors.purple,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.refresh),
+          //                     label: const Text('Cancel & Reschedule'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: _notificationService.canScheduleForToday(_selectedTime) 
+          //                       ? () async {
+          //                           try {
+          //                             await _notificationService.scheduleReminderForToday(_selectedTime);
+          //                             if (mounted) {
+          //                               ScaffoldMessenger.of(context).showSnackBar(
+          //                                 SnackBar(
+          //                                   content: Text('Reminder scheduled for today at ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}!'),
+          //                                   backgroundColor: Colors.teal,
+          //                                 ),
+          //                               );
+          //                             }
+          //                           } catch (e) {
+          //                             if (mounted) {
+          //                               ScaffoldMessenger.of(context).showSnackBar(
+          //                                 SnackBar(
+          //                                   content: Text('Error: $e'),
+          //                                   backgroundColor: Colors.red,
+          //                                 ),
+          //                               );
+          //                             }
+          //                           }
+          //                         }
+          //                       : null,
+          //                     icon: Icon(
+          //                       _notificationService.canScheduleForToday(_selectedTime) 
+          //                         ? Icons.today 
+          //                         : Icons.schedule,
+          //                     ),
+          //                     label: Text(
+          //                       _notificationService.canScheduleForToday(_selectedTime)
+          //                         ? 'Schedule for Today'
+          //                         : 'Time Passed Today',
+          //                     ),
+          //                     style: ElevatedButton.styleFrom(
+          //                       backgroundColor: _notificationService.canScheduleForToday(_selectedTime) 
+          //                         ? Colors.teal 
+          //                         : Colors.grey,
+          //                     ),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _backgroundService.resetStudyStreak();
+          //                         await _loadSettings(); // Refresh the display
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Study streak reset!'),
+          //                               backgroundColor: Colors.orange,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.refresh),
+          //                     label: const Text('Reset Streak'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _backgroundService.setStudyStreak(5);
+          //                         await _loadSettings(); // Refresh the display
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Study streak set to 5!'),
+          //                               backgroundColor: Colors.purple,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.edit),
+          //                     label: const Text('Set Streak to 5'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 8),
+          //             const Text(
+          //               'Use these tools to test the notification system. Check console logs for detailed information.',
+          //               style: TextStyle(fontSize: 12, color: Colors.grey),
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ],
+          //   if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+          //     const SizedBox(height: 16),
+          //     Card(
+          //       child: Padding(
+          //         padding: const EdgeInsets.all(16.0),
+          //         child: Column(
+          //           crossAxisAlignment: CrossAxisAlignment.start,
+          //           children: [
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.debugTimeCalculations(_selectedTime);
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Time calculations shown in console!'),
+          //                               backgroundColor: Colors.blue,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.schedule),
+          //                     label: const Text('Debug Time Calc'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.printPendingNotifications();
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Check console for pending notifications!'),
+          //                               backgroundColor: Colors.indigo,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.list),
+          //                     label: const Text('Check Pending'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.setTimezoneForTesting('America/New_York');
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Timezone set to US Eastern!'),
+          //                               backgroundColor: Colors.green,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.location_on),
+          //                     label: const Text('Set US Eastern'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         await _notificationService.setTimezoneForTesting('Europe/London');
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             const SnackBar(
+          //                               content: Text('Timezone set to UK!'),
+          //                               backgroundColor: Colors.green,
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.location_on),
+          //                     label: const Text('Set UK'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         final dataService = DataService();
+          //                         final integrityCheck = await dataService.checkDataIntegrity();
+          //                         if (mounted) {
+          //                           final status = integrityCheck['status'] as String;
+          //                           final totalItems = integrityCheck['totalItems'] as int;
+          //                           final recommendation = integrityCheck['recommendation'] as String;
                                     
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Data integrity: $status ($totalItems items) - $recommendation'),
-                                        backgroundColor: status == 'healthy' ? Colors.green : Colors.orange,
-                                        duration: const Duration(seconds: 5),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error checking data integrity: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.storage),
-                              label: const Text('Check Data Integrity'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  final dataService = DataService();
-                                  final counts = await dataService.getDataCounts();
-                                  if (mounted) {
-                                    final totalItems = counts.values.reduce((a, b) => a + b);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Data counts: $totalItems total items'),
-                                        backgroundColor: totalItems > 0 ? Colors.green : Colors.orange,
-                                        duration: const Duration(seconds: 3),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error getting data counts: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.analytics),
-                              label: const Text('Data Counts'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  final dataService = DataService();
-                                  final recoveryResult = await dataService.attemptDataRecovery();
-                                  if (mounted) {
-                                    final success = recoveryResult['success'] as bool;
-                                    final message = recoveryResult['message'] as String;
-                                    final totalItems = recoveryResult['totalItems'] as int? ?? 0;
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Data integrity: $status ($totalItems items) - $recommendation'),
+          //                               backgroundColor: status == 'healthy' ? Colors.green : Colors.orange,
+          //                               duration: const Duration(seconds: 5),
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error checking data integrity: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.storage),
+          //                     label: const Text('Check Data Integrity'),
+          //                   ),
+          //                 ),
+          //                 const SizedBox(width: 16),
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         final dataService = DataService();
+          //                         final counts = await dataService.getDataCounts();
+          //                         if (mounted) {
+          //                           final totalItems = counts.values.reduce((a, b) => a + b);
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Data counts: $totalItems total items'),
+          //                               backgroundColor: totalItems > 0 ? Colors.green : Colors.orange,
+          //                               duration: const Duration(seconds: 3),
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error getting data counts: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.analytics),
+          //                     label: const Text('Data Counts'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //             const SizedBox(height: 16),
+          //             Row(
+          //               children: [
+          //                 Expanded(
+          //                   child: ElevatedButton.icon(
+          //                     onPressed: () async {
+          //                       try {
+          //                         final dataService = DataService();
+          //                         final recoveryResult = await dataService.attemptDataRecovery();
+          //                         if (mounted) {
+          //                           final success = recoveryResult['success'] as bool;
+          //                           final message = recoveryResult['message'] as String;
+          //                           final totalItems = recoveryResult['totalItems'] as int? ?? 0;
                                     
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Recovery: $message ($totalItems items)'),
-                                        backgroundColor: success ? Colors.green : Colors.orange,
-                                        duration: const Duration(seconds: 5),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error during recovery: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.restore),
-                              label: const Text('Attempt Recovery'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Recovery: $message ($totalItems items)'),
+          //                               backgroundColor: success ? Colors.green : Colors.orange,
+          //                               duration: const Duration(seconds: 5),
+          //                             ),
+          //                           );
+          //                         }
+          //                       } catch (e) {
+          //                         if (mounted) {
+          //                           ScaffoldMessenger.of(context).showSnackBar(
+          //                             SnackBar(
+          //                               content: Text('Error during recovery: $e'),
+          //                               backgroundColor: Colors.red,
+          //                             ),
+          //                           );
+          //                         }
+          //                       }
+          //                     },
+          //                     icon: const Icon(Icons.restore),
+          //                     label: const Text('Attempt Recovery'),
+          //                   ),
+          //                 ),
+          //               ],
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ],
           ],
         ),
       ),

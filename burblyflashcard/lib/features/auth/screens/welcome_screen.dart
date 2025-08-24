@@ -104,178 +104,240 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).primaryColor,
-              Theme.of(context).primaryColor.withOpacity(0.8),
-              Colors.white,
-            ],
-          ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
         ),
         child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // App Logo
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.school,
-                      size: 80,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Welcome Text
-                  Text(
-                    'Welcome to\nBurbly Flashcard',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Master your knowledge with smart flashcards',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 60),
-
-                  // Sign in with Google Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: Image.network(
-                        'https://developers.google.com/identity/images/g-logo.png',
-                        height: 24,
-                      ),
-                      label: const Text(
-                        'Sign in with Google',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black87,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          color: Colors.white.withOpacity(0.3),
-                          thickness: 1,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontWeight: FontWeight.w500,
+          child: SingleChildScrollView(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  MediaQuery.of(context).size.height * 0.03, // Dynamic padding
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // App Logo
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
                           ),
-                        ),
+                        ],
                       ),
-                      Expanded(
-                        child: Divider(
-                          color: Colors.white.withOpacity(0.3),
-                          thickness: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Continue as Guest Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _isLoading ? null : _continueAsGuest,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Continue without signing in',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      child: Icon(
+                        Icons.school,
+                        size: 70,
+                        color: Colors.blue[600],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 40),
+                    const SizedBox(height: 30),
 
-                  // Loading indicator
-                  if (_isLoading)
-                    const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-
-                  const SizedBox(height: 40),
-
-                  // Features preview
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                    // Welcome Text
+                    Text(
+                      'Welcome to\nBurbly Flashcard',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[800],
+                        height: 1.2,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '✨ Features',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    const SizedBox(height: 12),
+                    Text(
+                      'Master your knowledge with smart flashcards',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.blue[800]!.withOpacity(0.9),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Sign in with Google Button
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _signInWithGoogle,
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Image.network(
+                            'https://developers.google.com/identity/images/g-logo.png',
+                            height: 20,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        _buildFeatureRow(Icons.cloud_sync, 'Sync across devices'),
-                        _buildFeatureRow(Icons.offline_bolt, 'Works offline'),
-                        _buildFeatureRow(Icons.psychology, 'Smart learning'),
-                        _buildFeatureRow(Icons.security, 'Your data is safe'),
+                        label: const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Divider(
+                            color: Colors.grey.withOpacity(0.4),
+                            thickness: 1,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[700]!.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.grey.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            'OR',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Divider(
+                            color: Colors.grey.withOpacity(0.4),
+                            thickness: 1,
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+
+                    // Continue as Guest Button
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.withOpacity(0.4),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: OutlinedButton(
+                        onPressed: _isLoading ? null : _continueAsGuest,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue[800],
+                          side: BorderSide.none,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          backgroundColor: Colors.transparent,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.person_outline,
+                              size: 20,
+                              color: Colors.blue[800]!.withOpacity(0.9),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Continue as Guest',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Loading indicator
+                    if (_isLoading)
+                      Text(
+                              'Signing you in...',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+
+                    const SizedBox(height: 10),
+
+                    // Features preview
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.blue[300]!.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '✨ Features',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.blue[800],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildFeatureRow(Icons.cloud_sync, 'Sync across devices'),
+                          _buildFeatureRow(Icons.offline_bolt, 'Works offline'),
+                          _buildFeatureRow(Icons.psychology, 'Smart learning'),
+                          _buildFeatureRow(Icons.security, 'Data safety'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -291,14 +353,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         children: [
           Icon(
             icon,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.blue[800]!.withOpacity(0.8),
             size: 20,
           ),
           const SizedBox(width: 12),
           Text(
             text,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.blue[800]!.withOpacity(0.8),
               fontSize: 14,
             ),
           ),

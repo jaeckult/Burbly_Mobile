@@ -395,172 +395,271 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     );
   }
 
- Widget _buildDrawer() {
+Widget _buildDrawer() {
   final user = FirebaseAuth.instance.currentUser;
 
   return Drawer(
-    child: Column(
-      children: [
-        UserAccountsDrawerHeader(
-          accountName: Text(
-            _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
+    width: MediaQuery.of(context).size.width * 0.75, // 75% of screen width
+    child: SafeArea(
+      child: Column(
+        children: [
+          // --- Header ---
+          UserAccountsDrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Theme.of(context).primaryColor.withOpacity(0.85),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            margin: EdgeInsets.zero,
+            currentAccountPicture: CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white,
+              child: _isGuestMode
+                  ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                  : user?.photoURL != null
+                      ? ClipOval(
+                          child: Image.network(
+                            user!.photoURL!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Icon(Icons.person, size: 40, color: Colors.grey),
+            ),
+            accountName: Text(
+              _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(
+              _isGuestMode ? 'Offline mode' : (user?.email ?? ''),
+              style: const TextStyle(fontSize: 13),
+            ),
           ),
-          accountEmail: Text(
-            _isGuestMode ? 'Offline mode' : (user?.email ?? ''),
-          ),
-          currentAccountPicture: CircleAvatar(
-            backgroundColor: Colors.white,
-            child: _isGuestMode
-                ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                : user?.photoURL != null
-                    ? ClipOval(
-                        child: Image.network(
-                          user!.photoURL!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : const Icon(Icons.person, size: 40, color: Colors.grey),
-          ),
-          decoration: BoxDecoration(color: Theme.of(context).primaryColor),
-          margin: EdgeInsets.zero, // remove default margin
+
+          // --- Drawer items ---
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Text(
+                    "Study",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.grey),
+                  ),
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.home_outlined, size: 22, color: Colors.blue),
+                  title:
+                      const Text('Deck Packs', style: TextStyle(fontSize: 14)),
+                  onTap: () => Navigator.pop(context),
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.school_outlined, size: 22, color: Colors.green),
+                  title: const Text('My Decks', style: TextStyle(fontSize: 14)),
+                  onTap: () => Navigator.pop(context),
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.note_outlined, size: 22, color: Colors.orange),
+                  title: const Text('Notes', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotesScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.analytics_outlined, size: 22, color: Colors.purple),
+                  title:
+                      const Text('Statistics', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => StatsPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading:
+                      const Icon(Icons.notifications_outlined, size: 22, color: Colors.red),
+                  title:
+                      const Text('Notifications', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const NotificationSettingsScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: Icon(
+                      _isDarkMode
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                      size: 22,
+                      color: _isDarkMode ? Colors.yellow[700] : Colors.black),
+                  title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode',
+                      style: const TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _isDarkMode = !_isDarkMode;
+                      AdaptiveThemeService.toggleTheme(context);
+                    });
+                  },
+                ),
+                ListTile(
+  dense: true,
+  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+  leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
+  title: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'Pet Management',
+        style: TextStyle(fontSize: 14),
+      ),
+      const SizedBox(width: 6), // spacing between text and badge
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade600,
+          borderRadius: BorderRadius.circular(8),
         ),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              ListTile(
-                dense: true, // makes tile more compact
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.home),
-                title: const Text('Deck Packs'),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.school),
-                title: const Text('My Decks'),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.note),
-                title: const Text('Notes'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotesScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.analytics),
-                title: const Text('Statistics'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => StatsPage()),
-                  );
-                },
-              ),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.notifications),
-                title: const Text('Notification Settings'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationSettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
-                title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode'),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _isDarkMode = !_isDarkMode;
-                    AdaptiveThemeService.toggleTheme(context);
-                  });
-                },
-              ),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.pets),
-                title: const Text('Pet Management'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showPetManagement();
-                },
-              ),
-              const Divider(height: 1), // smaller divider
-              if (_isGuestMode) ...[
-                ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.cloud_sync),
-                  title: const Text('Sign in with Google'),
-                  subtitle: const Text('Sync your data'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _signInWithGoogle();
-                  },
+        child: const Text(
+          'Testing',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    ],
+  ),
+  onTap: () {
+    Navigator.pop(context);
+    _showPetManagement();
+  },
+),
+
+                const Divider(height: 1, thickness: 0.5),
+
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Text(
+                    "Account",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.grey),
+                  ),
                 ),
-              ] else ...[
+
+                if (_isGuestMode)
+                  ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading:
+                        const Icon(Icons.cloud_sync_outlined, size: 22, color: Colors.blueAccent),
+                    title: const Text('Sign in with Google',
+                        style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Sync your data',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _signInWithGoogle();
+                    },
+                  )
+                else ...[
+                  ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.backup_outlined, size: 22, color: Colors.indigo),
+                    title: const Text('Backup to Cloud',
+                        style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Sync your data',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _backupToCloud();
+                    },
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.logout, size: 22, color: Colors.redAccent),
+                    title: const Text('Sign out', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _signOut();
+                    },
+                  ),
+                ],
+
+                const Divider(height: 1, thickness: 0.5),
+
                 ListTile(
                   dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.backup),
-                  title: const Text('Backup to Cloud'),
-                  subtitle: const Text('Sync your data'),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.info_outline, size: 22, color: Colors.grey),
+                  title:
+                      const Text('About', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
-                    _backupToCloud();
-                  },
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Sign out'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _signOut();
+                    _showAboutDialog();
                   },
                 ),
               ],
-              const Divider(height: 1),
-              ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.info),
-                title: const Text('About'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAboutDialog();
-                },
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+
+          // --- Footer ---
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              "v1.0.0",
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -627,14 +726,19 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createNewDeckPack,
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Pack'),
-        elevation: 5,
-      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+floatingActionButton: Transform.translate(
+  offset: const Offset(0, -30), // move up by 20px
+  child: FloatingActionButton.extended(
+    onPressed: _createNewDeckPack,
+    backgroundColor: Theme.of(context).primaryColor,
+    foregroundColor: Colors.white,
+    icon: const Icon(Icons.add),
+    label: const Text('New Pack'),
+    elevation: 5,
+  ),
+),
+
     );
   }
 
@@ -669,11 +773,12 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '${_deckPacks.length} ${_deckPacks.length == 1 ? 'Deck Pack' : 'Deck Packs'}',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            ),
+  '${_deckPacks.length} ${_deckPacks.length == 1 ? 'Deck Pack' : 'Deck Packs'}',
+  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+    color: Theme.of(context).colorScheme.onBackground, // automatically adapts
+  ),
+),
+
                             const Spacer(),
                             Text(
                               '${_allDecks.length} total decks',

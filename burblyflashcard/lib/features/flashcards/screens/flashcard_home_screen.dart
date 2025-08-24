@@ -183,14 +183,14 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
               margin: const EdgeInsets.only(right: 16),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange),
+                border: Border.all(color: Theme.of(context).colorScheme.primary),
               ),
-              child: const Text(
+              child: Text(
                 'Guest Mode',
                 style: TextStyle(
-                  color: Colors.orange,
+                  color: Theme.of(context).colorScheme.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -206,7 +206,13 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
       ),
       drawer: _buildDrawer(),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            )
           : _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showActionOptions(),
@@ -234,7 +240,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
               child: _isGuestMode
-                  ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                  ? Icon(Icons.person, size: 40, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))
                   : user?.photoURL != null
                       ? ClipOval(
                           child: Image.network(
@@ -244,7 +250,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : const Icon(Icons.person, size: 40, color: Colors.grey),
+                      : Icon(Icons.person, size: 40, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             ),
             decoration: BoxDecoration(
               color: Theme.of(context).primaryColor,
@@ -255,11 +261,28 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
               padding: EdgeInsets.zero,
               children: [
                 ListTile(
-                  leading: const Icon(Icons.home),
+                  leading: const Icon(Icons.folder),
                   title: const Text('Deck Packs'),
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushReplacementNamed(context, '/home');
+                    print('Deck Packs navigation triggered');
+                    Navigator.pop(context); // Close drawer first
+                    // Navigate to deck packs screen and clear navigation stack
+                    Navigator.pushNamedAndRemoveUntil(
+                      context, 
+                      '/home', 
+                      (route) => false
+                    ).catchError((error) {
+                      print('Navigation error: $error');
+                      // Fallback: show error message
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Navigation error: $error'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    });
                   },
                 ),
 
@@ -390,20 +413,20 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
           Icon(
             Icons.school_outlined,
             size: 80,
-            color: Colors.grey[400],
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           ),
           const SizedBox(height: 16),
           Text(
             'No decks yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Create your first deck to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[500],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 24),
@@ -596,8 +619,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete Deck', style: TextStyle(color: Colors.red)),
+              leading: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+              title: Text('Delete Deck', style: TextStyle(color: Theme.of(context).colorScheme.error)),
               onTap: () {
                 Navigator.pop(context);
                 _deleteDeck(deck);
@@ -622,7 +645,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -637,7 +660,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Deck "${deck.name}" deleted'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

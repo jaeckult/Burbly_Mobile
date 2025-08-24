@@ -60,94 +60,108 @@ class _NotificationWidgetState extends State<NotificationWidget> {
 
     return Card(
       margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  hasOverdueCards ? Icons.warning : Icons.notifications,
-                  color: hasOverdueCards ? Colors.orange : Colors.blue,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  hasOverdueCards ? 'Cards Need Review!' : 'Study Reminder',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    hasOverdueCards ? Icons.warning : Icons.notifications,
+                    color: hasOverdueCards ? Colors.orange : Colors.blue,
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationSettingsScreen(),
+                  const SizedBox(width: 8),
+                  Text(
+                    hasOverdueCards ? 'Cards Need Review!' : 'Study Reminder',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationSettingsScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
+                    tooltip: 'Notification Settings',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (hasOverdueCards) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.schedule, color: Colors.orange, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_overdueCards.length} cards overdue',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.settings),
-                  tooltip: 'Notification Settings',
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
               ],
-            ),
-            const SizedBox(height: 12),
-            if (hasOverdueCards) ...[
+              if (hasCardsDueToday) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.today, color: Colors.blue, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_cardsDueToday.length} cards due today',
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.schedule, color: Colors.orange, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${_overdueCards.length} cards overdue',
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // Navigate to study screen or deck list
+                        Navigator.pushNamed(context, '/flashcards');
+                      },
+                      icon: const Icon(Icons.school),
+                      label: const Text('Review'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: hasOverdueCards ? Colors.orange : Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        // Remove the widget by setting state to hide it
+                        setState(() {
+                          _overdueCards = [];
+                          _cardsDueToday = [];
+                        });
+                      },
+                      child: const Text('Not Now'),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
             ],
-            if (hasCardsDueToday) ...[
-              Row(
-                children: [
-                  const Icon(Icons.today, color: Colors.blue, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${_cardsDueToday.length} cards due today',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Navigate to study screen or deck list
-                  Navigator.pushNamed(context, '/flashcards');
-                },
-                icon: const Icon(Icons.school),
-                label: Text(
-                  hasOverdueCards 
-                    ? 'Review Overdue Cards' 
-                    : 'Start Studying',
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: hasOverdueCards ? Colors.orange : Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
