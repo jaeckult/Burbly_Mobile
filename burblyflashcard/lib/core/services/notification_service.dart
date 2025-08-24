@@ -14,6 +14,9 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   final DataService _dataService = DataService();
+  
+  // Store the detected timezone
+  tz.Location? _detectedTimezone;
 
   // Notification IDs
   static const int dailyReminderId = 1000;
@@ -28,6 +31,9 @@ class NotificationService {
 
   Future<void> initialize() async {
     tz.initializeTimeZones();
+
+    // Force timezone detection to device's actual timezone
+    await _detectAndSetTimezone();
 
     const AndroidInitializationSettings androidSettings = 
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -52,6 +58,43 @@ class NotificationService {
     await _createNotificationChannels();
     
     await _requestPermissions();
+  }
+
+  Future<void> _detectAndSetTimezone() async {
+    try {
+      // Get device's current timezone offset
+      final now = DateTime.now();
+      final utcOffset = now.timeZoneOffset;
+      
+      // Find a timezone that matches this offset
+      final timezoneNames = tz.timeZoneDatabase.locations.keys.toList();
+      String? bestMatch;
+      
+      for (final timezoneName in timezoneNames) {
+        try {
+          final timezone = tz.getLocation(timezoneName);
+          final tzNow = tz.TZDateTime.now(timezone);
+          if (tzNow.timeZoneOffset == utcOffset) {
+            bestMatch = timezoneName;
+            break;
+          }
+        } catch (e) {
+          // Skip invalid timezones
+        }
+      }
+      
+      if (bestMatch != null) {
+        _detectedTimezone = tz.getLocation(bestMatch);
+        print('Detected timezone: $bestMatch (offset: ${utcOffset.inHours} hours)');
+        print('Stored timezone: ${_detectedTimezone?.name}');
+      } else {
+        print('Could not detect timezone, using device offset: ${utcOffset.inHours} hours');
+        // Fallback to UTC
+        _detectedTimezone = tz.UTC;
+      }
+    } catch (e) {
+      print('Error detecting timezone: $e');
+    }
   }
 
   Future<void> _createNotificationChannels() async {
@@ -350,13 +393,15 @@ class NotificationService {
   // Remove the showImmediateNotification method as it's not needed for production
 
   tz.TZDateTime _nextInstanceOfDay(TimeOfDay time, int dayOfWeek) {
-    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    // Use detected timezone or fallback to local
+    final timezone = _detectedTimezone ?? tz.local;
+    tz.TZDateTime now = tz.TZDateTime.now(timezone);
     final today = now.weekday;
     
     // If today is the target day and time hasn't passed, schedule for today
     if (today == dayOfWeek) {
       final todayScheduledTime = tz.TZDateTime(
-        tz.local, 
+        timezone, 
         now.year, 
         now.month, 
         now.day, 
@@ -372,7 +417,7 @@ class NotificationService {
     
     // Start with today at the specified time
     tz.TZDateTime scheduledDate = tz.TZDateTime(
-      tz.local, 
+      timezone, 
       now.year, 
       now.month, 
       now.day, 
@@ -760,6 +805,58 @@ class NotificationService {
     } catch (e) {
       print('❌ Error scheduling test notification: $e');
       print('Stack trace: ${StackTrace.current}');
+    }
+  }
+
+  // Debug method to manually set timezone for testing
+  Future<void> setTimezoneForTesting(String timezoneName) async {
+    try {
+      print('=== SETTING TIMEZONE FOR TESTING ===');
+      print('Attempting to set timezone to: $timezoneName');
+      
+      final timezone = tz.getLocation(timezoneName);
+      _detectedTimezone = timezone; // Store the timezone
+      
+      final now = tz.TZDateTime.now(timezone);
+      final utcNow = tz.TZDateTime.now(tz.UTC);
+      
+      print('New local time: ${now.toString()}');
+      print('UTC time: ${utcNow.toString()}');
+      print('Timezone: ${timezone.name}');
+      print('Offset: ${now.timeZoneOffset.inHours} hours');
+      print('Timezone stored successfully!');
+      
+      print('=== END TIMEZONE SET ===');
+    } catch (e) {
+      print('Error setting timezone: $e');
+    }
+  }
+
+  // Debug method to show time calculations
+  Future<void> debugTimeCalculations(TimeOfDay time) async {
+    try {
+      print('=== DEBUG TIME CALCULATIONS ===');
+      
+      final timezone = _detectedTimezone ?? tz.local;
+      final now = tz.TZDateTime.now(timezone);
+      final utcNow = tz.TZDateTime.now(tz.UTC);
+      print('Current local time: ${now.toString()}');
+      print('Current UTC time: ${utcNow.toString()}');
+      print('Detected timezone: ${timezone.name}');
+      print('UTC timezone: ${tz.UTC.name}');
+      print('Target time: ${time.hour}:${time.minute}');
+      
+      // Test each day of the week
+      for (int day = 1; day <= 7; day++) {
+        final scheduledTime = _nextInstanceOfDay(time, day);
+        print('Day $day (${_getDayName(day)}): ${scheduledTime.toString()}');
+        print('  Is in future: ${scheduledTime.isAfter(now)}');
+        print('  Time until: ${scheduledTime.difference(now).inMinutes} minutes');
+      }
+      
+      print('=== END DEBUG ===');
+    } catch (e) {
+      print('Error in time calculations: $e');
     }
   }
 }

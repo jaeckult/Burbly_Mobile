@@ -287,22 +287,22 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: [
-                        const Icon(Icons.schedule, color: Colors.blue),
-                        const SizedBox(width: 8),
+  children: [
+    const Icon(Icons.schedule, color: Colors.blue),
+    const SizedBox(width: 8),
                         const Expanded(
-                          child: Text(
-                            'Daily Study Reminders',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: Text(
+        'Daily Study Reminders',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Switch(
-                          value: _dailyRemindersEnabled,
-                          onChanged: _notificationsEnabled ? _toggleDailyReminders : null,
-                        ),
-                      ],
-                    ),
+      ),
+    ),
+    Switch(
+      value: _dailyRemindersEnabled,
+      onChanged: _notificationsEnabled ? _toggleDailyReminders : null,
+    ),
+  ],
+),
                     
                     if (_dailyRemindersEnabled) ...[
                       const SizedBox(height: 16),
@@ -327,51 +327,51 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       ),
                       const SizedBox(height: 8),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: List.generate(7, (index) {
-                          final day = index + 1;
-                          final isSelected = _selectedDays.contains(day);
+  spacing: 8,
+  runSpacing: 8,
+  children: List.generate(7, (index) {
+    final day = index + 1;
+    final isSelected = _selectedDays.contains(day);
 
-                          return GestureDetector(
-                            onTap: () => _toggleDay(day),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.primaryContainer
-                                    : Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.grey[300]!,
-                                  width: 1.5,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Text(
-                                _dayNames[index],
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                                      : Theme.of(context).textTheme.bodyMedium!.color,
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      )
+    return GestureDetector(
+      onTap: () => _toggleDay(day),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[300]!,
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          _dayNames[index],
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isSelected
+                ? Theme.of(context).colorScheme.onPrimaryContainer
+                : Theme.of(context).textTheme.bodyMedium!.color,
+          ),
+        ),
+      ),
+    );
+  }),
+)
                     ],
                   ],
                 ),
@@ -602,8 +602,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
+                child: ElevatedButton.icon(
+                  onPressed: () async {
                                 try {
                                   await _notificationService.testNotification();
                                   if (mounted) {
@@ -624,8 +624,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                                     );
                                   }
                                 }
-                              },
-                              icon: const Icon(Icons.notifications),
+                  },
+                  icon: const Icon(Icons.notifications),
                               label: const Text('Test Notification'),
                             ),
                           ),
@@ -809,6 +809,142 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       const Text(
                         'Use these tools to test the notification system. Check console logs for detailed information.',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.debugTimeCalculations(_selectedTime);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Time calculations shown in console!'),
+                                        backgroundColor: Colors.blue,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.schedule),
+                              label: const Text('Debug Time Calc'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.printPendingNotifications();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Check console for pending notifications!'),
+                                        backgroundColor: Colors.indigo,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.list),
+                              label: const Text('Check Pending'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.setTimezoneForTesting('America/New_York');
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Timezone set to US Eastern!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.location_on),
+                              label: const Text('Set US Eastern'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await _notificationService.setTimezoneForTesting('Europe/London');
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Timezone set to UK!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.location_on),
+                              label: const Text('Set UK'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
