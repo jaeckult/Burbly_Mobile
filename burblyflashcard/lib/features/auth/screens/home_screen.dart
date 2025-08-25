@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth_service.dart';
+import '../../flashcards/screens/flashcard_home_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -164,10 +165,7 @@ class HomeScreen extends StatelessWidget {
                       title: 'My Decks',
                       subtitle: 'Manage your flashcard decks',
                       onTap: () {
-                        // TODO: Navigate to decks screen
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Decks feature coming soon!')),
-                        );
+                        Navigator.pushNamed(context, '/flashcards');
                       },
                     ),
                   ),

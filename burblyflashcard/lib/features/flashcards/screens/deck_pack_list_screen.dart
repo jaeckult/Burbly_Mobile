@@ -9,6 +9,7 @@ import 'deck_detail_screen.dart';
 import 'create_deck_screen.dart';
 import 'notes_screen.dart';
 import 'search_screen.dart';
+import 'flashcard_home_screen.dart';
 import '../../stats/stats_page.dart';
 import 'notification_settings_screen.dart';
 import '../widgets/notification_widget.dart';
@@ -472,7 +473,13 @@ Widget _buildDrawer() {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   leading: const Icon(Icons.school_outlined, size: 22, color: Colors.green),
                   title: const Text('My Decks', style: TextStyle(fontSize: 14)),
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const FlashcardHomeScreen()),
+                    );
+                  },
                 ),
                 ListTile(
                   dense: true,
