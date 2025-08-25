@@ -76,64 +76,40 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
   }
 
   Widget _buildOverviewSection() {
-    final totalCards = _flashcards.length;
-    final learningCards = _flashcards.where((card) => card.interval == 1).length;
-    final reviewCards = _flashcards.where((card) => card.interval > 1).length;
-    final dueCards = _flashcards.where((card) => 
-        card.nextReview == null || card.nextReview!.isBefore(DateTime.now())).length;
+  final totalCards = _flashcards.length;
+  final learningCards = _flashcards.where((card) => card.interval == 1).length;
+  final reviewCards = _flashcards.where((card) => card.interval > 1).length;
+  final dueCards = _flashcards.where((card) =>
+      card.nextReview == null || card.nextReview!.isBefore(DateTime.now())).length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Overview',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Total Cards',
-                totalCards.toString(),
-                Icons.style,
-                Colors.blue,
-              ),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Overview',
+        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Learning',
-                learningCards.toString(),
-                Icons.school,
-                Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Review',
-                reviewCards.toString(),
-                Icons.refresh,
-                Colors.green,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Due Today',
-                dueCards.toString(),
-                Icons.schedule,
-                dueCards > 0 ? Colors.red : Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+      ),
+      const SizedBox(height: 16),
+      GridView.count(
+        shrinkWrap: true, // makes it fit content
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.2, // tweak this ratio to make boxes closer to squares
+        children: [
+          _buildStatCard('Total Cards', totalCards.toString(), Icons.style, Colors.blue),
+          _buildStatCard('Learning', learningCards.toString(), Icons.school, Colors.orange),
+          _buildStatCard('Review', reviewCards.toString(), Icons.refresh, Colors.green),
+          _buildStatCard('Due Today', dueCards.toString(), Icons.schedule,
+              dueCards > 0 ? Colors.red : Colors.grey),
+        ],
+      ),
+    ],
+  );
+}
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Card(
@@ -271,61 +247,65 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
   }
 
   Widget _buildDueCardsSection() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
-    final overdueCards = _flashcards.where((card) => 
-        card.nextReview != null && card.nextReview!.isBefore(today)).toList();
-    final dueTodayCards = _flashcards.where((card) => 
-        card.nextReview != null && 
-        card.nextReview!.isAtSameMomentAs(today)).toList();
-    final dueTomorrowCards = _flashcards.where((card) => 
-        card.nextReview != null && 
-        card.nextReview!.isAtSameMomentAs(today.add(const Duration(days: 1)))).toList();
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Due Cards Overview',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+  final overdueCards = _flashcards.where((card) =>
+      card.nextReview != null && card.nextReview!.isBefore(today)).toList();
+  final dueTodayCards = _flashcards.where((card) =>
+      card.nextReview != null &&
+      card.nextReview!.isAtSameMomentAs(today)).toList();
+  final dueTomorrowCards = _flashcards.where((card) =>
+      card.nextReview != null &&
+      card.nextReview!.isAtSameMomentAs(today.add(const Duration(days: 1)))).toList();
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Due Cards Overview',
+        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+      const SizedBox(height: 16),
+      Column(
+        children: [
+          // first row with 2 cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildDueCard(
+                  'Overdue',
+                  overdueCards.length,
+                  Colors.red,
+                  Icons.warning,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDueCard(
+                  'Due Today',
+                  dueTodayCards.length,
+                  Colors.orange,
+                  Icons.today,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDueCard(
-                'Overdue',
-                overdueCards.length,
-                Colors.red,
-                Icons.warning,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDueCard(
-                'Due Today',
-                dueTodayCards.length,
-                Colors.orange,
-                Icons.today,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDueCard(
-                'Due Tomorrow',
-                dueTomorrowCards.length,
-                Colors.blue,
-                Icons.schedule,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+          const SizedBox(height: 12),
+          // second row with 1 full-width card
+          _buildDueCard(
+            'Due Tomorrow',
+            dueTomorrowCards.length,
+            Colors.blue,
+            Icons.schedule,
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
   Widget _buildDueCard(String title, int count, Color color, IconData icon) {
     return Card(

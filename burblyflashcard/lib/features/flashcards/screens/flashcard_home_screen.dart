@@ -11,7 +11,8 @@ import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
 import 'notification_settings_screen.dart';
 import '../../stats/stats_page.dart';
-
+import '../../pets/widgets/pet_companion_widget.dart';
+import '../../pets/screens/pet_management_screen.dart';
 import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
@@ -389,7 +390,7 @@ Widget _buildDrawer() {
                     });
                   },
                 ),
-                ListTile(
+                                ListTile(
   dense: true,
   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
   leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
@@ -418,7 +419,10 @@ Widget _buildDrawer() {
       ),
     ],
   ),
- 
+  onTap: () {
+    Navigator.pop(context);
+    _showPetManagement();
+  },
 ),
 
                 const Divider(height: 1, thickness: 0.5),
@@ -513,6 +517,8 @@ Widget _buildDrawer() {
   Widget _buildBody() {
     return Column(
       children: [
+        // Pet Companion Widget at the top
+        const PetCompanionWidget(),
         
         // Decks content
         Expanded(
@@ -820,7 +826,14 @@ Widget _buildDrawer() {
     );
   }
 
-
+  void _showPetManagement() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PetManagementScreen(),
+      ),
+    );
+  }
 
   void _showActionOptions() {
     showModalBottomSheet(
