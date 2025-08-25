@@ -22,6 +22,10 @@ class EnhancedTextField extends StatefulWidget {
   final FocusNode? focusNode;
   final String? errorText;
 
+  /// NEW: choose border style
+  final bool borderless; // removes border entirely
+  final bool showDivider; // adds a divider below field
+
   const EnhancedTextField({
     super.key,
     required this.controller,
@@ -44,6 +48,8 @@ class EnhancedTextField extends StatefulWidget {
     this.readOnly = false,
     this.focusNode,
     this.errorText,
+    this.borderless = false,   // default false → keep normal underline
+    this.showDivider = false,  // default false → no divider
   });
 
   @override
@@ -61,17 +67,15 @@ class _EnhancedTextFieldState extends State<EnhancedTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    final field = TextFormField(
       controller: widget.controller,
       focusNode: widget.focusNode,
       decoration: InputDecoration(
         labelText: widget.labelText,
         hintText: widget.hintText,
+        border: widget.borderless ? InputBorder.none : null, // 👈
         prefixIcon: widget.prefixIcon != null
-            ? Icon(
-                widget.prefixIcon,
-                color: Theme.of(context).primaryColor,
-              )
+            ? Icon(widget.prefixIcon, color: Theme.of(context).primaryColor)
             : null,
         suffixIcon: _buildSuffixIcon(),
         errorText: widget.errorText,
@@ -99,6 +103,19 @@ class _EnhancedTextFieldState extends State<EnhancedTextField> {
             }
           : null,
     );
+
+    // Wrap with divider if requested
+    if (widget.showDivider) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          field,
+          const Divider(height: 1),
+        ],
+      );
+    }
+
+    return field;
   }
 
   Widget? _buildSuffixIcon() {
@@ -108,20 +125,13 @@ class _EnhancedTextFieldState extends State<EnhancedTextField> {
           _obscureText ? Icons.visibility : Icons.visibility_off,
           color: Theme.of(context).hintColor,
         ),
-        onPressed: () {
-          setState(() {
-            _obscureText = !_obscureText;
-          });
-        },
+        onPressed: () => setState(() => _obscureText = !_obscureText),
       );
     }
 
     if (widget.suffixIcon != null) {
       return IconButton(
-        icon: Icon(
-          widget.suffixIcon,
-          color: Theme.of(context).hintColor,
-        ),
+        icon: Icon(widget.suffixIcon, color: Theme.of(context).hintColor),
         onPressed: widget.onSuffixIconPressed,
       );
     }
@@ -131,69 +141,11 @@ class _EnhancedTextFieldState extends State<EnhancedTextField> {
         icon: const Icon(Icons.clear),
         onPressed: () {
           widget.controller.clear();
-          if (widget.onChanged != null) {
-            widget.onChanged!('');
-          }
+          widget.onChanged?.call('');
         },
       );
     }
 
     return null;
-  }
-}
-
-class EnhancedDropdownField<T> extends StatelessWidget {
-  final T? value;
-  final String? labelText;
-  final String? hintText;
-  final IconData? prefixIcon;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?>? onChanged;
-  final String? Function(T?)? validator;
-  final bool enabled;
-  final VoidCallback? onClear;
-
-  const EnhancedDropdownField({
-    super.key,
-    required this.value,
-    this.labelText,
-    this.hintText,
-    this.prefixIcon,
-    required this.items,
-    this.onChanged,
-    this.validator,
-    this.enabled = true,
-    this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      value: value,
-      decoration: InputDecoration(
-        labelText: labelText,
-        hintText: hintText,
-        prefixIcon: prefixIcon != null
-            ? Icon(
-                prefixIcon,
-                color: Theme.of(context).primaryColor,
-              )
-            : null,
-        suffixIcon: value != null && onClear != null
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: onClear,
-              )
-            : null,
-      ),
-      items: items,
-      onChanged: enabled ? onChanged : null,
-      validator: validator,
-      dropdownColor: Theme.of(context).cardColor,
-      icon: Icon(
-        Icons.arrow_drop_down,
-        color: Theme.of(context).primaryColor,
-      ),
-    );
   }
 }

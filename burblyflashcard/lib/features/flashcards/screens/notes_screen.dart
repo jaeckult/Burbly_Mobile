@@ -53,35 +53,54 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  void _showNoteOptions(Note note) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Edit Note'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement edit note
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete Note', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteNote(note);
-              },
-            ),
-          ],
-        ),
+void _showNoteOptions(Note note) {
+  showModalBottomSheet(
+    context: context,
+    builder: (context) => Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Edit Note'),
+            onTap: () {
+              Navigator.pop(context);
+              _editNote(note);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text('Delete Note', style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              _deleteNote(note);
+            },
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+void _editNote(Note note) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => CreateNoteScreen(
+        note: note, // pass existing note
+        onNoteUpdated: (updatedNote) {
+          setState(() {
+            final index = _notes.indexWhere((n) => n.id == updatedNote.id);
+            if (index != -1) {
+              _notes[index] = updatedNote;
+            }
+          });
+        }, onNoteCreated: (Note note) {  },
+      ),
+    ),
+  );
+}
 
   Future<void> _deleteNote(Note note) async {
     final confirmed = await showDialog<bool>(
