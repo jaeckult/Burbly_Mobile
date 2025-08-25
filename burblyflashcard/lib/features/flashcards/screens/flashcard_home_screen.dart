@@ -3,14 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/auth_service.dart';
 import '../../../core/core.dart';
+import '../../../core/services/adaptive_theme_service.dart';
 import 'create_deck_screen.dart';
 import 'deck_detail_screen.dart';
 import 'search_screen.dart';
 import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
+import 'notification_settings_screen.dart';
 import '../../stats/stats_page.dart';
-import '../../pets/widgets/pet_companion_widget.dart';
-import '../../pets/screens/pet_management_screen.dart';
+
 import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
@@ -29,6 +30,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   List<Deck> _decks = [];
   bool _isLoading = true;
   bool _isGuestMode = false;
+  bool _isDarkMode = false;
 
   @override
   void initState() {
@@ -72,6 +74,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
       }
       
       _isGuestMode = await _dataService.isGuestMode();
+      _isDarkMode = AdaptiveThemeService.isDarkMode(context);
       await _loadDecks();
       setState(() => _isLoading = false);
     } catch (e) {
@@ -160,11 +163,19 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Burbly Flashcard'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        title: const Text('My Decks'),
         elevation: 0,
+        centerTitle: true,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(Icons.menu, color: Theme.of(context).appBarTheme.foregroundColor),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
         actions: [
+          // Search button
           IconButton(
             onPressed: () {
               Navigator.push(
@@ -174,34 +185,36 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.search),
+            icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
             tooltip: 'Search',
           ),
-
-          if (_isGuestMode)
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).colorScheme.primary),
-              ),
-              child: Text(
-                'Guest Mode',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          // Notification settings button
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
                 ),
-              ),
+              );
+            },
+            icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
+            tooltip: 'Notification Settings',
+          ),
+          // Theme toggle button
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _isDarkMode = !_isDarkMode;
+                AdaptiveThemeService.toggleTheme(context);
+              });
+            },
+            icon: Icon(
+              _isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              color: Theme.of(context).appBarTheme.foregroundColor,
             ),
-          if (!_isGuestMode)
-            IconButton(
-              onPressed: _backupToCloud,
-              icon: const Icon(Icons.backup),
-              tooltip: 'Backup to Cloud',
-            ),
+            tooltip: _isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          ),
         ],
       ),
       drawer: _buildDrawer(),
@@ -224,23 +237,32 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
     );
   }
 
-  Widget _buildDrawer() {
-    final user = FirebaseAuth.instance.currentUser;
-    
-    return Drawer(
+Widget _buildDrawer() {
+  final user = FirebaseAuth.instance.currentUser;
+
+  return Drawer(
+    width: MediaQuery.of(context).size.width * 0.75, // 75% of screen width
+    child: SafeArea(
       child: Column(
         children: [
+          // --- Header ---
           UserAccountsDrawerHeader(
-            accountName: Text(
-              _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Theme.of(context).primaryColor.withOpacity(0.85),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-            accountEmail: Text(
-              _isGuestMode ? 'Offline mode' : (user?.email ?? ''),
-            ),
+            margin: EdgeInsets.zero,
             currentAccountPicture: CircleAvatar(
+              radius: 36,
               backgroundColor: Colors.white,
               child: _isGuestMode
-                  ? Icon(Icons.person, size: 40, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))
+                  ? const Icon(Icons.person, size: 40, color: Colors.grey)
                   : user?.photoURL != null
                       ? ClipOval(
                           child: Image.network(
@@ -250,116 +272,221 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : Icon(Icons.person, size: 40, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                      : const Icon(Icons.person, size: 40, color: Colors.grey),
             ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
+            accountName: Text(
+              _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(
+              _isGuestMode ? 'Offline mode' : (user?.email ?? ''),
+              style: const TextStyle(fontSize: 13),
             ),
           ),
+
+          // --- Drawer items ---
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Text(
+                    "Study",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.grey),
+                  ),
+                ),
                 ListTile(
-                  leading: const Icon(Icons.folder),
-                  title: const Text('Deck Packs'),
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.home_outlined, size: 22, color: Colors.blue),
+                  title:
+                      const Text('Deck Packs', style: TextStyle(fontSize: 14)),
                   onTap: () {
-                    print('Deck Packs navigation triggered');
-                    Navigator.pop(context); // Close drawer first
-                    // Navigate to deck packs screen and clear navigation stack
+                    Navigator.pop(context);
                     Navigator.pushNamedAndRemoveUntil(
                       context, 
                       '/home', 
                       (route) => false
-                    ).catchError((error) {
-                      print('Navigation error: $error');
-                      // Fallback: show error message
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Navigation error: $error'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.school_outlined, size: 22, color: Colors.green),
+                  title: const Text('My Decks', style: TextStyle(fontSize: 14)),
+                  onTap: () => Navigator.pop(context),
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.note_outlined, size: 22, color: Colors.orange),
+                  title: const Text('Notes', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotesScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.analytics_outlined, size: 22, color: Colors.purple),
+                  title:
+                      const Text('Statistics', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => StatsPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading:
+                      const Icon(Icons.notifications_outlined, size: 22, color: Colors.red),
+                  title:
+                      const Text('Notifications', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const NotificationSettingsScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: Icon(
+                      _isDarkMode
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                      size: 22,
+                      color: _isDarkMode ? Colors.yellow[700] : Colors.black),
+                  title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode',
+                      style: const TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _isDarkMode = !_isDarkMode;
+                      AdaptiveThemeService.toggleTheme(context);
                     });
                   },
                 ),
+                ListTile(
+  dense: true,
+  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+  leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
+  title: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'Pet Management',
+        style: TextStyle(fontSize: 14),
+      ),
+      const SizedBox(width: 6), // spacing between text and badge
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade600,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          'Testing',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    ],
+  ),
+ 
+),
 
-                ListTile(
-                  leading: const Icon(Icons.note),
-                  title: const Text('Notes'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotesScreen(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.analytics),
-                  title: const Text('Statistics'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => StatsPage(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.pets),
-                  title: const Text('Pet Management'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const PetManagementScreen(),
-                      ),
-                    );
-                  },
+                const Divider(height: 1, thickness: 0.5),
+
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Text(
+                    "Account",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.grey),
+                  ),
                 ),
 
-                const Divider(),
-                if (_isGuestMode) ...[
+                if (_isGuestMode)
                   ListTile(
-                    leading: const Icon(Icons.cloud_sync),
-                    title: const Text('Sign in with Google'),
-                    subtitle: const Text('Sync your data'),
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading:
+                        const Icon(Icons.cloud_sync_outlined, size: 22, color: Colors.blueAccent),
+                    title: const Text('Sign in with Google',
+                        style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Sync your data',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(context);
                       _signInWithGoogle();
                     },
+                  )
+                else ...[
+                  ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.backup_outlined, size: 22, color: Colors.indigo),
+                    title: const Text('Backup to Cloud',
+                        style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Sync your data',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _backupToCloud();
+                    },
                   ),
-                                 ] else ...[
-                   ListTile(
-                     leading: const Icon(Icons.backup),
-                     title: const Text('Backup to Cloud'),
-                     subtitle: const Text('Sync your data'),
-                     onTap: () {
-                       Navigator.pop(context);
-                       _backupToCloud();
-                     },
-                   ),
-                   ListTile(
-                     leading: const Icon(Icons.logout),
-                     title: const Text('Sign out'),
-                     onTap: () {
-                       Navigator.pop(context);
-                       _signOut();
-                     },
-                   ),
-                 ],
-                const Divider(),
+                  ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.logout, size: 22, color: Colors.redAccent),
+                    title: const Text('Sign out', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _signOut();
+                    },
+                  ),
+                ],
+
+                const Divider(height: 1, thickness: 0.5),
+
                 ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text('About'),
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.info_outline, size: 22, color: Colors.grey),
+                  title:
+                      const Text('About', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
                     _showAboutDialog();
@@ -368,16 +495,24 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
               ],
             ),
           ),
+
+          // --- Footer ---
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              "v1.0.0",
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBody() {
     return Column(
       children: [
-        // Pet Companion Widget at the top
-        const PetCompanionWidget(),
         
         // Decks content
         Expanded(
@@ -684,6 +819,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
       ],
     );
   }
+
+
 
   void _showActionOptions() {
     showModalBottomSheet(
