@@ -22,19 +22,36 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   final DataService _dataService = DataService();
   List<Flashcard> _flashcards = [];
   bool _isLoading = true;
+  late Deck _currentDeck;
 
   @override
   void initState() {
     super.initState();
+    _currentDeck = widget.deck;
     _loadFlashcards();
   }
 
   Future<void> _loadFlashcards() async {
-    final flashcards = await _dataService.getFlashcardsForDeck(widget.deck.id);
+    final flashcards = await _dataService.getFlashcardsForDeck(_currentDeck.id);
     setState(() {
       _flashcards = flashcards;
       _isLoading = false;
     });
+  }
+
+  Future<void> _refreshDeck() async {
+    try {
+      final allDecks = await _dataService.getDecks();
+      final updatedDeck = allDecks.firstWhere(
+        (deck) => deck.id == _currentDeck.id,
+        orElse: () => _currentDeck,
+      );
+      setState(() {
+        _currentDeck = updatedDeck;
+      });
+    } catch (e) {
+      print('Error refreshing deck: $e');
+    }
   }
 
   void _addFlashcard() {
@@ -59,11 +76,14 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => StudyModeSelectionScreen(
-          deck: widget.deck,
+          deck: _currentDeck,
           flashcards: _flashcards,
         ),
       ),
-    ).then((_) => _loadFlashcards());
+    ).then((_) {
+      _loadFlashcards();
+      _refreshDeck();
+    });
   }
 
   void _showSpacedRepetitionStats() {
@@ -71,141 +91,299 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => SpacedRepetitionStatsScreen(
-          deck: widget.deck,
+          deck: _currentDeck,
         ),
       ),
     );
   }
 
   void _showDeckSettings() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Deck Settings',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Deck Settings',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 16),
-            
-            // Timer Settings
-            ListTile(
-              leading: const Icon(Icons.timer),
-              title: const Text('Study Timer'),
-              subtitle: Text(
-                widget.deck.timerDuration != null 
-                    ? '${widget.deck.timerDuration} seconds'
-                    : 'Disabled',
-              ),
-              trailing: Switch(
-                value: widget.deck.timerDuration != null,
-                onChanged: (value) {
+          ),
+          const SizedBox(height: 16),
+
+          // Info Section
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.blue, size: 16),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Study Features',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '• Timer: Automatically shows answer after set time (Enhanced Study mode only)\n'
+                  '• Spaced Repetition: Uses SM2 algorithm to schedule cards for optimal review intervals\n'
+                  '• Cards you know well appear less frequently, difficult cards appear more often',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Timer Settings
+          ListTile(
+            leading: const Icon(Icons.timer),
+            title: const Text('Study Timer'),
+            subtitle: Text(
+              _currentDeck.timerDuration != null
+                  ? '${_currentDeck.timerDuration} seconds per card'
+                  : 'Disabled - No time limit',
+            ),
+            trailing: Switch(
+              value: _currentDeck.timerDuration != null,
+              onChanged: (value) async {
+                if (!value) {
+                  // 🔴 Switch turned OFF → disable timer immediately
+                  try {
+                    final updatedDeck = _currentDeck.copyWith(timerDuration: null);
+                    await _dataService.updateDeck(updatedDeck);
+                    setState(() {
+                      _currentDeck = updatedDeck;
+                    });
+                    Navigator.pop(context);
+
+                    if (mounted) {
+                      SnackbarUtils.showSuccessSnackbar(
+                        context,
+                        'Timer disabled.',
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      SnackbarUtils.showErrorSnackbar(
+                        context,
+                        'Error disabling timer: ${e.toString()}',
+                      );
+                    }
+                  }
+                } else {
+                  // 🟢 Switch turned ON → open timer settings dialog
                   Navigator.pop(context);
                   _showTimerSettings();
-                },
-              ),
+                }
+              },
             ),
-            
-            // Spaced Repetition Settings
-            ListTile(
-              leading: const Icon(Icons.repeat),
-              title: const Text('Spaced Repetition'),
-              subtitle: const Text('Optimize review intervals'),
-              trailing: Switch(
-                value: widget.deck.spacedRepetitionEnabled,
-                onChanged: (value) async {
-                  final updatedDeck = widget.deck.copyWith(
+          ),
+
+          // Spaced Repetition Settings
+          ListTile(
+            leading: const Icon(Icons.repeat),
+            title: const Text('Spaced Repetition'),
+            subtitle: Text(
+              _currentDeck.spacedRepetitionEnabled
+                  ? 'Enabled - Cards will be scheduled for optimal review'
+                  : 'Disabled - Cards will be shown in order',
+            ),
+            trailing: Switch(
+              value: _currentDeck.spacedRepetitionEnabled,
+              onChanged: (value) async {
+                try {
+                  final updatedDeck = _currentDeck.copyWith(
                     spacedRepetitionEnabled: value,
                   );
                   await _dataService.updateDeck(updatedDeck);
+                  setState(() {
+                    _currentDeck = updatedDeck;
+                  });
                   Navigator.pop(context);
-                  setState(() {});
-                },
-              ),
-            ),
-            
-            // Deck Pack Settings
-            ListTile(
-              leading: const Icon(Icons.folder),
-              title: const Text('Deck Pack'),
-              subtitle: Text(
-                widget.deck.packId != null ? 'Assigned to pack' : 'No pack assigned',
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showDeckPackSettings();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  void _showTimerSettings() {
-    int? selectedDuration = widget.deck.timerDuration;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Study Timer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Set timer duration (seconds):'),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              value: selectedDuration,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Duration',
-              ),
-              items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('Disabled'),
-                ),
-                ...List.generate(12, (index) {
-                  final duration = (index + 1) * 5;
-                  return DropdownMenuItem(
-                    value: duration,
-                    child: Text('$duration seconds'),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                selectedDuration = value;
+                  if (mounted) {
+                    SnackbarUtils.showSuccessSnackbar(
+                      context,
+                      value
+                          ? 'Spaced repetition enabled! Cards will be scheduled for optimal review.'
+                          : 'Spaced repetition disabled. Cards will be shown in order.',
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    SnackbarUtils.showErrorSnackbar(
+                      context,
+                      'Error updating spaced repetition setting: ${e.toString()}',
+                    );
+                  }
+                }
               },
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () async {
-              final updatedDeck = widget.deck.copyWith(
-                timerDuration: selectedDuration,
-              );
-              await _dataService.updateDeck(updatedDeck);
+
+          // Deck Pack Settings
+          ListTile(
+            leading: const Icon(Icons.folder),
+            title: const Text('Deck Pack'),
+            subtitle: Text(
+              _currentDeck.packId != null ? 'Assigned to pack' : 'No pack assigned',
+            ),
+            onTap: () {
               Navigator.pop(context);
-              setState(() {});
+              _showDeckPackSettings();
             },
-            child: const Text('Save'),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+void _showTimerSettings() {
+  int? selectedDuration = _currentDeck.timerDuration;
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Study Timer'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Set a timer for each flashcard during study sessions. The timer will automatically show the answer when time runs out.',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int>(
+            value: selectedDuration,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Timer Duration',
+              helperText: 'Choose how long to spend on each card',
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: null,
+                child: Text('No Timer (Disabled)'),
+              ),
+              DropdownMenuItem(
+                value: 10,
+                child: Text('10 seconds (Quick)'),
+              ),
+              DropdownMenuItem(
+                value: 15,
+                child: Text('15 seconds'),
+              ),
+              DropdownMenuItem(
+                value: 30,
+                child: Text('30 seconds (Recommended)'),
+              ),
+              DropdownMenuItem(
+                value: 45,
+                child: Text('45 seconds'),
+              ),
+              DropdownMenuItem(
+                value: 60,
+                child: Text('60 seconds (Slow)'),
+              ),
+              DropdownMenuItem(
+                value: 90,
+                child: Text('90 seconds'),
+              ),
+              DropdownMenuItem(
+                value: 120,
+                child: Text('2 minutes'),
+              ),
+            ],
+            onChanged: (value) {
+              selectedDuration = value;
+            },
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Timer only works in Enhanced Study mode. Regular study mode ignores timer settings.',
+                    style: TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            try {
+              final updatedDeck = _currentDeck.copyWith(
+                timerDuration: selectedDuration,
+              );
+              await _dataService.updateDeck(updatedDeck);
+              setState(() {
+                _currentDeck = updatedDeck;
+              });
+              Navigator.pop(context);
+
+              if (mounted) {
+                SnackbarUtils.showSuccessSnackbar(
+                  context,
+                  selectedDuration != null
+                      ? 'Timer set to ${selectedDuration} seconds per card!'
+                      : 'Timer disabled.',
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                SnackbarUtils.showErrorSnackbar(
+                  context,
+                  'Error updating timer setting: ${e.toString()}',
+                );
+              }
+            }
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showDeckPackSettings() async {
     List<DeckPack> availablePacks = [];
@@ -215,7 +393,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       // Handle error silently
     }
 
-    String? selectedPackId = widget.deck.packId;
+    String? selectedPackId = _currentDeck.packId;
     
     showDialog(
       context: context,
@@ -255,20 +433,22 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              try {
-                if (selectedPackId != null) {
-                  await _dataService.addDeckToPack(widget.deck.id, selectedPackId!);
-                } else if (widget.deck.packId != null) {
-                  await _dataService.removeDeckFromPack(widget.deck.id, widget.deck.packId!);
-                }
-                
-                final updatedDeck = widget.deck.copyWith(
-                  packId: selectedPackId,
-                );
-                await _dataService.updateDeck(updatedDeck);
-                
-                Navigator.pop(context);
-                setState(() {});
+                             try {
+                 if (selectedPackId != null) {
+                   await _dataService.addDeckToPack(_currentDeck.id, selectedPackId!);
+                 } else if (_currentDeck.packId != null) {
+                   await _dataService.removeDeckFromPack(_currentDeck.id, _currentDeck.packId!);
+                 }
+                 
+                 final updatedDeck = _currentDeck.copyWith(
+                   packId: selectedPackId,
+                 );
+                 await _dataService.updateDeck(updatedDeck);
+                 
+                 setState(() {
+                   _currentDeck = updatedDeck;
+                 });
+                 Navigator.pop(context);
                 
                                  if (mounted) {
                    SnackbarUtils.showSuccessSnackbar(
@@ -360,11 +540,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.deck.name),
-        backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-        foregroundColor: Colors.white,
-        elevation: 0,
+             appBar: AppBar(
+         title: Text(_currentDeck.name),
+         backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+         foregroundColor: Colors.white,
+         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -381,12 +561,12 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addFlashcard,
-        backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
+             floatingActionButton: FloatingActionButton(
+         onPressed: _addFlashcard,
+         backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+         foregroundColor: Colors.white,
+         child: const Icon(Icons.add),
+       ),
     );
   }
 
@@ -401,10 +581,10 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withOpacity(0.7),
-              ],
+                           colors: [
+               Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+               Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')).withOpacity(0.7),
+             ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -418,24 +598,24 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.deck.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (widget.deck.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  widget.deck.description,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 16,
-                  ),
-                ),
-              ],
+                             Text(
+                 _currentDeck.name,
+                 style: const TextStyle(
+                   color: Colors.white,
+                   fontSize: 24,
+                   fontWeight: FontWeight.bold,
+                 ),
+               ),
+               if (_currentDeck.description.isNotEmpty) ...[
+                 const SizedBox(height: 8),
+                 Text(
+                   _currentDeck.description,
+                   style: TextStyle(
+                     color: Colors.white.withOpacity(0.9),
+                     fontSize: 16,
+                   ),
+                 ),
+               ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -476,6 +656,103 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           ),
         ),
 
+        // Settings Indicator
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.grey.withOpacity(0.2),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.settings,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Study Settings',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  // Timer Setting
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.timer,
+                          size: 14,
+                                                   color: _currentDeck.timerDuration != null 
+                             ? Colors.orange 
+                             : Colors.grey[400],
+                       ),
+                       const SizedBox(width: 4),
+                       Expanded(
+                         child: Text(
+                           _currentDeck.timerDuration != null 
+                               ? '${_currentDeck.timerDuration}s'
+                               : 'No timer',
+                           style: TextStyle(
+                             fontSize: 12,
+                             color: _currentDeck.timerDuration != null 
+                                 ? Colors.orange[700]
+                                 : Colors.grey[500],
+                           ),
+                         ),
+                       ),
+                      ],
+                    ),
+                  ),
+                  // Spaced Repetition Setting
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.repeat,
+                          size: 14,
+                                                   color: _currentDeck.spacedRepetitionEnabled 
+                             ? Colors.green 
+                             : Colors.grey[400],
+                       ),
+                       const SizedBox(width: 4),
+                       Expanded(
+                         child: Text(
+                           _currentDeck.spacedRepetitionEnabled 
+                               ? 'SR Enabled'
+                               : 'SR Disabled',
+                           style: TextStyle(
+                             fontSize: 12,
+                             color: _currentDeck.spacedRepetitionEnabled 
+                                 ? Colors.green[700]
+                                 : Colors.grey[500],
+                           ),
+                         ),
+                       ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
         // Action Buttons
         if (_flashcards.isNotEmpty) ...[
           Container(
@@ -487,11 +764,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                     onPressed: _startStudy,
                     icon: const Icon(Icons.school),
                     label: const Text('Study'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+                                         style: ElevatedButton.styleFrom(
+                       backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+                       foregroundColor: Colors.white,
+                       padding: const EdgeInsets.symmetric(vertical: 12),
+                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -558,10 +835,10 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
             onPressed: _addFlashcard,
             icon: const Icon(Icons.add),
             label: const Text('Add Flashcard'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-              foregroundColor: Colors.white,
-            ),
+                         style: ElevatedButton.styleFrom(
+               backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+               foregroundColor: Colors.white,
+             ),
           ),
         ],
       ),

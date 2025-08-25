@@ -49,6 +49,9 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   void _startTimer() {
     if (!_timerEnabled) return;
     
+    // Cancel any existing timer
+    _timer?.cancel();
+    
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeRemaining > 0) {
         setState(() {
@@ -56,8 +59,11 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
         });
       } else {
         timer.cancel();
-        _showAnswer = true;
-        setState(() {});
+        if (!_showAnswer) {
+          setState(() {
+            _showAnswer = true;
+          });
+        }
       }
     });
   }
@@ -100,6 +106,16 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
     setState(() {
       _showAnswer = !_showAnswer;
     });
+    
+    // If showing answer and timer is enabled, pause the timer
+    if (_showAnswer && _timerEnabled) {
+      _timer?.cancel();
+    }
+    // If hiding answer and timer is enabled, restart the timer
+    else if (!_showAnswer && _timerEnabled) {
+      _timeRemaining = widget.deck.timerDuration!;
+      _startTimer();
+    }
   }
 
   void _rateCard(int quality) async {
@@ -263,24 +279,51 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
           if (_timerEnabled) ...[
             Container(
               width: double.infinity,
-              height: 4,
+              height: 6,
               child: LinearProgressIndicator(
                 value: _timeRemaining / (widget.deck.timerDuration ?? 1),
                 backgroundColor: Colors.grey[300],
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  _timeRemaining > 10 ? Colors.green : Colors.red,
+                  _timeRemaining > 10 ? Colors.green : 
+                  _timeRemaining > 5 ? Colors.orange : Colors.red,
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'Time: $_timeRemaining s',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: _timeRemaining > 10 ? Colors.green : Colors.red,
-                ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.timer,
+                        size: 16,
+                        color: _timeRemaining > 10 ? Colors.green : 
+                               _timeRemaining > 5 ? Colors.orange : Colors.red,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_timeRemaining seconds',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _timeRemaining > 10 ? Colors.green : 
+                                 _timeRemaining > 5 ? Colors.orange : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_timeRemaining <= 5)
+                    Text(
+                      'Answer will show automatically!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
