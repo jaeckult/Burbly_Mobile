@@ -432,11 +432,8 @@ class _SearchScreenState extends State<SearchScreen> {
            ),
          ),
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DeckDetailScreen(deck: deck),
-            ),
+          context.pushSharedAxis(
+            DeckDetailScreen(deck: deck),
           );
         },
       ),
@@ -538,11 +535,8 @@ class _SearchScreenState extends State<SearchScreen> {
               )
             : null,
         onTap: () async {
-          final updated = await Navigator.push<Note>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => NoteDetailScreen(note: note),
-            ),
+          final updated = await context.pushFade<Note>(
+            NoteDetailScreen(note: note),
           );
           if (updated != null) {
             // update local results view

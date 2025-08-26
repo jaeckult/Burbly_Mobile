@@ -43,14 +43,11 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   void _createNewNote() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateNoteScreen(
-          onNoteCreated: (note) {
-            setState(() => _notes.add(note));
-          },
-        ),
+    context.pushScale(
+      CreateNoteScreen(
+        onNoteCreated: (note) {
+          setState(() => _notes.add(note));
+        },
       ),
     );
   }
@@ -89,21 +86,18 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   void _editNote(Note note) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateNoteScreen(
-          note: note,
-          onNoteUpdated: (updatedNote) {
-            setState(() {
-              final index = _notes.indexWhere((n) => n.id == updatedNote.id);
-              if (index != -1) {
-                _notes[index] = updatedNote;
-              }
-            });
-          },
-          onNoteCreated: (Note note) {},
-        ),
+    context.pushScale(
+      CreateNoteScreen(
+        note: note,
+        onNoteUpdated: (updatedNote) {
+          setState(() {
+            final index = _notes.indexWhere((n) => n.id == updatedNote.id);
+            if (index != -1) {
+              _notes[index] = updatedNote;
+            }
+          });
+        },
+        onNoteCreated: (Note note) {},
       ),
     );
   }
@@ -161,6 +155,13 @@ class _NotesScreenState extends State<NotesScreen> {
     'Notes',
     style: TextStyle(fontWeight: FontWeight.w600),
   ),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.animation),
+      onPressed: () => Navigator.pushNamed(context, '/transitions'),
+      tooltip: 'Test Transitions',
+    ),
+  ],
   backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
   foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
   elevation: 0,

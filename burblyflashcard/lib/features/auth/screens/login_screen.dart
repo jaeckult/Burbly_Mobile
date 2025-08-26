@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../auth_service.dart';
 import 'signup_screen.dart';
+import '../../../core/core.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -240,11 +241,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SignupScreen(),
-                            ),
+                          context.pushSlide(
+                            const SignupScreen(),
                           );
                         },
                         child: const Text('Sign Up'),

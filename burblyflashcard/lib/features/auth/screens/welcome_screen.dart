@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/core.dart';
+import '../../flashcards/screens/deck_pack_list_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -103,7 +104,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   void _navigateToHome() {
-    Navigator.pushReplacementNamed(context, '/home');
+    NavigationHelper.pushAndClearStack(
+      context,
+      const DeckPackListScreen(),
+      transitionType: MaterialMotionTransitionType.fadeThrough,
+    );
   }
 
   @override

@@ -80,6 +80,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/home': (context) => const DeckPackListScreen(),
           '/flashcards': (context) => const FlashcardHomeScreen(),
+          '/transitions': (context) => const TransitionDemoScreen(),
         },
       ),
     );

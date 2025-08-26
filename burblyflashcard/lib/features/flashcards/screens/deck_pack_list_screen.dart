@@ -85,41 +85,35 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   }
 
   void _createNewDeckPack() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateDeckPackScreen(
-          onDeckPackCreated: (deckPack) {
-            setState(() {
-              _deckPacks.add(deckPack);
-              _decksInPacks[deckPack.id] = [];
-              _expandedPacks[deckPack.id] = false;
-            });
-          },
-        ),
+    context.pushScale(
+      CreateDeckPackScreen(
+        onDeckPackCreated: (deckPack) {
+          setState(() {
+            _deckPacks.add(deckPack);
+            _decksInPacks[deckPack.id] = [];
+            _expandedPacks[deckPack.id] = false;
+          });
+        },
       ),
     );
   }
 
   void _createNewDeck(DeckPack deckPack) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateDeckScreen(
-          onDeckCreated: (deck) async {
-            try {
-              await _dataService.addDeckToPack(deck.id, deckPack.id);
-              await _loadAllDecks();
-            } catch (e) {
-              if (mounted) {
-                SnackbarUtils.showErrorSnackbar(
-                  context,
-                  'Error adding deck to pack: ${e.toString()}',
-                );
-              }
+    context.pushScale(
+      CreateDeckScreen(
+        onDeckCreated: (deck) async {
+          try {
+            await _dataService.addDeckToPack(deck.id, deckPack.id);
+            await _loadAllDecks();
+          } catch (e) {
+            if (mounted) {
+              SnackbarUtils.showErrorSnackbar(
+                context,
+                'Error adding deck to pack: ${e.toString()}',
+              );
             }
-          },
-        ),
+          }
+        },
       ),
     );
   }
@@ -140,11 +134,8 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   }
 
   void _openDeck(Deck deck) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DeckDetailScreen(deck: deck),
-      ),
+    context.pushSharedAxis(
+      DeckDetailScreen(deck: deck),
     ).then((_) => _loadAllDecks());
   }
 
@@ -401,11 +392,8 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   }
 
   void _showPetManagement() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const PetManagementScreen(),
-      ),
+    context.pushSlide(
+      const PetManagementScreen(),
     );
   }
 
@@ -488,9 +476,8 @@ Widget _buildDrawer() {
                   title: const Text('My Decks', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const FlashcardHomeScreen()),
+                    context.pushFade(
+                      const FlashcardHomeScreen(),
                     );
                   },
                 ),
@@ -502,9 +489,8 @@ Widget _buildDrawer() {
                   title: const Text('Notes', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const NotesScreen()),
+                    context.pushFade(
+                      const NotesScreen(),
                     );
                   },
                 ),
@@ -517,9 +503,8 @@ Widget _buildDrawer() {
                       const Text('Statistics', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => StatsPage()),
+                    context.pushFade(
+                      StatsPage(),
                     );
                   },
                 ),
@@ -533,10 +518,8 @@ Widget _buildDrawer() {
                       const Text('Notifications', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationSettingsScreen()),
+                    context.pushFade(
+                      const NotificationSettingsScreen(),
                     );
                   },
                 ),
@@ -703,24 +686,26 @@ Widget _buildDrawer() {
           // Search button
           IconButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SearchScreen(),
-                ),
+              context.pushSlide(
+                const SearchScreen(),
               );
             },
             icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
             tooltip: 'Search',
           ),
+          // Transition Demo button
+          IconButton(
+            onPressed: () => context.pushScale(
+              const TransitionDemoScreen(),
+            ),
+            icon: Icon(Icons.animation, color: Theme.of(context).appBarTheme.foregroundColor),
+            tooltip: 'Test Transitions',
+          ),
           // Notification settings button
           IconButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationSettingsScreen(),
-                ),
+              context.pushFade(
+                const NotificationSettingsScreen(),
               );
             },
             icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
@@ -747,17 +732,17 @@ Widget _buildDrawer() {
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-floatingActionButton: Transform.translate(
-  offset: const Offset(0, -30), // move up by 20px
-  child: FloatingActionButton.extended(
-    onPressed: _createNewDeckPack,
-    backgroundColor: Theme.of(context).primaryColor,
-    foregroundColor: Colors.white,
-    icon: const Icon(Icons.add),
-    label: const Text('New Pack'),
-    elevation: 5,
-  ),
-),
+      floatingActionButton: Transform.translate(
+        offset: const Offset(0, -30), // move up by 20px
+        child: FloatingActionButton.extended(
+          onPressed: _createNewDeckPack,
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('New Pack'),
+          elevation: 5,
+        ),
+      ),
 
     );
   }
@@ -1229,32 +1214,35 @@ floatingActionButton: Transform.translate(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Deck Icon
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}')),
-                        Color(int.parse('0xFF${deck.coverColor ?? '1976D2'}')),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}')).withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                // Deck Icon with Hero Animation
+                HeroWrapper(
+                  tag: 'deck_icon_${deck.id}',
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}')),
+                          Color(int.parse('0xFF${deck.coverColor ?? '1976D2'}')),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.school,
-                    color: Colors.white,
-                    size: 24,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}')).withOpacity(0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.school,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ),
                 

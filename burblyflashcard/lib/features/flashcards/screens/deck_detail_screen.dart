@@ -54,11 +54,8 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   }
 
   void _addFlashcard() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddFlashcardScreen(deckId: widget.deck.id),
-      ),
+    context.pushScale(
+      AddFlashcardScreen(deckId: widget.deck.id),
     ).then((_) => _loadFlashcards());
   }
 
@@ -71,13 +68,10 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudyModeSelectionScreen(
-          deck: _currentDeck,
-          flashcards: _flashcards,
-        ),
+    context.pushSharedAxis(
+      StudyModeSelectionScreen(
+        deck: _currentDeck,
+        flashcards: _flashcards,
       ),
     ).then((_) {
       _loadFlashcards();
@@ -86,14 +80,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   }
 
   void _showSpacedRepetitionStats() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SpacedRepetitionStatsScreen(
-          deck: _currentDeck,
+    context.pushFade(
+      SpacedRepetitionStatsScreen(
+        deck: _currentDeck,
         ),
-      ),
-    );
+      );
   }
 
   void _showDeckSettings() {

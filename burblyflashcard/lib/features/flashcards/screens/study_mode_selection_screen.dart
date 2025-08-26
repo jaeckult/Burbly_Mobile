@@ -275,10 +275,7 @@ class StudyModeSelectionScreen extends StatelessWidget {
         break;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => studyScreen),
-    );
+    context.pushSharedAxis(studyScreen);
   }
 }
 

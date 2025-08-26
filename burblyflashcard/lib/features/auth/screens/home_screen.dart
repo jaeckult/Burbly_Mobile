@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth_service.dart';
 import '../../flashcards/screens/flashcard_home_screen.dart';
+import '../../../core/core.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -165,7 +166,9 @@ class HomeScreen extends StatelessWidget {
                       title: 'My Decks',
                       subtitle: 'Manage your flashcard decks',
                       onTap: () {
-                        Navigator.pushNamed(context, '/flashcards');
+                        context.pushFade(
+                          const FlashcardHomeScreen(),
+                        );
                       },
                     ),
                   ),

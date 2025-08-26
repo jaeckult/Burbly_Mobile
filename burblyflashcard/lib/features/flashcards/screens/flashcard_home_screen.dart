@@ -168,9 +168,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         actions: [
           IconButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SearchScreen()),
+              context.pushSlide(
+                const SearchScreen(),
               );
             },
             icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
@@ -178,9 +177,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
           ),
           IconButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+              context.pushFade(
+                const NotificationSettingsScreen(),
               );
             },
             icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
@@ -283,7 +281,11 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     title: const Text('Deck Packs', style: TextStyle(fontSize: 14)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+                      NavigationHelper.pushAndClearStack(
+                        context,
+                        const DeckPackListScreen(),
+                        transitionType: MaterialMotionTransitionType.fadeThrough,
+                      );
                     },
                   ),
                   ListTile(
@@ -300,9 +302,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     title: const Text('Notes', style: TextStyle(fontSize: 14)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const NotesScreen()),
+                      context.pushFade(
+                        const NotesScreen(),
                       );
                     },
                   ),
@@ -313,9 +314,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     title: const Text('Statistics', style: TextStyle(fontSize: 14)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => StatsPage()),
+                      context.pushFade(
+                        StatsPage(),
                       );
                     },
                   ),
@@ -326,9 +326,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     title: const Text('Notifications', style: TextStyle(fontSize: 14)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                      context.pushFade(
+                        const NotificationSettingsScreen(),
                       );
                     },
                   ),
@@ -373,9 +372,8 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const PetManagementScreen()),
+                      context.pushSlide(
+                        const PetManagementScreen(),
                       );
                     },
                   ),
@@ -658,22 +656,18 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   }
 
   void _createNewDeck() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateDeckScreen(
-          onDeckCreated: (deck) {
-            setState(() => _decks.add(deck));
-          },
-        ),
+    context.pushScale(
+      CreateDeckScreen(
+        onDeckCreated: (deck) {
+          setState(() => _decks.add(deck));
+        },
       ),
     );
   }
 
   void _openDeck(Deck deck) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DeckDetailScreen(deck: deck)),
+    context.pushSharedAxis(
+      DeckDetailScreen(deck: deck),
     ).then((_) => _loadDecks());
   }
 
