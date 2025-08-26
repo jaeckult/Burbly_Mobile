@@ -13,7 +13,6 @@ import 'flashcard_home_screen.dart';
 import '../../stats/stats_page.dart';
 import 'notification_settings_screen.dart';
 import '../widgets/notification_widget.dart';
-import '../../pets/widgets/pet_companion_widget.dart';
 import '../../pets/screens/pet_management_screen.dart';
 
 class DeckPackListScreen extends StatefulWidget {
@@ -45,6 +44,15 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
       // Ensure DataService is initialized
       if (!_dataService.isInitialized) {
         await _dataService.initialize();
+      }
+
+      // If user is signed in, pull latest cloud data (fresh install scenario)
+      if (_authService.currentUser != null) {
+        try {
+          await _dataService.loadDataFromFirestore();
+        } catch (e) {
+          // ignore and continue with local
+        }
       }
 
       _isGuestMode = await _dataService.isGuestMode();
@@ -291,6 +299,14 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         await prefs.setBool('isGuestMode', false);
 
         setState(() => _isGuestMode = false);
+
+        // After sign-in, pull cloud data and refresh lists
+        try {
+          await _dataService.initialize();
+          await _dataService.loadDataFromFirestore();
+          await _loadDeckPacks();
+          await _loadAllDecks();
+        } catch (e) {}
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -875,7 +891,7 @@ floatingActionButton: Transform.translate(
 
     final decks = _decksInPacks[deckPack.id] ?? [];
     final expanded = _expandedPacks[deckPack.id] ?? false;
-    final packColor = Color(int.parse('0xFF${deckPack.coverColor ?? '42A5F5'}'));
+    final packColor = Color(int.parse('0xFF${deckPack.coverColor}'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -1074,9 +1090,7 @@ floatingActionButton: Transform.translate(
 
  Widget _buildDeckPackDetails(DeckPack deckPack) {
   final decks = _decksInPacks[deckPack.id] ?? [];
-  final Color baseColor = deckPack.coverColor != null
-      ? Color(int.parse('0xFF${deckPack.coverColor}'))
-      : Theme.of(context).colorScheme.primary;
+  final Color baseColor = Color(int.parse('0xFF${deckPack.coverColor}'));
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,

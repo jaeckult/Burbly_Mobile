@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/core.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -26,6 +27,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (!isFirstLaunch) {
       // Not first launch, check if user is already signed in
       if (_authService.currentUser != null) {
+        try {
+          await DataService().initialize();
+          await DataService().loadDataFromFirestore();
+        } catch (e) {}
         _navigateToHome();
       }
     }
@@ -40,6 +45,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         // Mark as not first launch
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isFirstLaunch', false);
+        await prefs.setBool('isGuestMode', false);
+        try {
+          await DataService().initialize();
+          await DataService().loadDataFromFirestore();
+        } catch (e) {}
         
         if (mounted) {
           _navigateToHome();
