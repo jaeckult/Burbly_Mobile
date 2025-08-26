@@ -3,6 +3,7 @@ import '../../../core/models/pet.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class PetManagementScreen extends StatefulWidget {
   const PetManagementScreen({super.key});
@@ -37,13 +38,13 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pet Management'),
-        actions: [
-          IconButton(
-            onPressed: () => _showAdoptPetDialog(),
-            icon: const Icon(Icons.add),
-            tooltip: 'Adopt New Pet',
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     onPressed: () => _showAdoptPetDialog(),
+        //     icon: const Icon(Icons.add),
+        //     tooltip: 'Adopt New Pet',
+        //   ),
+        // ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -428,26 +429,28 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     }
   }
 
-  IconData _getPetIcon(PetType type) {
-    switch (type) {
-      case PetType.cat:
-        return Icons.pets;
-      case PetType.dog:
-        return Icons.pets;
-      case PetType.rabbit:
-        return Icons.pets;
-      case PetType.bird:
-        return Icons.flutter_dash;
-      case PetType.fish:
-        return Icons.water;
-      case PetType.hamster:
-        return Icons.pets;
-      case PetType.turtle:
-        return Icons.pets;
-      case PetType.dragon:
-        return Icons.local_fire_department;
-    }
+IconData _getPetIcon(PetType type) {
+  switch (type) {
+    case PetType.cat:
+      return FontAwesomeIcons.cat;
+    case PetType.dog:
+      return FontAwesomeIcons.dog;
+    case PetType.rabbit:
+      return FontAwesomeIcons.cat; // in FontAwesome
+    case PetType.bird:
+      return FontAwesomeIcons.dove;
+    case PetType.fish:
+      return FontAwesomeIcons.fish;
+    case PetType.hamster:
+      return FontAwesomeIcons.wheelchair; // no hamster icon, pick alt or custom
+    case PetType.turtle:
+      return FontAwesomeIcons.kiwiBird; // closest (quirky alternative)
+    case PetType.dragon:
+      return FontAwesomeIcons.dragon;
+    default:
+      return Icons.help_outline;
   }
+}
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();

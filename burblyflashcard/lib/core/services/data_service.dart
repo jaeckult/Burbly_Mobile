@@ -1259,4 +1259,13 @@ class DataService {
     await _notesBox.close();
     await _studySessionsBox.close();
   }
+
+  Future<String?> getDeckPackName(String s) async {
+  if (!_isInitialized) {
+    throw Exception('DataService has not been initialized. Please call initialize() first.');
+  }
+
+  final pack = _deckPacksBox.get(s);
+  return pack?.name;
+}
 }

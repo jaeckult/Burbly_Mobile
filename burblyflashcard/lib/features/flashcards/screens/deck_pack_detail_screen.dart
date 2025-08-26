@@ -438,7 +438,11 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.deckPack.name),
+        title: Text(
+          widget.deckPack.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: Color(int.parse('0xFF${widget.deckPack.coverColor ?? 'FF9800'}')),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -498,6 +502,8 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               if (widget.deckPack.description.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -507,6 +513,8 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 16,
                   ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
               const SizedBox(height: 16),
@@ -627,6 +635,8 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(

@@ -1,3 +1,4 @@
+import 'package:burblyflashcard/features/pets/screens/pet_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,10 +12,8 @@ import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
 import 'notification_settings_screen.dart';
 import '../../stats/stats_page.dart';
-
 import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
-
 
 class FlashcardHomeScreen extends StatefulWidget {
   const FlashcardHomeScreen({super.key});
@@ -68,11 +67,9 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
 
   Future<void> _initializeData() async {
     try {
-      // Ensure DataService is initialized
       if (!_dataService.isInitialized) {
         await _dataService.initialize();
       }
-      
       _isGuestMode = await _dataService.isGuestMode();
       _isDarkMode = AdaptiveThemeService.isDarkMode(context);
       await _loadDecks();
@@ -92,12 +89,9 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
     try {
       final result = await _authService.signInWithGoogle();
       if (result != null) {
-        // Update guest mode status
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isGuestMode', false);
-        
         setState(() => _isGuestMode = false);
-        
         if (mounted) {
           SnackbarUtils.showSuccessSnackbar(
             context,
@@ -118,7 +112,6 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   Future<void> _backupToCloud() async {
     try {
       await _dataService.backupToFirestore();
-      
       if (mounted) {
         SnackbarUtils.showSuccessSnackbar(
           context,
@@ -140,9 +133,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
       await _authService.signOut();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isGuestMode', true);
-      
       setState(() => _isGuestMode = true);
-      
       if (mounted) {
         SnackbarUtils.showInfoSnackbar(
           context,
@@ -163,7 +154,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Decks'),
+        title: const Text('My Decks', style: TextStyle(fontWeight: FontWeight.w600)),
         elevation: 0,
         centerTitle: true,
         leading: Builder(
@@ -175,33 +166,26 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
           ),
         ),
         actions: [
-          // Search button
           IconButton(
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const SearchScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
               );
             },
             icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
             tooltip: 'Search',
           ),
-          // Notification settings button
           IconButton(
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationSettingsScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
               );
             },
             icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
             tooltip: 'Notification Settings',
           ),
-          // Theme toggle button
           IconButton(
             onPressed: () {
               setState(() {
@@ -228,8 +212,7 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
             )
           : _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showActionOptions(),
-        backgroundColor: Theme.of(context).primaryColor,
+        onPressed: _showActionOptions,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Add'),
@@ -237,16 +220,14 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
     );
   }
 
-Widget _buildDrawer() {
-  final user = FirebaseAuth.instance.currentUser;
-
-  return Drawer(
-    width: MediaQuery.of(context).size.width * 0.75, // 75% of screen width
-    child: SafeArea(
-      child: Column(
-        children: [
-          // --- Header ---
-          UserAccountsDrawerHeader(
+  Widget _buildDrawer() {
+    final user = FirebaseAuth.instance.currentUser;
+    return Drawer(
+      width: MediaQuery.of(context).size.width * 0.75,
+      child: SafeArea(
+        child: Column(
+          children: [
+            UserAccountsDrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -284,237 +265,193 @@ Widget _buildDrawer() {
             ),
           ),
 
-          // --- Drawer items ---
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Text(
-                    "Study",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Colors.grey),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Text(
+                      "Study",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
+                    ),
                   ),
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: const Icon(Icons.home_outlined, size: 22, color: Colors.blue),
-                  title:
-                      const Text('Deck Packs', style: TextStyle(fontSize: 14)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamedAndRemoveUntil(
-                      context, 
-                      '/home', 
-                      (route) => false
-                    );
-                  },
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: const Icon(Icons.school_outlined, size: 22, color: Colors.green),
-                  title: const Text('My Decks', style: TextStyle(fontSize: 14)),
-                  onTap: () => Navigator.pop(context),
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: const Icon(Icons.note_outlined, size: 22, color: Colors.orange),
-                  title: const Text('Notes', style: TextStyle(fontSize: 14)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const NotesScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: const Icon(Icons.analytics_outlined, size: 22, color: Colors.purple),
-                  title:
-                      const Text('Statistics', style: TextStyle(fontSize: 14)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => StatsPage()),
-                    );
-                  },
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading:
-                      const Icon(Icons.notifications_outlined, size: 22, color: Colors.red),
-                  title:
-                      const Text('Notifications', style: TextStyle(fontSize: 14)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationSettingsScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: Icon(
-                      _isDarkMode
-                          ? Icons.light_mode_outlined
-                          : Icons.dark_mode_outlined,
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.home_outlined, size: 22, color: Colors.blue),
+                    title: const Text('Deck Packs', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+                    },
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.school_outlined, size: 22, color: Colors.green),
+                    title: const Text('My Decks', style: TextStyle(fontSize: 14)),
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.note_outlined, size: 22, color: Colors.orange),
+                    title: const Text('Notes', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotesScreen()),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.analytics_outlined, size: 22, color: Colors.purple),
+                    title: const Text('Statistics', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => StatsPage()),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.notifications_outlined, size: 22, color: Colors.red),
+                    title: const Text('Notifications', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: Icon(
+                      _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       size: 22,
-                      color: _isDarkMode ? Colors.yellow[700] : Colors.black),
-                  title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode',
-                      style: const TextStyle(fontSize: 14)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _isDarkMode = !_isDarkMode;
-                      AdaptiveThemeService.toggleTheme(context);
-                    });
-                  },
-                ),
-                ListTile(
-  dense: true,
-  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-  leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
-  title: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const Text(
-        'Pet Management',
-        style: TextStyle(fontSize: 14),
-      ),
-      const SizedBox(width: 6), // spacing between text and badge
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.orange.shade600,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          'Testing',
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    ],
-  ),
- 
-),
-
-                const Divider(height: 1, thickness: 0.5),
-
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Text(
-                    "Account",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Colors.grey),
-                  ),
-                ),
-
-                if (_isGuestMode)
-                  ListTile(
-                    dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                    leading:
-                        const Icon(Icons.cloud_sync_outlined, size: 22, color: Colors.blueAccent),
-                    title: const Text('Sign in with Google',
-                        style: TextStyle(fontSize: 14)),
-                    subtitle: const Text('Sync your data',
-                        style: TextStyle(fontSize: 12)),
+                      color: _isDarkMode ? Colors.yellow[700] : Colors.black,
+                    ),
+                    title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode', style: const TextStyle(fontSize: 14)),
                     onTap: () {
                       Navigator.pop(context);
-                      _signInWithGoogle();
-                    },
-                  )
-                else ...[
-                  ListTile(
-                    dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                    leading: const Icon(Icons.backup_outlined, size: 22, color: Colors.indigo),
-                    title: const Text('Backup to Cloud',
-                        style: TextStyle(fontSize: 14)),
-                    subtitle: const Text('Sync your data',
-                        style: TextStyle(fontSize: 12)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _backupToCloud();
+                      setState(() {
+                        _isDarkMode = !_isDarkMode;
+                        AdaptiveThemeService.toggleTheme(context);
+                      });
                     },
                   ),
                   ListTile(
                     dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                    leading: const Icon(Icons.logout, size: 22, color: Colors.redAccent),
-                    title: const Text('Sign out', style: TextStyle(fontSize: 14)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
+                    title: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Pet Management', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade600,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Testing',
+                            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
                     onTap: () {
                       Navigator.pop(context);
-                      _signOut();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PetManagementScreen()),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, thickness: 0.5),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Text(
+                      "Account",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
+                    ),
+                  ),
+                  if (_isGuestMode)
+                    ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      leading: const Icon(Icons.cloud_sync_outlined, size: 22, color: Colors.blueAccent),
+                      title: const Text('Sign in with Google', style: TextStyle(fontSize: 14)),
+                      subtitle: const Text('Sync your data', style: TextStyle(fontSize: 12)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _signInWithGoogle();
+                      },
+                    )
+                  else ...[
+                    ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      leading: const Icon(Icons.backup_outlined, size: 22, color: Colors.indigo),
+                      title: const Text('Backup to Cloud', style: TextStyle(fontSize: 14)),
+                      subtitle: const Text('Sync your data', style: TextStyle(fontSize: 12)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _backupToCloud();
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      leading: const Icon(Icons.logout, size: 22, color: Colors.redAccent),
+                      title: const Text('Sign out', style: TextStyle(fontSize: 14)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _signOut();
+                      },
+                    ),
+                  ],
+                  const Divider(height: 1, thickness: 0.5),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.info_outline, size: 22, color: Colors.grey),
+                    title: const Text('About', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAboutDialog();
                     },
                   ),
                 ],
-
-                const Divider(height: 1, thickness: 0.5),
-
-                ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: const Icon(Icons.info_outline, size: 22, color: Colors.grey),
-                  title:
-                      const Text('About', style: TextStyle(fontSize: 14)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showAboutDialog();
-                  },
-                ),
-              ],
+              ),
             ),
-          ),
-
-          // --- Footer ---
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              "v1.0.0",
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "v1.0.0",
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildBody() {
     return Column(
       children: [
-        
-        // Decks content
         Expanded(
           child: _decks.isEmpty
               ? _buildEmptyState()
@@ -526,7 +463,7 @@ Widget _buildDrawer() {
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 0.8,
+                      childAspectRatio: 0.75,
                     ),
                     itemCount: _decks.length,
                     itemBuilder: (context, index) {
@@ -553,16 +490,17 @@ Widget _buildDrawer() {
           const SizedBox(height: 16),
           Text(
             'No decks yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Create your first deck to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -570,8 +508,10 @@ Widget _buildDrawer() {
             icon: const Icon(Icons.add),
             label: const Text('Create Deck'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
         ],
@@ -581,10 +521,8 @@ Widget _buildDrawer() {
 
   Widget _buildDeckCard(Deck deck) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => _openDeck(deck),
         onLongPress: () => _showDeckOptions(deck),
@@ -609,16 +547,14 @@ Widget _buildDrawer() {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
+                    Flexible(
                       child: Text(
                         deck.name,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
@@ -630,48 +566,60 @@ Widget _buildDrawer() {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  deck.description,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
+                Flexible(
+                  child: Text(
+                    deck.description,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const Spacer(),
-                
-                // Pack indicator (if deck is in a pack)
-                if (deck.packId != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.folder,
-                          color: Colors.white,
-                          size: 14,
+                if (deck.packId != null)
+                  FutureBuilder<String?>(
+                    future: _dataService.getDeckPackName(deck.packId!),
+                    builder: (context, snapshot) {
+                      String displayText;
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        displayText = 'Loading...';
+                      } else if (snapshot.hasError) {
+                        displayText = 'Error';
+                        if (mounted) {
+                          SnackbarUtils.showErrorSnackbar(context, 'Failed to load pack name: ${snapshot.error}');
+                        }
+                      } else {
+                        displayText = snapshot.data ?? 'Unknown Pack';
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'In Pack',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.folder, color: Colors.white, size: 14),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                displayText,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-                ],
-                
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -685,10 +633,7 @@ Widget _buildDrawer() {
                     ),
                     Text(
                       _formatDate(deck.updatedAt),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
                     ),
                   ],
                 ),
@@ -703,11 +648,8 @@ Widget _buildDrawer() {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-
     if (difference.inDays == 0) {
       return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
     } else if (difference.inDays < 7) {
       return '${difference.inDays}d ago';
     } else {
@@ -731,22 +673,23 @@ Widget _buildDrawer() {
   void _openDeck(Deck deck) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => DeckDetailScreen(deck: deck),
-      ),
+      MaterialPageRoute(builder: (context) => DeckDetailScreen(deck: deck)),
     ).then((_) => _loadDecks());
   }
 
   void _showDeckOptions(Deck deck) {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit),
+              leading: const Icon(Icons.edit, color: Colors.blue),
               title: const Text('Edit Deck'),
               onTap: () {
                 Navigator.pop(context);
@@ -790,7 +733,6 @@ Widget _buildDrawer() {
     if (confirmed == true) {
       await _dataService.deleteDeck(deck.id);
       setState(() => _decks.removeWhere((d) => d.id == deck.id));
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -807,31 +749,26 @@ Widget _buildDrawer() {
       context: context,
       applicationName: 'Burbly Flashcard',
       applicationVersion: '1.0.0',
-      applicationIcon: Icon(
-        Icons.school,
-        size: 48,
-        color: Theme.of(context).primaryColor,
-      ),
+      applicationIcon: Icon(Icons.school, size: 48, color: Theme.of(context).colorScheme.primary),
       children: [
-        const Text(
-          'A smart flashcard app that works offline and syncs your data when you sign in.',
-        ),
+        const Text('A smart flashcard app that works offline and syncs your data when you sign in.'),
       ],
     );
   }
 
-
-
   void _showActionOptions() {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.school),
+              leading: const Icon(Icons.school, color: Colors.blue),
               title: const Text('Create New Deck'),
               onTap: () {
                 Navigator.pop(context);

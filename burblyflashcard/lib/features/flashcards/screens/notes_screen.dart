@@ -176,6 +176,7 @@ class _NotesScreenState extends State<NotesScreen> {
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
+      
     );
   }
 
@@ -193,8 +194,11 @@ class _NotesScreenState extends State<NotesScreen> {
           final note = _notes[index];
           return _buildNoteCard(note);
         },
+        
       ),
+      
     );
+    
   }
 
   Widget _buildEmptyState() {

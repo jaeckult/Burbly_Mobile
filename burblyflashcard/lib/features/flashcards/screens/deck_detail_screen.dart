@@ -663,12 +663,12 @@ void _showTimerSettings() {
       await _dataService.deleteFlashcard(flashcard.id);
       await _loadFlashcards();
       
-             if (mounted) {
-         SnackbarUtils.showWarningSnackbar(
-           context,
-           'Flashcard deleted',
-         );
-       }
+      if (mounted) {
+        SnackbarUtils.showWarningSnackbar(
+          context,
+          'Flashcard deleted',
+        );
+      }
     }
   }
 
@@ -676,7 +676,11 @@ void _showTimerSettings() {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentDeck.name),
+        title: Text(
+          _currentDeck.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         elevation: 0,
         centerTitle: true,
         actions: [
@@ -700,30 +704,34 @@ void _showTimerSettings() {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-             floatingActionButton: FloatingActionButton(
-         onPressed: _addFlashcard,
-         backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-         foregroundColor: Colors.white,
-         child: const Icon(Icons.add),
-       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addFlashcard,
+        backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
+      ),
     );
   }
 
   Widget _buildBody() {
-    return Column(
-      children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 600;
+        
+        return Column(
+          children: [
         // Deck Info Card
         Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
+          margin: EdgeInsets.all(isWide ? 24 : 16),
+          padding: EdgeInsets.all(isWide ? 24 : 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-                           colors: [
-               Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-               Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')).withOpacity(0.7),
-             ],
+              colors: [
+                Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+                Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')).withOpacity(0.7),
+              ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -744,6 +752,8 @@ void _showTimerSettings() {
                    fontSize: 24,
                    fontWeight: FontWeight.bold,
                  ),
+                 maxLines: 2,
+                 overflow: TextOverflow.ellipsis,
                ),
                if (_currentDeck.description.isNotEmpty) ...[
                  const SizedBox(height: 8),
@@ -753,6 +763,8 @@ void _showTimerSettings() {
                      color: Colors.white.withOpacity(0.9),
                      fontSize: 16,
                    ),
+                   maxLines: 3,
+                   overflow: TextOverflow.ellipsis,
                  ),
                ],
               const SizedBox(height: 16),
@@ -797,8 +809,8 @@ void _showTimerSettings() {
 
         // Settings Indicator
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(12),
+          margin: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 8),
+          padding: EdgeInsets.all(isWide ? 16 : 12),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
@@ -837,22 +849,22 @@ void _showTimerSettings() {
                         Icon(
                           Icons.timer,
                           size: 14,
-                                                   color: _currentDeck.timerDuration != null 
-                             ? Colors.orange 
-                             : Colors.grey[400],
+                        color: _currentDeck.timerDuration != null 
+                          ? Colors.orange 
+                          : Colors.grey[400],
                        ),
                        const SizedBox(width: 4),
                        Expanded(
                          child: Text(
                            _currentDeck.timerDuration != null 
-                               ? '${_currentDeck.timerDuration}s'
-                               : 'No timer',
-                           style: TextStyle(
-                             fontSize: 12,
-                             color: _currentDeck.timerDuration != null 
-                                 ? Colors.orange[700]
-                                 : Colors.grey[500],
-                           ),
+                              ? '${_currentDeck.timerDuration}s'
+                              : 'No timer',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _currentDeck.timerDuration != null 
+                                ? Colors.orange[700]
+                                : Colors.grey[500],
+                          ),
                          ),
                        ),
                       ],
@@ -865,22 +877,22 @@ void _showTimerSettings() {
                         Icon(
                           Icons.repeat,
                           size: 14,
-                                                   color: _currentDeck.spacedRepetitionEnabled 
-                             ? Colors.green 
-                             : Colors.grey[400],
+                        color: _currentDeck.spacedRepetitionEnabled 
+                          ? Colors.green 
+                          : Colors.grey[400],
                        ),
                        const SizedBox(width: 4),
                        Expanded(
                          child: Text(
                            _currentDeck.spacedRepetitionEnabled 
-                               ? 'SR Enabled'
-                               : 'SR Disabled',
-                           style: TextStyle(
-                             fontSize: 12,
-                             color: _currentDeck.spacedRepetitionEnabled 
-                                 ? Colors.green[700]
-                                 : Colors.grey[500],
-                           ),
+                              ? 'SR Enabled'
+                              : 'SR Disabled',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _currentDeck.spacedRepetitionEnabled 
+                                ? Colors.green[700]
+                                : Colors.grey[500],
+                          ),
                          ),
                        ),
                       ],
@@ -896,35 +908,63 @@ void _showTimerSettings() {
         if (_flashcards.isNotEmpty) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _startStudy,
-                    icon: const Icon(Icons.school),
-                    label: const Text('Study'),
-                                         style: ElevatedButton.styleFrom(
-                       backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-                       foregroundColor: Colors.white,
-                       padding: const EdgeInsets.symmetric(vertical: 12),
-                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _showSpacedRepetitionStats,
-                    icon: const Icon(Icons.analytics),
-                    label: const Text('SR Stats'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+            child: isWide 
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _startStudy,
+                        icon: const Icon(Icons.school),
+                        label: const Text('Study'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showSpacedRepetitionStats,
+                        icon: const Icon(Icons.analytics),
+                        label: const Text('SR Stats'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _startStudy,
+                      icon: const Icon(Icons.school),
+                      label: const Text('Study'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: _showSpacedRepetitionStats,
+                      icon: const Icon(Icons.analytics),
+                      label: const Text('SR Stats'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
           ),
         ],
 
@@ -933,7 +973,7 @@ void _showTimerSettings() {
           child: _flashcards.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
                   itemCount: _flashcards.length,
                   itemBuilder: (context, index) {
                     final flashcard = _flashcards[index];
@@ -942,6 +982,8 @@ void _showTimerSettings() {
                 ),
         ),
       ],
+    );
+      },
     );
   }
 
@@ -974,10 +1016,10 @@ void _showTimerSettings() {
             onPressed: _addFlashcard,
             icon: const Icon(Icons.add),
             label: const Text('Add Flashcard'),
-                         style: ElevatedButton.styleFrom(
-               backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-               foregroundColor: Colors.white,
-             ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),
@@ -1002,13 +1044,13 @@ void _showTimerSettings() {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child:                     Text(
                       'Q: ${flashcard.question}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -1027,7 +1069,7 @@ void _showTimerSettings() {
                   fontSize: 14,
                   color: Colors.grey[600],
                 ),
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 12),
