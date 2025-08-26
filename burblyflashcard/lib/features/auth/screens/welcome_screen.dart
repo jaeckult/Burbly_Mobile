@@ -27,10 +27,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (!isFirstLaunch) {
       // Not first launch, check if user is already signed in
       if (_authService.currentUser != null) {
-        try {
-          await DataService().initialize();
-          await DataService().loadDataFromFirestore();
-        } catch (e) {}
         _navigateToHome();
       }
     }

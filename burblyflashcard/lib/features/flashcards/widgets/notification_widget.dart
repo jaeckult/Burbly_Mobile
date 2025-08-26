@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/core.dart';
 import '../../../core/models/flashcard.dart';
+import '../screens/anki_study_screen.dart';
 import '../screens/notification_settings_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationWidget extends StatefulWidget {
   const NotificationWidget({super.key});
@@ -12,9 +15,64 @@ class NotificationWidget extends StatefulWidget {
 
 class _NotificationWidgetState extends State<NotificationWidget> {
   final NotificationService _notificationService = NotificationService();
+  final DataService _dataService = DataService();
   List<Flashcard> _overdueCards = [];
   List<Flashcard> _cardsDueToday = [];
   bool _isLoading = true;
+
+  Future<void> _startAutomaticStudy() async {
+    try {
+      // Dismiss widget for today
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setString('notification_widget_dismissed_date', '${now.year}-${now.month}-${now.day}');
+      if (mounted) {
+        setState(() {
+          _overdueCards = [];
+          _cardsDueToday = [];
+        });
+      }
+
+      // Decide target set: prefer overdue; else today's due
+      final targetCards = _overdueCards.isNotEmpty ? _overdueCards : _cardsDueToday;
+      if (targetCards.isEmpty) {
+        // Fallback to My Decks if nothing to review
+        Navigator.pushNamed(context, '/flashcards');
+        return;
+      }
+
+      // Group by deckId and pick deck with most due cards
+      final Map<String, List<Flashcard>> byDeck = {};
+      for (final card in targetCards) {
+        byDeck.putIfAbsent(card.deckId, () => []).add(card);
+      }
+      String bestDeckId = byDeck.keys.first;
+      int bestCount = byDeck[bestDeckId]!.length;
+      byDeck.forEach((deckId, cards) {
+        if (cards.length > bestCount) {
+          bestDeckId = deckId;
+          bestCount = cards.length;
+        }
+      });
+
+      // Load deck and its flashcards for study
+      final decks = await _dataService.getDecks();
+      final deck = decks.firstWhere((d) => d.id == bestDeckId, orElse: () => decks.isNotEmpty ? decks.first : throw Exception('No decks found'));
+      final allDeckCards = await _dataService.getFlashcardsForDeck(deck.id);
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AnkiStudyScreen(deck: deck, flashcards: allDeckCards),
+        ),
+      );
+    } catch (e) {
+      // Fallback navigation
+      if (!mounted) return;
+      Navigator.pushNamed(context, '/flashcards');
+    }
+  }
 
   @override
   void initState() {
@@ -26,6 +84,20 @@ class _NotificationWidgetState extends State<NotificationWidget> {
     setState(() => _isLoading = true);
     
     try {
+      // Respect dismissal for today
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final todayKey = '${now.year}-${now.month}-${now.day}';
+      final dismissedDate = prefs.getString('notification_widget_dismissed_date');
+      if (dismissedDate == todayKey) {
+        setState(() {
+          _overdueCards = [];
+          _cardsDueToday = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
       final overdueCards = await _notificationService.getOverdueCards();
       final cardsDueToday = await _notificationService.getCardsDueToday();
       
@@ -133,10 +205,7 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Navigate to study screen or deck list
-                        Navigator.pushNamed(context, '/flashcards');
-                      },
+                      onPressed: _startAutomaticStudy,
                       icon: const Icon(Icons.school),
                       label: const Text('Review'),
                       style: ElevatedButton.styleFrom(
@@ -148,8 +217,14 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        // Remove the widget by setting state to hide it
+                      onPressed: () async {
+                        // Persist dismissal for today and hide
+                        try {
+                          final prefs = await SharedPreferences.getInstance();
+                          final now = DateTime.now();
+                          await prefs.setString('notification_widget_dismissed_date', '${now.year}-${now.month}-${now.day}');
+                        } catch (_) {}
+                        if (!mounted) return;
                         setState(() {
                           _overdueCards = [];
                           _cardsDueToday = [];

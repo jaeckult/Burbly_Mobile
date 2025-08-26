@@ -606,6 +606,9 @@ class DataService {
         await _saveStudySessionToFirestore(session);
       }
 
+      // Backup relevant preferences (streaks, notifications)
+      await _backupPreferencesToFirestore();
+
       print('Backup completed successfully!');
     } catch (e) {
       print('Backup failed: $e');
@@ -732,6 +735,13 @@ class DataService {
     print('Loaded ${studySessionsSnapshot.docs.length} study sessions');
 
     print('Data loading completed!');
+
+    // Restore preferences after data
+    try {
+      await _loadPreferencesFromFirestore();
+    } catch (e) {
+      // Non-fatal
+    }
   }
 
   // ===== FIRESTORE OPERATIONS =====
@@ -789,6 +799,87 @@ class DataService {
         .collection('study_sessions')
         .doc(session.id)
         .set(session.toJson());
+  }
+
+  // ===== PREFERENCES SYNC (streaks, notifications) =====
+
+  Future<void> _backupPreferencesToFirestore() async {
+    if (currentUserId == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = <String, dynamic>{
+        'current_streak': prefs.getInt('current_streak'),
+        'last_study_date': prefs.getString('last_study_date'),
+        'last_streak_celebration': prefs.getString('last_streak_celebration'),
+        'overdue_reminders_enabled': prefs.getBool('overdue_reminders_enabled'),
+        'streak_reminders_enabled': prefs.getBool('streak_reminders_enabled'),
+        'reminder_hour': prefs.getInt('reminder_hour'),
+        'reminder_minute': prefs.getInt('reminder_minute'),
+        'reminder_days': prefs.getStringList('reminder_days'),
+        'last_overdue_check': prefs.getString('last_overdue_check'),
+        'last_reminder_check': prefs.getString('last_reminder_check'),
+      };
+      // Remove nulls to avoid overwriting with null
+      data.removeWhere((key, value) => value == null);
+      await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('meta')
+          .doc('preferences')
+          .set(data, SetOptions(merge: true));
+    } catch (e) {
+      print('Error backing up preferences: $e');
+    }
+  }
+
+  Future<void> _loadPreferencesFromFirestore() async {
+    if (currentUserId == null) return;
+    try {
+      final prefsDoc = await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('meta')
+          .doc('preferences')
+          .get();
+      if (!prefsDoc.exists) return;
+      final data = prefsDoc.data() ?? {};
+      final prefs = await SharedPreferences.getInstance();
+
+      // Write only known keys
+      if (data.containsKey('current_streak')) {
+        await prefs.setInt('current_streak', (data['current_streak'] as num).toInt());
+      }
+      if (data.containsKey('last_study_date')) {
+        await prefs.setString('last_study_date', data['last_study_date'] as String);
+      }
+      if (data.containsKey('last_streak_celebration')) {
+        await prefs.setString('last_streak_celebration', data['last_streak_celebration'] as String);
+      }
+      if (data.containsKey('overdue_reminders_enabled')) {
+        await prefs.setBool('overdue_reminders_enabled', data['overdue_reminders_enabled'] as bool);
+      }
+      if (data.containsKey('streak_reminders_enabled')) {
+        await prefs.setBool('streak_reminders_enabled', data['streak_reminders_enabled'] as bool);
+      }
+      if (data.containsKey('reminder_hour')) {
+        await prefs.setInt('reminder_hour', (data['reminder_hour'] as num).toInt());
+      }
+      if (data.containsKey('reminder_minute')) {
+        await prefs.setInt('reminder_minute', (data['reminder_minute'] as num).toInt());
+      }
+      if (data.containsKey('reminder_days')) {
+        final days = (data['reminder_days'] as List).map((e) => e.toString()).toList();
+        await prefs.setStringList('reminder_days', days);
+      }
+      if (data.containsKey('last_overdue_check')) {
+        await prefs.setString('last_overdue_check', data['last_overdue_check'] as String);
+      }
+      if (data.containsKey('last_reminder_check')) {
+        await prefs.setString('last_reminder_check', data['last_reminder_check'] as String);
+      }
+    } catch (e) {
+      print('Error loading preferences from Firestore: $e');
+    }
   }
 
   Future<void> _deleteDeckFromFirestore(String deckId) async {
@@ -1014,11 +1105,14 @@ class DataService {
         .toList();
     results['flashcards'] = matchingFlashcards;
 
-    // Search notes
+    // Search notes (title, content, tags)
     final matchingNotes = _notesBox.values
-        .where((note) => 
-            note.title.toLowerCase().contains(lowercaseQuery) ||
-            note.content.toLowerCase().contains(lowercaseQuery))
+        .where((note) {
+          final inTitle = note.title.toLowerCase().contains(lowercaseQuery);
+          final inContent = note.content.toLowerCase().contains(lowercaseQuery);
+          final inTags = note.tags.any((t) => t.toLowerCase().contains(lowercaseQuery));
+          return inTitle || inContent || inTags;
+        })
         .toList();
     results['notes'] = matchingNotes;
 

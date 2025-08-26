@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import 'deck_detail_screen.dart';
+import 'note_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -61,6 +62,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Search'),
         backgroundColor: Theme.of(context).primaryColor,
@@ -71,8 +73,9 @@ class _SearchScreenState extends State<SearchScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Column(
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
           // Enhanced Search Bar
           Container(
             padding: const EdgeInsets.all(16),
@@ -143,18 +146,26 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
 
           // Search Results
-          Expanded(
-            child: _buildSearchResults(),
-          ),
-        ],
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: _buildSearchResults(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSearchResults() {
-    if (!_hasSearched) {
-      return Center(
+ Widget _buildSearchResults() {
+  if (!_hasSearched) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
@@ -173,16 +184,16 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'Search Your Content',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).primaryColor,
-              ),
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).primaryColor,
+                  ),
             ),
             const SizedBox(height: 12),
             Text(
               'Find decks, flashcards, and notes quickly',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).hintColor,
-              ),
+                    color: Theme.of(context).hintColor,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -216,12 +227,16 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    if (_isLoading) {
-      return Center(
+  if (_isLoading) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
@@ -238,21 +253,25 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'Searching...',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).hintColor,
-              ),
+                    color: Theme.of(context).hintColor,
+                  ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    final decks = _searchResults['decks'] as List<Deck>? ?? [];
-    final flashcards = _searchResults['flashcards'] as List<Flashcard>? ?? [];
-    final notes = _searchResults['notes'] as List<Note>? ?? [];
+  final decks = _searchResults['decks'] as List<Deck>? ?? [];
+  final flashcards = _searchResults['flashcards'] as List<Flashcard>? ?? [];
+  final notes = _searchResults['notes'] as List<Note>? ?? [];
 
-    if (decks.isEmpty && flashcards.isEmpty && notes.isEmpty) {
-      return Center(
+  if (decks.isEmpty && flashcards.isEmpty && notes.isEmpty) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
@@ -261,7 +280,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 color: Colors.orange.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.search_off,
                 size: 64,
                 color: Colors.orange,
@@ -271,16 +290,16 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'No Results Found',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.orange,
-              ),
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange,
+                  ),
             ),
             const SizedBox(height: 12),
             Text(
               'Try different keywords or check your spelling',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).hintColor,
-              ),
+                    color: Theme.of(context).hintColor,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -294,19 +313,21 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.lightbulb_outline,
                     size: 20,
                     color: Colors.orange,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Search suggestions: deck, card, note',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      'Search suggestions: deck, card, note',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      softWrap: true,
                     ),
                   ),
                 ],
@@ -314,37 +335,39 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ],
         ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Decks Section
-        if (decks.isNotEmpty) ...[
-          _buildSectionHeader('Decks', decks.length),
-          const SizedBox(height: 8),
-          ...decks.map((deck) => _buildDeckCard(deck)),
-          const SizedBox(height: 16),
-        ],
-
-        // Flashcards Section
-        if (flashcards.isNotEmpty) ...[
-          _buildSectionHeader('Flashcards', flashcards.length),
-          const SizedBox(height: 8),
-          ...flashcards.map((flashcard) => _buildFlashcardCard(flashcard)),
-          const SizedBox(height: 16),
-        ],
-
-        // Notes Section
-        if (notes.isNotEmpty) ...[
-          _buildSectionHeader('Notes', notes.length),
-          const SizedBox(height: 8),
-          ...notes.map((note) => _buildNoteCard(note)),
-        ],
-      ],
+      ),
     );
   }
+
+  // Results found
+  return ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      // Decks Section
+      if (decks.isNotEmpty) ...[
+        _buildSectionHeader('Decks', decks.length),
+        const SizedBox(height: 8),
+        ...decks.map((deck) => _buildDeckCard(deck)),
+        const SizedBox(height: 16),
+      ],
+
+      // Flashcards Section
+      if (flashcards.isNotEmpty) ...[
+        _buildSectionHeader('Flashcards', flashcards.length),
+        const SizedBox(height: 8),
+        ...flashcards.map((flashcard) => _buildFlashcardCard(flashcard)),
+        const SizedBox(height: 16),
+      ],
+
+      // Notes Section
+      if (notes.isNotEmpty) ...[
+        _buildSectionHeader('Notes', notes.length),
+        const SizedBox(height: 8),
+        ...notes.map((note) => _buildNoteCard(note)),
+      ],
+    ],
+  );
+}
 
   Widget _buildSectionHeader(String title, int count) {
     return Row(
@@ -514,6 +537,23 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               )
             : null,
+        onTap: () async {
+          final updated = await Navigator.push<Note>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NoteDetailScreen(note: note),
+            ),
+          );
+          if (updated != null) {
+            // update local results view
+            setState(() {
+              final notes = (_searchResults['notes'] as List<Note>? ?? []).toList();
+              final idx = notes.indexWhere((n) => n.id == updated.id);
+              if (idx != -1) notes[idx] = updated;
+              _searchResults['notes'] = notes;
+            });
+          }
+        },
       ),
     );
   }

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import 'add_flashcard_screen.dart';
-import 'study_screen.dart';
-import 'enhanced_study_screen.dart';
 import 'study_mode_selection_screen.dart';
 import 'spaced_repetition_stats_screen.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final Deck deck;
@@ -474,6 +473,77 @@ void _showTimerSettings() {
     );
   }
 
+  Future<void> _editDeck() async {
+    String name = _currentDeck.name;
+    String description = _currentDeck.description;
+    String color = (_currentDeck.coverColor ?? '2196F3').toUpperCase();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Deck'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                initialValue: name,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => name = v,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: description,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => description = v,
+              ),
+              const SizedBox(height: 12),
+              ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                final updated = _currentDeck.copyWith(
+                  name: name.trim(),
+                  description: description.trim(),
+                  coverColor: color.trim().isEmpty ? _currentDeck.coverColor : color.trim(),
+                  updatedAt: DateTime.now(),
+                );
+                await _dataService.updateDeck(updated);
+                setState(() {
+                  _currentDeck = updated;
+                });
+                // ignore: use_build_context_synchronously
+                Navigator.pop(context);
+                if (mounted) {
+                  SnackbarUtils.showSuccessSnackbar(context, 'Deck updated');
+                }
+              } catch (e) {
+                if (mounted) {
+                  SnackbarUtils.showErrorSnackbar(context, 'Update failed: ${e.toString()}');
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showFlashcardOptions(Flashcard flashcard) {
     showModalBottomSheet(
       context: context,
@@ -487,7 +557,7 @@ void _showTimerSettings() {
               title: const Text('Edit Flashcard'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement edit flashcard
+                _editFlashcard(flashcard);
               },
             ),
             ListTile(
@@ -500,6 +570,71 @@ void _showTimerSettings() {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _editFlashcard(Flashcard flashcard) async {
+    final questionController = TextEditingController(text: flashcard.question);
+    final answerController = TextEditingController(text: flashcard.answer);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Flashcard'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: questionController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Question',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: answerController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Answer',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                final updated = flashcard.copyWith(
+                  question: questionController.text.trim(),
+                  answer: answerController.text.trim(),
+                  updatedAt: DateTime.now(),
+                );
+                await _dataService.updateFlashcard(updated);
+                await _loadFlashcards();
+                // ignore: use_build_context_synchronously
+                Navigator.pop(context);
+                if (mounted) {
+                  SnackbarUtils.showSuccessSnackbar(context, 'Flashcard updated');
+                }
+              } catch (e) {
+                if (mounted) {
+                  SnackbarUtils.showErrorSnackbar(context, 'Update failed: ${e.toString()}');
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }
@@ -540,12 +675,16 @@ void _showTimerSettings() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-             appBar: AppBar(
-         title: Text(_currentDeck.name),
-         backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-         foregroundColor: Colors.white,
-         elevation: 0,
+      appBar: AppBar(
+        title: Text(_currentDeck.name),
+        elevation: 0,
+        centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: _editDeck,
+            tooltip: 'Edit Deck',
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _showDeckSettings,

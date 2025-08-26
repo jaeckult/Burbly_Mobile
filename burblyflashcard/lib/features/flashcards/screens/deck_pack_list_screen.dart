@@ -46,14 +46,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         await _dataService.initialize();
       }
 
-      // If user is signed in, pull latest cloud data (fresh install scenario)
-      if (_authService.currentUser != null) {
-        try {
-          await _dataService.loadDataFromFirestore();
-        } catch (e) {
-          // ignore and continue with local
-        }
-      }
+      // Skip cloud load here; restore happens only after sign-in/fresh install
 
       _isGuestMode = await _dataService.isGuestMode();
       _isDarkMode = AdaptiveThemeService.isDarkMode(context);
@@ -155,12 +148,12 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     ).then((_) => _loadAllDecks());
   }
 
-  void _removeDeckFromPack(Deck deck, DeckPack deckPack) async {
+  Future<void> _confirmDeleteDeck(Deck deck) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Remove Deck from Pack'),
-        content: Text('Are you sure you want to remove "${deck.name}" from this pack?'),
+        title: const Text('Delete Deck'),
+        content: Text('Are you sure you want to delete "${deck.name}" and all its flashcards?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -168,8 +161,8 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            child: const Text('Remove'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -177,25 +170,29 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
     if (confirmed == true) {
       try {
-        await _dataService.removeDeckFromPack(deck.id, deckPack.id);
+        // Delete deck locally (and its flashcards via service)
+        await _dataService.deleteDeck(deck.id);
+        await _loadDeckPacks();
         await _loadAllDecks();
-        
+
         if (mounted) {
           SnackbarUtils.showWarningSnackbar(
             context,
-            'Deck "${deck.name}" removed from pack',
+            'Deck "${deck.name}" deleted',
           );
         }
       } catch (e) {
         if (mounted) {
           SnackbarUtils.showErrorSnackbar(
             context,
-            'Error removing deck: ${e.toString()}',
+            'Error deleting deck: ${e.toString()}',
           );
         }
       }
     }
   }
+
+  // Removed stale _removeDeckFromPack in favor of delete flow
 
   void _showDeckPackOptions(DeckPack deckPack) {
     showModalBottomSheet(
@@ -1320,7 +1317,7 @@ floatingActionButton: Transform.translate(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: () => _removeDeckFromPack(deck, deckPack),
+                      onTap: () => _confirmDeleteDeck(deck),
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -1329,9 +1326,9 @@ floatingActionButton: Transform.translate(
                               : Colors.red[50],
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(
-                          Icons.remove_circle_outline,
-                          color: Colors.red, // consistent with the red theme
+                        child: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
                           size: 18,
                         ),
                       ),

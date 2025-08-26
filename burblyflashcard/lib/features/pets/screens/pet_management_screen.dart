@@ -485,58 +485,66 @@ class _AdoptPetDialogState extends State<AdoptPetDialog> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Adopt Your Study Pet'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Pet Name',
-              hintText: 'Enter your pet\'s name',
+Widget build(BuildContext context) {
+  return AlertDialog(
+    title: const Text('Adopt Your Study Pet'),
+    content: SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.8, // prevent wide dialogs
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Pet Name',
+                hintText: 'Enter your pet\'s name',
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Choose your pet type:'),
-          const SizedBox(height: 8),
-          Text(
-            'Note: Only one pet per user is allowed',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.orange,
-              fontStyle: FontStyle.italic,
+            const SizedBox(height: 16),
+            const Text('Choose your pet type:'),
+            const SizedBox(height: 8),
+            Text(
+              'Note: Only one pet per user is allowed',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.orange,
+                    fontStyle: FontStyle.italic,
+                  ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: PetType.values.map((type) {
-              return ChoiceChip(
-                label: Text(type.name.toUpperCase()),
-                selected: _selectedType == type,
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _selectedType = type);
-                  }
-                },
-              );
-            }).toList(),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: PetType.values.map((type) {
+                return ChoiceChip(
+                  label: Text(type.name.toUpperCase()),
+                  selected: _selectedType == type,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedType = type);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _adoptPet,
-          child: const Text('Adopt'),
-        ),
-      ],
-    );
-  }
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      ElevatedButton(
+        onPressed: _adoptPet,
+        child: const Text('Adopt'),
+      ),
+    ],
+  );
+}
 
   void _adoptPet() async {
     final name = _nameController.text.trim();

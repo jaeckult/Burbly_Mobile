@@ -13,6 +13,8 @@ class _NotesScreenState extends State<NotesScreen> {
   final DataService _dataService = DataService();
   List<Note> _notes = [];
   bool _isLoading = true;
+  // Track which note is expanded
+  String? _expandedNoteId;
 
   @override
   void initState() {
@@ -53,54 +55,58 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-void _showNoteOptions(Note note) {
-  showModalBottomSheet(
-    context: context,
-    builder: (context) => Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text('Edit Note'),
-            onTap: () {
-              Navigator.pop(context);
-              _editNote(note);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete, color: Colors.red),
-            title: const Text('Delete Note', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-              _deleteNote(note);
-            },
-          ),
-        ],
+  void _showNoteOptions(Note note) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    ),
-  );
-}
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: const Text('Edit Note'),
+              onTap: () {
+                Navigator.pop(context);
+                _editNote(note);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.redAccent),
+              title: const Text('Delete Note', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteNote(note);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-void _editNote(Note note) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CreateNoteScreen(
-        note: note, // pass existing note
-        onNoteUpdated: (updatedNote) {
-          setState(() {
-            final index = _notes.indexWhere((n) => n.id == updatedNote.id);
-            if (index != -1) {
-              _notes[index] = updatedNote;
-            }
-          });
-        }, onNoteCreated: (Note note) {  },
+  void _editNote(Note note) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateNoteScreen(
+          note: note,
+          onNoteUpdated: (updatedNote) {
+            setState(() {
+              final index = _notes.indexWhere((n) => n.id == updatedNote.id);
+              if (index != -1) {
+                _notes[index] = updatedNote;
+              }
+            });
+          },
+          onNoteCreated: (Note note) {},
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> _deleteNote(Note note) async {
     final confirmed = await showDialog<bool>(
@@ -115,7 +121,7 @@ void _editNote(Note note) {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
             child: const Text('Delete'),
           ),
         ],
@@ -126,12 +132,11 @@ void _editNote(Note note) {
       try {
         await _dataService.deleteNote(note.id);
         setState(() => _notes.removeWhere((n) => n.id == note.id));
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Note "${note.title}" deleted'),
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.redAccent,
             ),
           );
         }
@@ -140,7 +145,7 @@ void _editNote(Note note) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error deleting note: ${e.toString()}'),
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.redAccent,
             ),
           );
         }
@@ -152,17 +157,22 @@ void _editNote(Note note) {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notes'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+  title: const Text(
+    'Notes',
+    style: TextStyle(fontWeight: FontWeight.w600),
+  ),
+  backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+  foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+  elevation: 0,
+  shadowColor: Theme.of(context).shadowColor,
+),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: _createNewNote,
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
@@ -200,16 +210,17 @@ void _editNote(Note note) {
           const SizedBox(height: 16),
           Text(
             'No notes yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
-            ),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Create your first note to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[500],
-            ),
+                  color: Colors.grey[500],
+                ),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -217,8 +228,12 @@ void _editNote(Note note) {
             icon: const Icon(Icons.add),
             label: const Text('Create Note'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.blue[800],
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
         ],
@@ -227,15 +242,21 @@ void _editNote(Note note) {
   }
 
   Widget _buildNoteCard(Note note) {
+    final isExpanded = _expandedNoteId == note.id;
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () => _showNoteOptions(note),
-        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          setState(() {
+            _expandedNoteId = isExpanded ? null : note.id;
+          });
+        },
+        onLongPress: () => _showNoteOptions(note),
+        borderRadius: BorderRadius.circular(0),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -244,36 +265,48 @@ void _editNote(Note note) {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      note.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+  child: Text(
+    note.title,
+    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+    ),
+    overflow: TextOverflow.ellipsis, // optional for long titles
+  ),
+),
+
                   IconButton(
                     onPressed: () => _showNoteOptions(note),
-                    icon: const Icon(Icons.more_vert),
+                    icon: Icon(Icons.more_vert, color: Colors.grey[600]),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                note.content,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 200),
+                firstChild: Text(
+                  note.content,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+                secondChild: Text(
+                  note.content,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  // Tags
                   if (note.tags.isNotEmpty) ...[
                     Icon(
                       Icons.label,
@@ -293,8 +326,6 @@ void _editNote(Note note) {
                       ),
                     ),
                   ],
-                  
-                  // Date
                   Text(
                     _formatDate(note.updatedAt),
                     style: TextStyle(

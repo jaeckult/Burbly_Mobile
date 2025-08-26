@@ -501,6 +501,21 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       final sessionDuration = DateTime.now().difference(_sessionStartTime);
       final accuracy = _cardsReviewed > 0 ? (_cardsCorrect / _cardsReviewed * 100).round() : 0;
 
+      // Persist study session for stats/backup
+      try {
+        final session = StudySession.create(
+          deckId: widget.deck.id,
+          totalCards: _cardsReviewed,
+          correctAnswers: _cardsCorrect,
+          incorrectAnswers: _cardsIncorrect,
+          studyTimeSeconds: sessionDuration.inSeconds,
+          usedTimer: false,
+        );
+        await _dataService.saveStudySession(session);
+      } catch (e) {
+        print('Error saving Anki study session: $e');
+      }
+
       if (mounted) {
         // Show completion dialog with statistics
         await _showCompletionDialog(sessionDuration, accuracy);
