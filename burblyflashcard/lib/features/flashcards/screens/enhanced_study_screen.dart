@@ -202,16 +202,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       // Pause timer during transition
       _pauseTimer();
       
-      // Show brief feedback
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(quality >= 3 ? 'Correct!' : 'Keep practicing!'),
-            backgroundColor: quality >= 3 ? Colors.green : Colors.orange,
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
+     
       
       // Wait a moment then move to next card
       await Future.delayed(const Duration(milliseconds: 800));
