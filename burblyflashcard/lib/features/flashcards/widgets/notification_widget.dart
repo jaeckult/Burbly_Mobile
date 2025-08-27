@@ -60,7 +60,7 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
       // Dismiss widget for a shorter period (1 hour instead of full day)
       final prefs = await SharedPreferences.getInstance();
       final now = DateTime.now();
-      final dismissUntil = now.add(const Duration(hours: 1));
+      final dismissUntil = now.add(const Duration(hours: 4));
       await prefs.setString('notification_widget_dismissed_until', dismissUntil.toIso8601String());
       
       if (mounted) {
@@ -92,16 +92,30 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
         }
       });
 
-      // Load deck and its flashcards for study
+      // Load deck
       final decks = await _dataService.getDecks();
       final deck = decks.firstWhere((d) => d.id == bestDeckId, orElse: () => decks.isNotEmpty ? decks.first : throw Exception('No decks found'));
-      final allDeckCards = await _dataService.getFlashcardsForDeck(deck.id);
+
+      // Use only due cards for that deck (overdue preferred; else today's due)
+      final dueCardsForDeck = targetCards.where((c) => c.deckId == deck.id).toList();
+      if (dueCardsForDeck.isEmpty) {
+        // Fallback: if something went wrong, load all deck cards
+        final fallback = await _dataService.getFlashcardsForDeck(deck.id);
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AnkiStudyScreen(deck: deck, flashcards: fallback),
+          ),
+        );
+        return;
+      }
 
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => AnkiStudyScreen(deck: deck, flashcards: allDeckCards),
+          builder: (context) => AnkiStudyScreen(deck: deck, flashcards: dueCardsForDeck),
         ),
       );
     } catch (e) {
@@ -370,27 +384,7 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
                 ],
               ),
               // Debug buttons (only show in debug mode)
-              if (const bool.fromEnvironment('dart.vm.product') == false) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _forceShowWidget,
-                        child: const Text('Debug: Force Show'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _testNotificationService,
-                        child: const Text('Debug: Test Service'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
+           ],
           ),
         ),
       ),

@@ -13,6 +13,7 @@ import 'core/services/background_service.dart';
 import 'core/services/adaptive_theme_service.dart';
 import 'core/services/pet_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,7 +72,7 @@ class MyApp extends StatelessWidget {
     return AdaptiveTheme(
       light: AdaptiveThemeService.lightTheme,
       dark: AdaptiveThemeService.darkTheme,
-      initial: AdaptiveThemeMode.system,
+      initial: AdaptiveThemeMode.dark,
       builder: (theme, darkTheme) => MaterialApp(
         title: 'Burbly Flashcard',
         debugShowCheckedModeBanner: false,
@@ -109,9 +110,14 @@ class _RootScreenState extends State<_RootScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+      final isGuestMode = prefs.getBool('isGuestMode') ?? false;
+      final currentUser = FirebaseAuth.instance.currentUser;
 
       // Only show welcome/login on fresh install; otherwise go straight to home
       if (isFirstLaunch) {
+        setState(() => _screen = const WelcomeScreen());
+      } else if (!isGuestMode && currentUser == null) {
+        // If not first launch but no signed-in user and not in guest mode, show welcome
         setState(() => _screen = const WelcomeScreen());
       } else {
         setState(() => _screen = const DeckPackListScreen());
@@ -125,11 +131,31 @@ class _RootScreenState extends State<_RootScreen> {
   @override
   Widget build(BuildContext context) {
     if (_screen == null) {
-      return const Scaffold(
-        body: SizedBox.expand(
-          child: ColoredBox(
-            color: Colors.white,
-            child: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFFFFFF), Color(0xFFF5F7FA)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              'burbly',
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.0,
+                    color: Colors.black87,
+                  ) ?? const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.0,
+                    color: Colors.black87,
+                  ),
+            ),
           ),
         ),
       );

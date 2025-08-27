@@ -31,7 +31,6 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   List<Deck> _decks = [];
   bool _isLoading = true;
   bool _isGuestMode = false;
-  bool _isDarkMode = false;
 
   @override
   void initState() {
@@ -73,7 +72,6 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
         await _dataService.initialize();
       }
       _isGuestMode = await _dataService.isGuestMode();
-      _isDarkMode = AdaptiveThemeService.isDarkMode(context);
       await _loadDecks();
       setState(() => _isLoading = false);
     } catch (e) {
@@ -335,17 +333,14 @@ drawer: _buildDrawer(),
                     dense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                     leading: Icon(
-                      _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      AdaptiveThemeService.isDarkMode(context) ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       size: 22,
-                      color: _isDarkMode ? Colors.yellow[700] : Colors.black,
+                      color: AdaptiveThemeService.isDarkMode(context) ? Colors.yellow[700] : Colors.black,
                     ),
-                    title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode', style: const TextStyle(fontSize: 14)),
+                    title: Text(AdaptiveThemeService.isDarkMode(context) ? 'Light Mode' : 'Dark Mode', style: const TextStyle(fontSize: 14)),
                     onTap: () {
                       Navigator.pop(context);
-                      setState(() {
-                        _isDarkMode = !_isDarkMode;
-                        AdaptiveThemeService.toggleTheme(context);
-                      });
+                      AdaptiveThemeService.toggleTheme(context);
                     },
                   ),
                   // ListTile(

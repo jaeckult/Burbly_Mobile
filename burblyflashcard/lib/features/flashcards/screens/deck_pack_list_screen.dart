@@ -33,7 +33,6 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   Map<String, bool> _expandedPacks = {};
   bool _isLoading = true;
   bool _isGuestMode = false;
-  bool _isDarkMode = false;
 
   @override
   void initState() {
@@ -51,7 +50,6 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
       // Skip cloud load here; restore happens only after sign-in/fresh install
 
       _isGuestMode = await _dataService.isGuestMode();
-      _isDarkMode = AdaptiveThemeService.isDarkMode(context);
       await _loadDeckPacks();
       await _loadAllDecks();
       setState(() => _isLoading = false);
@@ -586,19 +584,16 @@ Widget _buildDrawer() {
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   leading: Icon(
-                      _isDarkMode
+                      AdaptiveThemeService.isDarkMode(context)
                           ? Icons.light_mode_outlined
                           : Icons.dark_mode_outlined,
                       size: 22,
-                      color: _isDarkMode ? Colors.yellow[700] : Colors.black),
-                  title: Text(_isDarkMode ? 'Light Mode' : 'Dark Mode',
+                      color: AdaptiveThemeService.isDarkMode(context) ? Colors.yellow[700] : Colors.black),
+                  title: Text(AdaptiveThemeService.isDarkMode(context) ? 'Light Mode' : 'Dark Mode',
                       style: const TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() {
-                      _isDarkMode = !_isDarkMode;
-                      AdaptiveThemeService.toggleTheme(context);
-                    });
+                    AdaptiveThemeService.toggleTheme(context);
                   },
                 ),
 //                 ListTile(
@@ -774,20 +769,7 @@ Widget _buildDrawer() {
             icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
             tooltip: 'Notification Settings',
           ),
-          // Theme toggle button
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _isDarkMode = !_isDarkMode;
-                AdaptiveThemeService.toggleTheme(context);
-              });
-            },
-            icon: Icon(
-              _isDarkMode ? Icons.light_mode : Icons.dark_mode,
-              color: Theme.of(context).appBarTheme.foregroundColor,
-            ),
-            tooltip: _isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-          ),
+         
         ],
       ),
       drawer: _buildDrawer(),

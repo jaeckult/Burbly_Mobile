@@ -16,6 +16,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
   bool _isChecking = true;
+  bool _isSyncing = false; 
 
   @override
   void initState() {
@@ -40,7 +41,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
+Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
 
     try {
@@ -50,15 +51,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isFirstLaunch', false);
         await prefs.setBool('isGuestMode', false);
+
+        // ✅ show syncing screen before data load
+        if (mounted) setState(() => _isSyncing = true);
+
         try {
           await DataService().initialize();
-          // Clear local data so we load only the signed-in account's cloud data
           await DataService().clearAllLocalData();
-          // Reset local streak so it will be restored from the new account's cloud prefs
           await BackgroundService().resetStudyStreak();
           await DataService().loadDataFromFirestore();
-        } catch (e) {}
-        
+        } catch (e) {
+          debugPrint("Sync error: $e");
+        }
+
         if (mounted) {
           _navigateToHome();
         }
@@ -126,18 +131,39 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     if (_isChecking) {
       return const Scaffold(
-        body: SizedBox.expand(
-          child: ColoredBox(
-            color: Colors.white,
-            child: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // ✅ Show syncing screen
+    if (_isSyncing) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text(
+                'Syncing your data...',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ],
           ),
         ),
       );
     }
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+            ],
+          ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -153,11 +179,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
+                            color: Theme.of(context).shadowColor.withOpacity(0.2),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),
@@ -166,7 +192,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       child: Icon(
                         Icons.school,
                         size: 70,
-                        color: Colors.blue[600],
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -176,7 +202,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       'Welcome to\nBurbly Flashcard',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
+                        color: Theme.of(context).colorScheme.onBackground,
                         height: 1.2,
                       ),
                       textAlign: TextAlign.center,
@@ -185,7 +211,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     Text(
                       'Master your knowledge with smart flashcards',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.blue[800]!.withOpacity(0.9),
+                        color: Theme.of(context).colorScheme.onBackground.withOpacity(0.8),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -198,7 +224,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.15),
+                            color: Theme.of(context).shadowColor.withOpacity(0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -209,13 +235,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.white 
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Image.network(
-                            'https://developers.google.com/identity/images/g-logo.png',
-                            height: 20,
-                          ),
+                          child: Image.asset(
+    'assets/google_logo.png', // ✅ now local asset
+    height: 20,
+  ),
                         ),
                         label: const Text(
                           'Continue with Google',
@@ -226,7 +254,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[600],
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -244,17 +272,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       children: [
                         Expanded(
                           child: Divider(
-                            color: Colors.grey.withOpacity(0.4),
+                            color: Theme.of(context).dividerColor.withOpacity(0.4),
                             thickness: 1,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.blue[700]!.withOpacity(0.8),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.grey.withOpacity(0.3),
+                              color: Theme.of(context).dividerColor.withOpacity(0.3),
                               width: 1,
                             ),
                           ),
@@ -269,7 +297,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         ),
                         Expanded(
                           child: Divider(
-                            color: Colors.grey.withOpacity(0.4),
+                            color: Theme.of(context).dividerColor.withOpacity(0.4),
                             thickness: 1,
                           ),
                         ),
@@ -283,12 +311,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.grey.withOpacity(0.4),
+                          color: Theme.of(context).dividerColor.withOpacity(0.4),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).shadowColor.withOpacity(0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -297,7 +325,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       child: OutlinedButton(
                         onPressed: _isLoading ? null : _continueAsGuest,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue[800],
+                          foregroundColor: Theme.of(context).colorScheme.onBackground,
                           side: BorderSide.none,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -311,7 +339,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             Icon(
                               Icons.person_outline,
                               size: 20,
-                              color: Colors.blue[800]!.withOpacity(0.9),
+                              color: Theme.of(context).colorScheme.onBackground.withOpacity(0.9),
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -319,7 +347,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.blue[800],
+                                color: Theme.of(context).colorScheme.onBackground,
                               ),
                             ),
                           ],
@@ -345,10 +373,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Theme.of(context).cardColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.blue[300]!.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                         ),
                       ),
                       child: Column(
@@ -356,7 +384,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           Text(
                             '✨ Features',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.blue[800],
+                              color: Theme.of(context).colorScheme.onBackground,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -385,14 +413,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         children: [
           Icon(
             icon,
-            color: Colors.blue[800]!.withOpacity(0.8),
+            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.8),
             size: 20,
           ),
           const SizedBox(width: 12),
           Text(
             text,
             style: TextStyle(
-              color: Colors.blue[800]!.withOpacity(0.8),
+              color: Theme.of(context).colorScheme.onBackground.withOpacity(0.8),
               fontSize: 14,
             ),
           ),
