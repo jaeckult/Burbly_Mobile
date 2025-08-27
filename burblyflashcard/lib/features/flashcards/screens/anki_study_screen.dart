@@ -3,6 +3,7 @@ import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/pet_notification_service.dart';
+import '../../../core/utils/snackbar_utils.dart';
 
 class AnkiStudyScreen extends StatefulWidget {
   final Deck deck;
@@ -25,6 +26,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   bool _showAnswer = false;
   bool _isLoading = false;
   bool _isAnswerRevealed = false;
+  bool _isStudyComplete = false;
   
   // Study session tracking
   int _cardsReviewed = 0;
@@ -36,6 +38,19 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   void initState() {
     super.initState();
     _sessionStartTime = DateTime.now();
+  }
+
+  void _resetStudySession() {
+    setState(() {
+      _currentIndex = 0;
+      _showAnswer = false;
+      _isAnswerRevealed = false;
+      _isStudyComplete = false;
+      _cardsReviewed = 0;
+      _cardsCorrect = 0;
+      _cardsIncorrect = 0;
+      _sessionStartTime = DateTime.now();
+    });
   }
 
   @override
@@ -53,6 +68,40 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
         ),
       );
     }
+
+    if (_isStudyComplete) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Study: ${widget.deck.name}'),
+      backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+      foregroundColor: Colors.white,
+      elevation: 0,
+    ),
+    body: Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.check_circle, size: 64, color: Colors.green),
+            SizedBox(height: 16),
+            Text(
+              'Complete!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Returning to deck...',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 
     final currentCard = widget.flashcards[_currentIndex];
     final isLastCard = _currentIndex == widget.flashcards.length - 1;
@@ -85,7 +134,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
             value: (_currentIndex + 1) / widget.flashcards.length,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+              Color(int.parse('0xFF${'2196F3'}')),
             ),
           ),
 
@@ -121,7 +170,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                       end: Alignment.bottomRight,
                       colors: [
                         Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withOpacity(0.7),
+                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
                       ],
                     ),
                   ),
@@ -134,7 +183,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -170,7 +219,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -179,20 +228,10 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                   children: [
                                     _buildInfoItem('Reviews', '${currentCard.reviewCount}'),
-                                    _buildInfoItem('Interval', '${currentCard.interval} days'),
                                     _buildInfoItem('Ease', '${currentCard.easeFactor.toStringAsFixed(2)}'),
                                   ],
                                 ),
-                                if (currentCard.nextReview != null) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Next: ${_formatDate(currentCard.nextReview!)}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                                
                               ],
                             ),
                           ),
@@ -204,7 +243,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -218,7 +257,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                                 Text(
                                   'Try to recall the answer before revealing it',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -228,7 +267,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                                 Text(
                                   'This active recall strengthens your memory',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
+                                    color: Colors.white.withValues(alpha: 0.7),
                                     fontSize: 12,
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -429,29 +468,33 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
         _cardsCorrect++;
         
         // Feed pet when user answers correctly
-        final petService = PetService();
-        await petService.initialize();
-        final currentPet = petService.getCurrentPet();
-        if (currentPet != null) {
-          // Calculate points based on quality (3-5 = 1-3 points)
-          final points = quality - 2;
-          final oldHunger = currentPet.hunger;
-          final oldHappiness = currentPet.happiness;
-          
-          await petService.feedPetOnCorrectAnswer(currentPet, points);
-          
-          // Show notification for pet feeding
-          final updatedPet = petService.getCurrentPet();
-          if (updatedPet != null) {
-            final hungerReduced = oldHunger - updatedPet.hunger;
-            final happinessGained = updatedPet.happiness - oldHappiness;
+        try {
+          final petService = PetService();
+          await petService.initialize();
+          final currentPet = petService.getCurrentPet();
+          if (currentPet != null) {
+            // Calculate points based on quality (3-5 = 1-3 points)
+            final points = quality - 2;
+            final oldHunger = currentPet.hunger;
+            final oldHappiness = currentPet.happiness;
             
-            _petNotificationService.showPetFeedingNotification(
-              updatedPet.name,
-              hungerReduced,
-              happinessGained,
-            );
+            await petService.feedPetOnCorrectAnswer(currentPet, points);
+            
+            // Show notification for pet feeding
+            final updatedPet = petService.getCurrentPet();
+            if (updatedPet != null) {
+              final hungerReduced = oldHunger - updatedPet.hunger;
+              final happinessGained = updatedPet.happiness - oldHappiness;
+              
+              _petNotificationService.showPetFeedingNotification(
+                updatedPet.name,
+                hungerReduced,
+                happinessGained,
+              );
+            }
           }
+        } catch (e) {
+          print('Error feeding pet: $e');
         }
       } else {
         _cardsIncorrect++;
@@ -459,6 +502,11 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
 
       // Apply SM2 spaced repetition algorithm
       await _dataService.updateFlashcardWithReview(currentCard, quality);
+
+      
+
+      // Wait a moment then move to next card
+      await Future.delayed(const Duration(milliseconds: 800));
 
       // Move to next card or finish session
       if (_currentIndex < widget.flashcards.length - 1) {
@@ -472,10 +520,10 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       }
     } catch (e) {
       if (mounted) {
-                 SnackbarUtils.showErrorSnackbar(
-           context,
-           'Error updating card: ${e.toString()}',
-         );
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error updating card: ${e.toString()}',
+        );
       }
     } finally {
       if (mounted) {
@@ -485,16 +533,24 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   }
 
   Future<void> _completeStudySession() async {
+    setState(() {
+      _isStudyComplete = true;
+    });
+
     try {
       // Update study streak
       await BackgroundService().updateStudyStreak();
       
       // Update pet with study progress
-      final petService = PetService();
-      await petService.initialize();
-      final currentPet = petService.getCurrentPet();
-      if (currentPet != null) {
-        await petService.studyWithPet(currentPet, _cardsReviewed);
+      try {
+        final petService = PetService();
+        await petService.initialize();
+        final currentPet = petService.getCurrentPet();
+        if (currentPet != null) {
+          await petService.studyWithPet(currentPet, _cardsReviewed);
+        }
+      } catch (e) {
+        print('Error updating pet: $e');
       }
 
       // Calculate session statistics
@@ -530,30 +586,59 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Study Session Complete!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('You reviewed ${_cardsReviewed} cards'),
-            const SizedBox(height: 8),
-            Text('Accuracy: $accuracy%'),
-            const SizedBox(height: 8),
-            Text('Time: ${_formatDuration(sessionDuration)}'),
-            const SizedBox(height: 16),
-            const Text(
-              'Great job! Your cards have been scheduled for optimal review intervals.',
-              style: TextStyle(fontStyle: FontStyle.italic),
+          title: const Text('Study Complete! 🎉'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You have completed studying "${widget.deck.name}"'),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Correct: $_cardsCorrect'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.cancel, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Incorrect: $_cardsIncorrect'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.psychology, color: Colors.purple, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Accuracy: $accuracy%'),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.home),
+              label: const Text('Back to Deck'),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Return to deck screen
+                Navigator.pop(context); // Return to deck screen
+              },
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: const Text('Study Again'),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                _resetStudySession(); // Reset the study session
+              },
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    ).then((_) => Navigator.of(context).pop());
+     );
   }
 
   String _formatDate(DateTime date) {

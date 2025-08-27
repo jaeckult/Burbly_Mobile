@@ -374,27 +374,41 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   }
 
   void _showAboutDialog() {
-    showAboutDialog(
-      context: context,
-      applicationName: 'Burbly Flashcard',
-      applicationVersion: '1.0.0',
-      applicationIcon: Icon(
-        Icons.school,
-        size: 48,
-        color: Theme.of(context).primaryColor,
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.school, size: 36, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          const Text('Burbly Flashcard'),
+        ],
       ),
-      children: [
-        const Text(
-          'A smart flashcard app that works offline and syncs your data when you sign in.',
+      content: const Text(
+        'Version 1.0.0\n\n'
+        'A smart flashcard app that works offline and syncs your data when you sign in.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('OK'),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   void _showPetManagement() {
     context.pushSlide(
       const PetManagementScreen(),
     );
+  }
+
+  // Method to refresh the notification widget by rebuilding the screen
+  void _refreshNotificationWidget() {
+    setState(() {
+      // This will rebuild the screen and refresh the notification widget
+    });
   }
 
 Widget _buildDrawer() {
@@ -693,14 +707,7 @@ Widget _buildDrawer() {
             icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
             tooltip: 'Search',
           ),
-          // Transition Demo button
-          IconButton(
-            onPressed: () => context.pushScale(
-              const TransitionDemoScreen(),
-            ),
-            icon: Icon(Icons.animation, color: Theme.of(context).appBarTheme.foregroundColor),
-            tooltip: 'Test Transitions',
-          ),
+          
           // Notification settings button
           IconButton(
             onPressed: () {
@@ -866,10 +873,18 @@ Widget _buildDrawer() {
   }
 
   Widget _buildDeckPackCard(DeckPack deckPack) {
-    // Get first two letters of the deck pack name for avatar
-    String initials = deckPack.name.length >= 2
-        ? deckPack.name.substring(0, 2).toUpperCase()
-        : deckPack.name.substring(0, 1).toUpperCase();
+    // Get initials from deck pack name
+List<String> words = deckPack.name.trim().split(RegExp(r'\s+'));
+
+String initials;
+if (words.length >= 2) {
+  // Take first character of first two words
+  initials = (words[0][0] + words[1][0]).toUpperCase();
+} else {
+  // Fall back to first one or two letters of single word
+  initials = deckPack.name.substring(0, deckPack.name.length >= 2 ? 2 : 1).toUpperCase();
+}
+
 
     final decks = _decksInPacks[deckPack.id] ?? [];
     final expanded = _expandedPacks[deckPack.id] ?? false;

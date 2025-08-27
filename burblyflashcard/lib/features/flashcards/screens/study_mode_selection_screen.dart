@@ -3,6 +3,7 @@ import '../../../core/core.dart';
 import 'study_screen.dart';
 import 'enhanced_study_screen.dart';
 import 'anki_study_screen.dart';
+import 'modern_study_screen.dart';
 
 class StudyModeSelectionScreen extends StatelessWidget {
   final Deck deck;
@@ -86,15 +87,50 @@ class StudyModeSelectionScreen extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Study Mode Options
+                // _buildStudyModeCard(
+                //   context,
+                //   title: 'Modern Study Mode',
+                //   subtitle: 'Smart spaced repetition',
+                //   description:
+                //       'Uses intelligent intervals (1, 3, 7, 14, 30, 60, 90, 180, 365 days) with adaptive difficulty. Perfect balance of learning and retention.',
+                //   icon: Icons.psychology,
+                //   color: Colors.purple,
+                //   isRecommended: false,
+                //   onTap: () => _navigateToStudyMode(context, StudyMode.modern),
+                // ),
+                // const SizedBox(height: 12),
+                // _buildStudyModeCard(
+                //   context,
+                //   title: 'FSRS-Inspired Mode',
+                //   subtitle: 'Advanced spaced repetition algorithm',
+                //   description:
+                //       'Uses FSRS-inspired intervals (1, 2, 4, 8, 16, 32, 64, 128, 256 days) with aggressive difficulty adjustment. Optimized for fast learning.',
+                //   icon: Icons.rocket_launch,
+                //   color: Colors.deepOrange,
+                //   isRecommended: false,
+                //   onTap: () => _navigateToStudyMode(context, StudyMode.fsrs),
+                // ),
+                // const SizedBox(height: 12),
                 _buildStudyModeCard(
                   context,
-                  title: 'Anki-Style Spaced Repetition',
-                  subtitle: 'Recommended for long-term learning',
+                  title: 'Basic Study Mode',
+                  subtitle: 'Simple and straightforward',
                   description:
-                      'Uses SM2 algorithm to schedule cards optimally. Cards appear based on your performance.',
-                  icon: Icons.psychology,
+                      'Traditional flashcard study with basic progress tracking. No spaced repetition.',
+                  icon: Icons.flip_to_front,
+                  color: Colors.orange,
+                  isRecommended: false,
+                  onTap: () => _navigateToStudyMode(context, StudyMode.basic),
+                ),
+                _buildStudyModeCard(
+                  context,
+                  title: 'Spaced Repetition',
+                  subtitle: 'Traditional SM2 algorithm',
+                  description:
+                      'Uses SM2 algorithm to schedule cards optimally. Cards appear based on your performance with longer intervals.',
+                  icon: Icons.timeline,
                   color: Colors.blue,
-                  isRecommended: true,
+                  isRecommended: false,
                   onTap: () => _navigateToStudyMode(context, StudyMode.anki),
                 ),
                 const SizedBox(height: 12),
@@ -103,33 +139,20 @@ class StudyModeSelectionScreen extends StatelessWidget {
                   title: 'Enhanced Study Mode',
                   subtitle: 'Interactive learning with navigation',
                   description:
-                      'Study cards with navigation controls and spaced repetition info.',
+                      'Study cards with navigation controls and spaced repetition info. Good for focused study sessions.',
                   icon: Icons.touch_app,
                   color: Colors.green,
                   isRecommended: false,
                   onTap: () => _navigateToStudyMode(context, StudyMode.enhanced),
                 ),
                 const SizedBox(height: 12),
-                _buildStudyModeCard(
-                  context,
-                  title: 'Basic Study Mode',
-                  subtitle: 'Simple and straightforward',
-                  description:
-                      'Traditional flashcard study with basic progress tracking.',
-                  icon: Icons.flip_to_front,
-                  color: Colors.orange,
-                  isRecommended: false,
-                  onTap: () => _navigateToStudyMode(context, StudyMode.basic),
-                ),
-                const SizedBox(height: 20),
-
                 // Study Tips
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: Colors.purple[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(color: Colors.purple[200]!),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.05),
@@ -143,13 +166,13 @@ class StudyModeSelectionScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.lightbulb_outline, color: Colors.blue[700], size: 20),
+                          Icon(Icons.lightbulb_outline, color: Colors.purple[700], size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'Study Tips',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: Colors.blue[700],
+                              color: Colors.purple[700],
                               fontSize: 14,
                             ),
                           ),
@@ -160,9 +183,10 @@ class StudyModeSelectionScreen extends StatelessWidget {
                         '• Try to recall answers before revealing them\n'
                         '• Be honest with your self-assessment\n'
                         '• Study regularly for best results\n'
-                        '• Use spaced repetition for long-term retention',
+                        '• Modern mode balances learning speed with retention\n'
+                        '• FSRS mode optimizes for faster learning',
                         style: TextStyle(
-                          color: Colors.blue[700],
+                          color: Colors.purple[700],
                           fontSize: 12,
                           height: 1.4,
                         ),
@@ -238,6 +262,23 @@ class StudyModeSelectionScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (isRecommended)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'RECOMMENDED',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
                   Icon(
                     Icons.arrow_forward_ios,
                     color: const Color.fromARGB(255, 28, 27, 27),
@@ -264,6 +305,12 @@ class StudyModeSelectionScreen extends StatelessWidget {
     Widget studyScreen;
 
     switch (mode) {
+      case StudyMode.modern:
+        studyScreen = ModernStudyScreen(deck: deck, flashcards: flashcards);
+        break;
+      case StudyMode.fsrs:
+        studyScreen = ModernStudyScreen(deck: deck, flashcards: flashcards, useFSRS: true);
+        break;
       case StudyMode.anki:
         studyScreen = AnkiStudyScreen(deck: deck, flashcards: flashcards);
         break;
@@ -280,6 +327,8 @@ class StudyModeSelectionScreen extends StatelessWidget {
 }
 
 enum StudyMode {
+  modern,
+  fsrs,
   anki,
   enhanced,
   basic,

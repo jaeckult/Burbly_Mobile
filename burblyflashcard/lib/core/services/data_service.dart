@@ -485,10 +485,14 @@ class DataService {
   // ===== FLASHCARD OPERATIONS =====
 
   // Create a new flashcard
-  Future<Flashcard> createFlashcard(String deckId, String question, String answer) async {
+  Future<Flashcard> createFlashcard(String deckId, String question, String answer, {int difficulty = 3}) async {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
     }
+    
+    // Calculate initial ease factor based on difficulty (1-5 scale)
+    // Difficulty 1 (Easy) = ease factor 2.5, Difficulty 5 (Hard) = ease factor 1.3
+    final initialEaseFactor = 2.5 - ((difficulty - 1) * 0.3);
     
     final now = DateTime.now();
     final flashcard = Flashcard(
@@ -496,6 +500,7 @@ class DataService {
       deckId: deckId,
       question: question,
       answer: answer,
+      easeFactor: initialEaseFactor,
       createdAt: now,
       updatedAt: now,
     );

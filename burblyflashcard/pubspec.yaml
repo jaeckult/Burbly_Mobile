@@ -49,6 +49,8 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_colorpicker: ^1.1.0
   font_awesome_flutter: ^10.9.1
+  spaced_repetition: ^0.1.0
+  fsrs: ^2.0.1
 
 
 dev_dependencies:

@@ -155,13 +155,7 @@ class _NotesScreenState extends State<NotesScreen> {
     'Notes',
     style: TextStyle(fontWeight: FontWeight.w600),
   ),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.animation),
-      onPressed: () => Navigator.pushNamed(context, '/transitions'),
-      tooltip: 'Test Transitions',
-    ),
-  ],
+  
   backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
   foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
   elevation: 0,

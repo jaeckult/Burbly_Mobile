@@ -154,52 +154,16 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Decks', style: TextStyle(fontWeight: FontWeight.w600)),
-        elevation: 0,
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: Theme.of(context).appBarTheme.foregroundColor),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              context.pushSlide(
-                const SearchScreen(),
-              );
-            },
-            icon: Icon(Icons.search, color: Theme.of(context).appBarTheme.foregroundColor),
-            tooltip: 'Search',
-          ),
-          IconButton(
-            onPressed: () {
-              context.pushFade(
-                const NotificationSettingsScreen(),
-              );
-            },
-            icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
-            tooltip: 'Notification Settings',
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _isDarkMode = !_isDarkMode;
-                AdaptiveThemeService.toggleTheme(context);
-              });
-            },
-            icon: Icon(
-              _isDarkMode ? Icons.light_mode : Icons.dark_mode,
-              color: Theme.of(context).appBarTheme.foregroundColor,
-            ),
-            tooltip: _isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-          ),
-        ],
-      ),
-      drawer: _buildDrawer(),
+  title: const Text('My Decks', style: TextStyle(fontWeight: FontWeight.w600)),
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back),
+    onPressed: () => Navigator.pop(context),
+  ),
+  backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+  foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+  elevation: 0,
+),
+drawer: _buildDrawer(),
       body: _isLoading
           ? Center(
               child: CircularProgressIndicator(
@@ -739,16 +703,29 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   }
 
   void _showAboutDialog() {
-    showAboutDialog(
-      context: context,
-      applicationName: 'Burbly Flashcard',
-      applicationVersion: '1.0.0',
-      applicationIcon: Icon(Icons.school, size: 48, color: Theme.of(context).colorScheme.primary),
-      children: [
-        const Text('A smart flashcard app that works offline and syncs your data when you sign in.'),
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.school, size: 36, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          const Text('Burbly Flashcard'),
+        ],
+      ),
+      content: const Text(
+        'Version 1.0.0\n\n'
+        ' smart flashcard app that works offline and syncs your data when you sign in.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('OK'),
+        ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   void _showActionOptions() {
     showModalBottomSheet(

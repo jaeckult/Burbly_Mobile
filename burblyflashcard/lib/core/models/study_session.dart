@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'study_result.dart';
 
 part 'study_session.g.dart';
 

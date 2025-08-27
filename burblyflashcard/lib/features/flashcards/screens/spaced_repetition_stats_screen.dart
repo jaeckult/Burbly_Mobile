@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
+import '../../../core/services/study_service.dart';
 
 class SpacedRepetitionStatsScreen extends StatefulWidget {
   final Deck deck;
@@ -15,21 +16,31 @@ class SpacedRepetitionStatsScreen extends StatefulWidget {
 
 class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScreen> {
   final DataService _dataService = DataService();
+  final StudyService _studyService = StudyService();
   List<Flashcard> _flashcards = [];
+  Map<String, dynamic> _studyStats = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadFlashcards();
+    _loadData();
   }
 
-  Future<void> _loadFlashcards() async {
-    final flashcards = await _dataService.getFlashcardsForDeck(widget.deck.id);
-    setState(() {
-      _flashcards = flashcards;
-      _isLoading = false;
-    });
+  Future<void> _loadData() async {
+    try {
+      final flashcards = await _dataService.getFlashcardsForDeck(widget.deck.id);
+      final studyStats = await _studyService.getStudyStats(widget.deck.id);
+      
+      setState(() {
+        _flashcards = flashcards;
+        _studyStats = studyStats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading data: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -44,7 +55,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadFlashcards,
+              onRefresh: _loadData,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -76,40 +87,39 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
   }
 
   Widget _buildOverviewSection() {
-  final totalCards = _flashcards.length;
-  final learningCards = _flashcards.where((card) => card.interval == 1).length;
-  final reviewCards = _flashcards.where((card) => card.interval > 1).length;
-  final dueCards = _flashcards.where((card) =>
-      card.nextReview == null || card.nextReview!.isBefore(DateTime.now())).length;
+    final totalCards = _studyStats['totalCards'] ?? _flashcards.length;
+    final learningCards = _studyStats['learningCards'] ?? 0;
+    final reviewCards = _studyStats['reviewCards'] ?? 0;
+    final dueCards = _studyStats['dueCards'] ?? 0;
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Overview',
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-      ),
-      const SizedBox(height: 16),
-      GridView.count(
-        shrinkWrap: true, // makes it fit content
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.2, // tweak this ratio to make boxes closer to squares
-        children: [
-          _buildStatCard('Total Cards', totalCards.toString(), Icons.style, Colors.blue),
-          _buildStatCard('Learning', learningCards.toString(), Icons.school, Colors.orange),
-          _buildStatCard('Review', reviewCards.toString(), Icons.refresh, Colors.green),
-          _buildStatCard('Due Today', dueCards.toString(), Icons.schedule,
-              dueCards > 0 ? Colors.red : Colors.grey),
-        ],
-      ),
-    ],
-  );
-}
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Overview',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.2,
+          children: [
+            _buildStatCard('Total Cards', totalCards.toString(), Icons.style, Colors.blue),
+            _buildStatCard('Learning', learningCards.toString(), Icons.school, Colors.orange),
+            _buildStatCard('Review', reviewCards.toString(), Icons.refresh, Colors.green),
+            _buildStatCard('Due Today', dueCards.toString(), Icons.schedule,
+                dueCards > 0 ? Colors.red : Colors.grey),
+          ],
+        ),
+      ],
+    );
+  }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Card(
@@ -178,7 +188,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                       final count = intervalMap[interval]!;
                       final maxCount = intervalMap.values.isEmpty ? 1 : intervalMap.values.reduce((a, b) => a > b ? a : b);
                       final height = count / maxCount * 150;
-                      final label = interval == 1 ? 'Learning' : '${interval}d';
+                      final label = _getIntervalLabel(interval);
                       
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -231,7 +241,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${interval == 1 ? "Learning" : "${interval}d"}: $count ($percentage%)',
+                          '${_getIntervalLabel(interval)}: $count ($percentage%)',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -246,66 +256,96 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
     );
   }
 
+  String _getIntervalLabel(int interval) {
+    switch (interval) {
+      case 1:
+        return 'Learning';
+      case 3:
+        return '3 days';
+      case 7:
+        return '1 week';
+      case 14:
+        return '2 weeks';
+      case 30:
+        return '1 month';
+      case 60:
+        return '2 months';
+      case 90:
+        return '3 months';
+      case 180:
+        return '6 months';
+      case 365:
+        return '1 year';
+      default:
+        return '${interval}d';
+    }
+  }
+
   Widget _buildDueCardsSection() {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+    final overdueCards = _studyStats['overdueCards'] ?? 0;
+    final dueTodayCards = _studyStats['dueCards'] ?? 0;
+    final dueTomorrowCards = _getDueTomorrowCount();
 
-  final overdueCards = _flashcards.where((card) =>
-      card.nextReview != null && card.nextReview!.isBefore(today)).toList();
-  final dueTodayCards = _flashcards.where((card) =>
-      card.nextReview != null &&
-      card.nextReview!.isAtSameMomentAs(today)).toList();
-  final dueTomorrowCards = _flashcards.where((card) =>
-      card.nextReview != null &&
-      card.nextReview!.isAtSameMomentAs(today.add(const Duration(days: 1)))).toList();
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Due Cards Overview',
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Due Cards Overview',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 16),
+        Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDueCard(
+                    'Overdue',
+                    overdueCards,
+                    Colors.red,
+                    Icons.warning,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildDueCard(
+                    'Due Today',
+                    dueTodayCards,
+                    Colors.orange,
+                    Icons.today,
+                  ),
+                ),
+              ],
             ),
-      ),
-      const SizedBox(height: 16),
-      Column(
-        children: [
-          // first row with 2 cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildDueCard(
-                  'Overdue',
-                  overdueCards.length,
-                  Colors.red,
-                  Icons.warning,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDueCard(
-                  'Due Today',
-                  dueTodayCards.length,
-                  Colors.orange,
-                  Icons.today,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // second row with 1 full-width card
-          _buildDueCard(
-            'Due Tomorrow',
-            dueTomorrowCards.length,
-            Colors.blue,
-            Icons.schedule,
-          ),
-        ],
-      ),
-    ],
-  );
-}
+            const SizedBox(height: 12),
+            _buildDueCard(
+              'Due Tomorrow',
+              dueTomorrowCards,
+              Colors.blue,
+              Icons.schedule,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  int _getDueTomorrowCount() {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    
+    return _flashcards.where((card) {
+      if (card.nextReview == null) return false;
+      final reviewDate = DateTime(
+        card.nextReview!.year,
+        card.nextReview!.month,
+        card.nextReview!.day,
+      );
+      return reviewDate.isAtSameMomentAs(tomorrow);
+    }).length;
+  }
 
   Widget _buildDueCard(String title, int count, Color color, IconData icon) {
     return Card(
@@ -442,17 +482,10 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
   }
 
   Widget _buildPerformanceMetricsSection() {
-    final averageEaseFactor = _flashcards.isNotEmpty 
-        ? _flashcards.fold<double>(0, (sum, card) => sum + card.easeFactor) / _flashcards.length 
-        : 0;
-    
-    final recentCards = _flashcards.where((card) => 
-        card.lastReviewed != null && 
-        card.lastReviewed!.isAfter(DateTime.now().subtract(const Duration(days: 7)))).toList();
-    
-    final averageInterval = _flashcards.isNotEmpty 
-        ? _flashcards.fold<int>(0, (sum, card) => sum + card.interval) / _flashcards.length 
-        : 0;
+    final averageEaseFactor = _studyStats['avgEaseFactor'] ?? 2.5;
+    final averageInterval = _studyStats['avgInterval'] ?? 1;
+    final recentCards = _getRecentCardsCount();
+    final studyStreak = _getStudyStreak();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,7 +533,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                     Expanded(
                       child: _buildMetricItem(
                         'Recent Activity',
-                        '${recentCards.length} cards',
+                        '${recentCards} cards',
                         Icons.access_time,
                         Colors.orange,
                         tooltip: 'Cards reviewed in the last 7 days',
@@ -510,7 +543,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                     Expanded(
                       child: _buildMetricItem(
                         'Study Streak',
-                        'Active',
+                        studyStreak,
                         Icons.local_fire_department,
                         Colors.red,
                         tooltip: 'Keep studying daily for best results',
@@ -524,6 +557,19 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
         ),
       ],
     );
+  }
+
+  int _getRecentCardsCount() {
+    final now = DateTime.now();
+    return _flashcards.where((card) => 
+        card.lastReviewed != null && 
+        card.lastReviewed!.isAfter(now.subtract(const Duration(days: 7)))).length;
+  }
+
+  String _getStudyStreak() {
+    // This would ideally come from a study streak service
+    // For now, return a placeholder
+    return 'Active';
   }
 
   Widget _buildMetricItem(String label, String value, IconData icon, Color color, {String? tooltip}) {
@@ -557,13 +603,21 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
     switch (interval) {
       case 1:
         return Colors.orange;
-      case 6:
+      case 3:
         return Colors.blue;
-      case 15:
+      case 7:
         return Colors.green;
-      case 30:
+      case 14:
         return Colors.purple;
+      case 30:
+        return Colors.indigo;
       case 60:
+        return Colors.teal;
+      case 90:
+        return Colors.cyan;
+      case 180:
+        return Colors.deepPurple;
+      case 365:
         return Colors.red;
       default:
         return Colors.grey;

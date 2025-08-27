@@ -153,41 +153,16 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
             subtitle: Text(
               _currentDeck.timerDuration != null
                   ? '${_currentDeck.timerDuration} seconds per card'
-                  : 'Disabled - No time limit',
+                  : '30 seconds per card (default)',
             ),
-            trailing: Switch(
-              value: _currentDeck.timerDuration != null,
-              onChanged: (value) async {
-                if (!value) {
-                  // 🔴 Switch turned OFF → disable timer immediately
-                  try {
-                    final updatedDeck = _currentDeck.copyWith(timerDuration: null);
-                    await _dataService.updateDeck(updatedDeck);
-                    setState(() {
-                      _currentDeck = updatedDeck;
-                    });
-                    Navigator.pop(context);
-
-                    if (mounted) {
-                      SnackbarUtils.showSuccessSnackbar(
-                        context,
-                        'Timer disabled.',
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      SnackbarUtils.showErrorSnackbar(
-                        context,
-                        'Error disabling timer: ${e.toString()}',
-                      );
-                    }
-                  }
-                } else {
-                  // 🟢 Switch turned ON → open timer settings dialog
-                  Navigator.pop(context);
-                  _showTimerSettings();
-                }
-              },
+            trailing: IconButton(
+              onPressed: () => _showTimerSettings(),
+              icon: const Icon(Icons.edit, size: 20),
+              tooltip: 'Edit Timer',
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.blue.withOpacity(0.1),
+                foregroundColor: Colors.blue,
+              ),
             ),
           ),
 
@@ -252,125 +227,182 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
 }
 
 void _showTimerSettings() {
-  int? selectedDuration = _currentDeck.timerDuration;
+  int? selectedDuration = _currentDeck.timerDuration ?? 30; // Default to 30 if null
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Study Timer'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Set a timer for each flashcard during study sessions. The timer will automatically show the answer when time runs out.',
-            style: TextStyle(fontSize: 14),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
-            value: selectedDuration,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Timer Duration',
-              helperText: 'Choose how long to spend on each card',
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.timer, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Timer Settings',
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
-            items: const [
-              DropdownMenuItem(
-                value: null,
-                child: Text('No Timer (Disabled)'),
-              ),
-              DropdownMenuItem(
-                value: 10,
-                child: Text('10 seconds (Quick)'),
-              ),
-              DropdownMenuItem(
-                value: 15,
-                child: Text('15 seconds'),
-              ),
-              DropdownMenuItem(
-                value: 30,
-                child: Text('30 seconds (Recommended)'),
-              ),
-              DropdownMenuItem(
-                value: 45,
-                child: Text('45 seconds'),
-              ),
-              DropdownMenuItem(
-                value: 60,
-                child: Text('60 seconds (Slow)'),
-              ),
-              DropdownMenuItem(
-                value: 90,
-                child: Text('90 seconds'),
-              ),
-              DropdownMenuItem(
-                value: 120,
-                child: Text('2 minutes'),
-              ),
-            ],
-            onChanged: (value) {
-              selectedDuration = value;
-            },
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Set a timer for each flashcard during study sessions. The timer will automatically show the answer when time runs out.',
+              style: TextStyle(fontSize: 14),
             ),
-            child: const Row(
+            const SizedBox(height: 20),
+            
+            // Quick Selection Buttons
+            const Text(
+              'Quick Select:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Timer only works in Enhanced Study mode. Regular study mode ignores timer settings.',
-                    style: TextStyle(fontSize: 12, color: Colors.blue),
-                  ),
-                ),
+                _buildQuickTimerButton(10, '10s', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(15, '15s', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(30, '30s', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(45, '45s', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(60, '1m', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(90, '1.5m', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(120, '2m', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
               ],
             ),
+            
+            const SizedBox(height: 16),
+            
+            // Info Box
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Timer only works in Enhanced Study mode. Regular study mode ignores timer settings.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                // Handle the case where selectedDuration is 0 (should be saved as null)
+                final finalDuration = selectedDuration == 0 ? null : selectedDuration;
+                final updatedDeck = _currentDeck.copyWith(
+                  timerDuration: finalDuration,
+                );
+                await _dataService.updateDeck(updatedDeck);
+                setState(() {
+                  _currentDeck = updatedDeck;
+                });
+                Navigator.pop(context);
+
+                if (mounted) {
+                  SnackbarUtils.showSuccessSnackbar(
+                    context,
+                    finalDuration != null
+                        ? 'Timer set to ${finalDuration} seconds per card!'
+                        : 'Timer disabled.',
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  SnackbarUtils.showErrorSnackbar(
+                    context,
+                    'Error updating timer setting: ${e.toString()}',
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () async {
-            try {
-              final updatedDeck = _currentDeck.copyWith(
-                timerDuration: selectedDuration,
-              );
-              await _dataService.updateDeck(updatedDeck);
-              setState(() {
-                _currentDeck = updatedDeck;
-              });
-              Navigator.pop(context);
+    ),
+  );
+}
+Widget _buildQuickTimerButton(
+  int duration,
+  String label,
+  int? selectedDuration,
+  Function(int?) onTap,
+) {
+  final isSelected = selectedDuration == duration;
 
-              if (mounted) {
-                SnackbarUtils.showSuccessSnackbar(
-                  context,
-                  selectedDuration != null
-                      ? 'Timer set to ${selectedDuration} seconds per card!'
-                      : 'Timer disabled.',
-                );
-              }
-            } catch (e) {
-              if (mounted) {
-                SnackbarUtils.showErrorSnackbar(
-                  context,
-                  'Error updating timer setting: ${e.toString()}',
-                );
-              }
-            }
-          },
-          child: const Text('Save'),
+  return InkWell(
+    onTap: () => onTap(isSelected ? null : duration),
+    borderRadius: BorderRadius.circular(20),
+    splashColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+    focusColor: Theme.of(context).colorScheme.primary,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Colors.green // Green when selected
+            : Colors.blue.withOpacity(0.1), // Blue when not selected
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected
+              ? Colors.green // Green border when selected
+              : Colors.blue.withOpacity(0.5), // Blue border when not selected
         ),
-      ],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected
+              ? Colors.white
+              : Colors.blue[700], // Blue text when not selected
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          fontSize: 12,
+        ),
+      ),
     ),
   );
 }
@@ -840,24 +872,20 @@ void _showTimerSettings() {
                         Icon(
                           Icons.timer,
                           size: 14,
-                        color: _currentDeck.timerDuration != null 
-                          ? Colors.orange 
-                          : Colors.grey[400],
-                       ),
-                       const SizedBox(width: 4),
-                       Expanded(
-                         child: Text(
-                           _currentDeck.timerDuration != null 
-                              ? '${_currentDeck.timerDuration}s'
-                              : 'No timer',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _currentDeck.timerDuration != null 
-                                ? Colors.orange[700]
-                                : Colors.grey[500],
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _currentDeck.timerDuration != null 
+                               ? '${_currentDeck.timerDuration}s'
+                               : '30s (default)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange[700],
+                            ),
                           ),
-                         ),
-                       ),
+                        ),
                       ],
                     ),
                   ),
@@ -897,67 +925,39 @@ void _showTimerSettings() {
 
         // Action Buttons
         if (_flashcards.isNotEmpty) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: isWide 
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _startStudy,
-                        icon: const Icon(Icons.school),
-                        label: const Text('Study'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _showSpacedRepetitionStats,
-                        icon: const Icon(Icons.analytics),
-                        label: const Text('SR Stats'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _startStudy,
-                      icon: const Icon(Icons.school),
-                      label: const Text('Study'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: _showSpacedRepetitionStats,
-                      icon: const Icon(Icons.analytics),
-                      label: const Text('SR Stats'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
-                    ),
-                  ],
-                ),
+  Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _startStudy,
+            icon: const Icon(Icons.school),
+            label: const Text('Study'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
           ),
-        ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _showSpacedRepetitionStats,
+            icon: const Icon(Icons.analytics),
+            label: const Text('SR Stats'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
 
         // Flashcards List
         Expanded(

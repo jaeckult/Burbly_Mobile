@@ -5,6 +5,7 @@ import '../../../core/models/flashcard.dart';
 import '../screens/anki_study_screen.dart';
 import '../screens/notification_settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 class NotificationWidget extends StatefulWidget {
   const NotificationWidget({super.key});
@@ -13,19 +14,55 @@ class NotificationWidget extends StatefulWidget {
   State<NotificationWidget> createState() => _NotificationWidgetState();
 }
 
-class _NotificationWidgetState extends State<NotificationWidget> {
+class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBindingObserver {
   final NotificationService _notificationService = NotificationService();
   final DataService _dataService = DataService();
   List<Flashcard> _overdueCards = [];
   List<Flashcard> _cardsDueToday = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadNotificationData();
+    _setupPeriodicRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh when app becomes active (user returns to app)
+    if (state == AppLifecycleState.resumed) {
+      _loadNotificationData();
+    }
+  }
+
+  void _setupPeriodicRefresh() {
+    // Refresh every 15 minutes to check for new due cards
+    _refreshTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
+      if (mounted) {
+        _loadNotificationData();
+      }
+    });
+  }
 
   Future<void> _startAutomaticStudy() async {
     try {
-      // Dismiss widget for today
+      // Dismiss widget for a shorter period (1 hour instead of full day)
       final prefs = await SharedPreferences.getInstance();
       final now = DateTime.now();
-      await prefs.setString('notification_widget_dismissed_date', '${now.year}-${now.month}-${now.day}');
+      final dismissUntil = now.add(const Duration(hours: 1));
+      await prefs.setString('notification_widget_dismissed_until', dismissUntil.toIso8601String());
+      
       if (mounted) {
         setState(() {
           _overdueCards = [];
@@ -74,41 +111,137 @@ class _NotificationWidgetState extends State<NotificationWidget> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadNotificationData();
-  }
-
   Future<void> _loadNotificationData() async {
+    if (!mounted) return;
+    
     setState(() => _isLoading = true);
     
     try {
-      // Respect dismissal for today
+      // Check if widget is dismissed until a specific time
       final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-      final todayKey = '${now.year}-${now.month}-${now.day}';
-      final dismissedDate = prefs.getString('notification_widget_dismissed_date');
-      if (dismissedDate == todayKey) {
-        setState(() {
-          _overdueCards = [];
-          _cardsDueToday = [];
-          _isLoading = false;
-        });
-        return;
+      final dismissedUntilString = prefs.getString('notification_widget_dismissed_until');
+      
+      if (dismissedUntilString != null) {
+        try {
+          final dismissedUntil = DateTime.parse(dismissedUntilString);
+          final now = DateTime.now();
+          
+          print('Notification widget: Dismissed until $dismissedUntil, current time: $now');
+          
+          // If still within dismissal period, don't show widget
+          if (now.isBefore(dismissedUntil)) {
+            print('Notification widget: Still dismissed, hiding widget');
+            if (mounted) {
+              setState(() {
+                _overdueCards = [];
+                _cardsDueToday = [];
+                _isLoading = false;
+              });
+            }
+            return;
+          } else {
+            // Clear expired dismissal
+            print('Notification widget: Dismissal expired, clearing');
+            await prefs.remove('notification_widget_dismissed_until');
+          }
+        } catch (e) {
+          // If parsing fails, clear the invalid dismissal
+          print('Notification widget: Error parsing dismissal time, clearing: $e');
+          await prefs.remove('notification_widget_dismissed_until');
+        }
       }
 
+      print('Notification widget: Loading overdue and due cards...');
+      
+      // First, let's check if there are any cards at all
+      final allCards = await _dataService.getAllFlashcards();
+      print('Notification widget: Total cards in database: ${allCards.length}');
+      
+      if (allCards.isNotEmpty) {
+        // Log some sample cards to see their nextReview dates
+        for (int i = 0; i < allCards.length && i < 3; i++) {
+          final card = allCards[i];
+          print('Notification widget: Card ${i + 1}: nextReview=${card.nextReview}, lastReviewed=${card.lastReviewed}');
+        }
+      }
+      
       final overdueCards = await _notificationService.getOverdueCards();
       final cardsDueToday = await _notificationService.getCardsDueToday();
       
-      setState(() {
-        _overdueCards = overdueCards;
-        _cardsDueToday = cardsDueToday;
-        _isLoading = false;
-      });
+      print('Notification widget: Found ${overdueCards.length} overdue cards and ${cardsDueToday.length} due today');
+      
+      if (mounted) {
+        setState(() {
+          _overdueCards = overdueCards;
+          _cardsDueToday = cardsDueToday;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
       print('Error loading notification data: $e');
+    }
+  }
+
+  // Method to manually refresh the widget (can be called from parent)
+  Future<void> refreshWidget() async {
+    print('Notification widget: Manual refresh requested');
+    await _loadNotificationData();
+  }
+
+  // Debug method to force show the widget for testing
+  void _forceShowWidget() {
+    print('Notification widget: Force showing widget for testing');
+    setState(() {
+      _overdueCards = [
+        Flashcard(
+          id: 'test-overdue',
+          deckId: 'test-deck',
+          question: 'Test overdue card',
+          answer: 'Test answer',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          updatedAt: DateTime.now().subtract(const Duration(days: 1)),
+          nextReview: DateTime.now().subtract(const Duration(hours: 1)),
+        )
+      ];
+      _cardsDueToday = [
+        Flashcard(
+          id: 'test-due-today',
+          deckId: 'test-deck',
+          question: 'Test due today card',
+          answer: 'Test answer',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          updatedAt: DateTime.now().subtract(const Duration(days: 1)),
+          nextReview: DateTime.now(),
+        )
+      ];
+      _isLoading = false;
+    });
+  }
+
+  // Debug method to test the notification service directly
+  Future<void> _testNotificationService() async {
+    print('Notification widget: Testing notification service...');
+    try {
+      final overdueCards = await _notificationService.getOverdueCards();
+      final cardsDueToday = await _notificationService.getCardsDueToday();
+      final cardsDueSoon = await _notificationService.getCardsDueSoon();
+      
+      print('Notification widget: Test results:');
+      print('  - Overdue cards: ${overdueCards.length}');
+      print('  - Due today: ${cardsDueToday.length}');
+      print('  - Due soon: ${cardsDueSoon.length}');
+      
+      if (overdueCards.isNotEmpty) {
+        print('  - Sample overdue card: nextReview=${overdueCards.first.nextReview}');
+      }
+      if (cardsDueToday.isNotEmpty) {
+        print('  - Sample due today card: nextReview=${cardsDueToday.first.nextReview}');
+      }
+    } catch (e) {
+      print('Notification widget: Error testing notification service: $e');
     }
   }
 
@@ -218,11 +351,12 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () async {
-                        // Persist dismissal for today and hide
+                        // Dismiss for 1 hour instead of full day
                         try {
                           final prefs = await SharedPreferences.getInstance();
                           final now = DateTime.now();
-                          await prefs.setString('notification_widget_dismissed_date', '${now.year}-${now.month}-${now.day}');
+                          final dismissUntil = now.add(const Duration(hours: 1));
+                          await prefs.setString('notification_widget_dismissed_until', dismissUntil.toIso8601String());
                         } catch (_) {}
                         if (!mounted) return;
                         setState(() {
@@ -235,6 +369,27 @@ class _NotificationWidgetState extends State<NotificationWidget> {
                   ),
                 ],
               ),
+              // Debug buttons (only show in debug mode)
+              if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _forceShowWidget,
+                        child: const Text('Debug: Force Show'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _testNotificationService,
+                        child: const Text('Debug: Test Service'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

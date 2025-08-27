@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../../core/core.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/pet_notification_service.dart';
+import '../../../core/services/background_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
 class EnhancedStudyScreen extends StatefulWidget {
@@ -30,7 +31,22 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   bool _timerEnabled = false;
   int _correctAnswers = 0;
   int _incorrectAnswers = 0;
-  DateTime _studyStartTime = DateTime.now();
+  final DateTime _studyStartTime = DateTime.now();
+  bool _isStudyComplete = false;
+
+  void _resetStudySession() {
+    setState(() {
+      _currentIndex = 0;
+      _showAnswer = false;
+      _isStudyComplete = false;
+      _correctAnswers = 0;
+      _incorrectAnswers = 0;
+      if (_timerEnabled && widget.deck.timerDuration != null) {
+        _timeRemaining = widget.deck.timerDuration!;
+        _startTimer();
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -59,13 +75,29 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
         });
       } else {
         timer.cancel();
-        if (!_showAnswer) {
+        if (!_showAnswer && !_isStudyComplete) {
           setState(() {
             _showAnswer = true;
+          });
+          // Auto-rate as "Again" when timer expires
+          Timer(const Duration(seconds: 2), () {
+            if (mounted && !_isStudyComplete) {
+              _rateCard(1); // Rate as "Again"
+            }
           });
         }
       }
     });
+  }
+
+  void _pauseTimer() {
+    _timer?.cancel();
+  }
+
+  void _resumeTimer() {
+    if (_timerEnabled && !_isStudyComplete) {
+      _startTimer();
+    }
   }
 
   @override
@@ -79,7 +111,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       setState(() {
         _currentIndex++;
         _showAnswer = false;
-        if (_timerEnabled) {
+        if (_timerEnabled && widget.deck.timerDuration != null) {
           _timeRemaining = widget.deck.timerDuration!;
           _startTimer();
         }
@@ -94,7 +126,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       setState(() {
         _currentIndex--;
         _showAnswer = false;
-        if (_timerEnabled) {
+        if (_timerEnabled && widget.deck.timerDuration != null) {
           _timeRemaining = widget.deck.timerDuration!;
           _startTimer();
         }
@@ -109,51 +141,53 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
     
     // If showing answer and timer is enabled, pause the timer
     if (_showAnswer && _timerEnabled) {
-      _timer?.cancel();
+      _pauseTimer();
     }
     // If hiding answer and timer is enabled, restart the timer
-    else if (!_showAnswer && _timerEnabled) {
+    else if (!_showAnswer && _timerEnabled && widget.deck.timerDuration != null) {
       _timeRemaining = widget.deck.timerDuration!;
-      _startTimer();
+      _resumeTimer();
     }
   }
 
   void _rateCard(int quality) async {
+    if (_isStudyComplete) return;
+    
     final currentCard = widget.flashcards[_currentIndex];
     
     // Track answer quality
     if (quality >= 3) {
       _correctAnswers++;
       
-              // Feed pet when user answers correctly
-        try {
-          final petService = PetService();
-          await petService.initialize();
-          final currentPet = petService.getCurrentPet();
-          if (currentPet != null) {
-            // Calculate points based on quality (3-5 = 1-3 points)
-            final points = quality - 2;
-            final oldHunger = currentPet.hunger;
-            final oldHappiness = currentPet.happiness;
+      // Feed pet when user answers correctly
+      try {
+        final petService = PetService();
+        await petService.initialize();
+        final currentPet = petService.getCurrentPet();
+        if (currentPet != null) {
+          // Calculate points based on quality (3-5 = 1-3 points)
+          final points = quality - 2;
+          final oldHunger = currentPet.hunger;
+          final oldHappiness = currentPet.happiness;
+          
+          await petService.feedPetOnCorrectAnswer(currentPet, points);
+          
+          // Show notification for pet feeding
+          final updatedPet = petService.getCurrentPet();
+          if (updatedPet != null) {
+            final hungerReduced = oldHunger - updatedPet.hunger;
+            final happinessGained = updatedPet.happiness - oldHappiness;
             
-            await petService.feedPetOnCorrectAnswer(currentPet, points);
-            
-            // Show notification for pet feeding
-            final updatedPet = petService.getCurrentPet();
-            if (updatedPet != null) {
-              final hungerReduced = oldHunger - updatedPet.hunger;
-              final happinessGained = updatedPet.happiness - oldHappiness;
-              
-              _petNotificationService.showPetFeedingNotification(
-                updatedPet.name,
-                hungerReduced,
-                happinessGained,
-              );
-            }
+            _petNotificationService.showPetFeedingNotification(
+              updatedPet.name,
+              hungerReduced,
+              happinessGained,
+            );
           }
-        } catch (e) {
-          print('Error feeding pet: $e');
         }
+      } catch (e) {
+        print('Error feeding pet: $e');
+      }
     } else {
       _incorrectAnswers++;
     }
@@ -165,7 +199,25 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
         await _dataService.updateFlashcardWithReview(currentCard, quality);
       }
       
-      _nextCard();
+      // Pause timer during transition
+      _pauseTimer();
+      
+      // Show brief feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(quality >= 3 ? 'Correct!' : 'Keep practicing!'),
+            backgroundColor: quality >= 3 ? Colors.green : Colors.orange,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+      
+      // Wait a moment then move to next card
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted && !_isStudyComplete) {
+        _nextCard();
+      }
     } catch (e) {
       if (mounted) {
         SnackbarUtils.showErrorSnackbar(
@@ -179,6 +231,13 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   }
 
   void _showStudyComplete() async {
+    setState(() {
+      _isStudyComplete = true;
+    });
+    
+    // Stop timer
+    _pauseTimer();
+    
     // Save study session
     try {
       final studyTime = DateTime.now().difference(_studyStartTime).inSeconds;
@@ -196,33 +255,107 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       print('Error saving study session: $e');
     }
     
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Study Complete!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('You have completed studying "${widget.deck.name}"'),
-            const SizedBox(height: 16),
-            Text('Correct: $_correctAnswers'),
-            Text('Incorrect: $_incorrectAnswers'),
-            Text('Time: ${DateTime.now().difference(_studyStartTime).inSeconds}s'),
+    // Update study streak
+    try {
+      await BackgroundService().updateStudyStreak();
+    } catch (e) {
+      print('Error updating study streak: $e');
+    }
+    
+    // Update pet with study progress
+    try {
+      final petService = PetService();
+      await petService.initialize();
+      final currentPet = petService.getCurrentPet();
+      if (currentPet != null) {
+        await petService.studyWithPet(currentPet, widget.flashcards.length);
+      }
+    } catch (e) {
+      print('Error updating pet: $e');
+    }
+    
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Study Complete! 🎉'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You have completed studying "${widget.deck.name}"'),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Correct: $_correctAnswers'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.cancel, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Incorrect: $_incorrectAnswers'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.timer, color: Colors.blue, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Time: ${_formatDuration(DateTime.now().difference(_studyStartTime).inSeconds)}'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.psychology, color: Colors.purple, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Accuracy: ${_calculateAccuracy()}%'),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.home),
+              label: const Text('Back to Deck'),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Return to deck screen
+                Navigator.pop(context); // Return to deck screen
+              },
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: const Text('Study Again'),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                _resetStudySession(); // Reset the study session
+              },
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Return to previous screen
-            },
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
+      );
+    }
+  }
+
+  String _calculateAccuracy() {
+    if (_correctAnswers + _incorrectAnswers == 0) return '0';
+    final accuracy = (_correctAnswers / (_correctAnswers + _incorrectAnswers)) * 100;
+    return accuracy.toStringAsFixed(1);
+  }
+
+  String _formatDuration(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    if (minutes > 0) {
+      return '${minutes}m ${remainingSeconds}s';
+    }
+    return '${remainingSeconds}s';
   }
 
   @override
@@ -237,6 +370,29 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
         ),
         body: const Center(
           child: Text('No flashcards to study!'),
+        ),
+      );
+    }
+
+    if (_isStudyComplete) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Study: ${widget.deck.name}'),
+          backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle, size: 64, color: Colors.green),
+              SizedBox(height: 16),
+              Text('Study Complete!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('Returning to deck...'),
+            ],
+          ),
         ),
       );
     }
@@ -271,7 +427,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
             value: (_currentIndex + 1) / widget.flashcards.length,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+              Color(int.parse('0xFF${'2196F3'}')),
             ),
           ),
 
@@ -346,7 +502,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                       end: Alignment.bottomRight,
                       colors: [
                         Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withOpacity(0.7),
+                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
                       ],
                     ),
                   ),
@@ -359,7 +515,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -394,7 +550,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -426,42 +582,32 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
             ),
           ),
 
-          // Navigation and Rating Buttons
+          // Check Button and Rating Buttons
           Container(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Navigation Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      onPressed: _currentIndex > 0 ? _previousCard : null,
-                      icon: const Icon(Icons.arrow_back),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        disabledBackgroundColor: Colors.grey[100],
+                // Center Check Button (when answer is not shown)
+                if (!_showAnswer) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => setState(() => _showAnswer = true),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Show Answer'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _toggleAnswer,
-                      icon: Icon(_showAnswer ? Icons.visibility_off : Icons.visibility),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.blue[100],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _currentIndex < widget.flashcards.length - 1 ? _nextCard : null,
-                      icon: const Icon(Icons.arrow_forward),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        disabledBackgroundColor: Colors.grey[100],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
 
-                // Quality Rating Buttons (only when answer is shown)
+                // Anki-style Rating Buttons (only when answer is shown)
                 if (_showAnswer && widget.deck.spacedRepetitionEnabled) ...[
                   const SizedBox(height: 16),
                   const Text(
@@ -471,15 +617,48 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildRatingButton(1, 'Again', Colors.red),
-                      _buildRatingButton(2, 'Hard', Colors.orange),
-                      _buildRatingButton(3, 'Good', Colors.yellow),
-                      _buildRatingButton(4, 'Easy', Colors.lightGreen),
-                      _buildRatingButton(5, 'Perfect', Colors.green),
+                      Expanded(
+                        child: _buildAnkiRatingButton(
+                          'Again',
+                          Icons.close,
+                          Colors.red,
+                          () => _rateCard(1),
+                          'I got it wrong',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildAnkiRatingButton(
+                          'Hard',
+                          Icons.remove,
+                          Colors.orange,
+                          () => _rateCard(2),
+                          'I struggled but remembered',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildAnkiRatingButton(
+                          'Good',
+                          Icons.check,
+                          Colors.green,
+                          () => _rateCard(3),
+                          'I remembered it',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildAnkiRatingButton(
+                          'Easy',
+                          Icons.star,
+                          Colors.blue,
+                          () => _rateCard(4),
+                          'I knew it effortlessly',
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -491,35 +670,37 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
     );
   }
 
-  Widget _buildRatingButton(int quality, String label, Color color) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: ElevatedButton(
-          onPressed: _isLoading ? null : () => _rateCard(quality),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+  Widget _buildAnkiRatingButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+    String tooltip,
+  ) {
+    return Tooltip(
+      message: tooltip,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              Text(
-                quality.toString(),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );

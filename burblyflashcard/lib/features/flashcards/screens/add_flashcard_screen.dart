@@ -38,6 +38,7 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
         widget.deckId,
         _questionController.text.trim(),
         _answerController.text.trim(),
+        difficulty: _difficulty,
       );
 
       if (mounted) {
