@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth_service.dart';
+import '../../../core/services/background_service.dart';
 import 'signup_screen.dart';
 import '../../../core/core.dart';
 
@@ -55,7 +56,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await _authService.signInWithGoogle();
+      final result = await _authService.signInWithGoogle(forceAccountSelection: true);
+      if (result != null) {
+        // Clear local data and reload from Firestore for the signed-in account
+        try {
+          await DataService().initialize();
+          await DataService().clearAllLocalData();
+          await BackgroundService().resetStudyStreak();
+          await DataService().loadDataFromFirestore();
+        } catch (_) {}
+      }
       if (result == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

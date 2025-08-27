@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth_service.dart';
+import '../../../core/services/background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/core.dart';
 import '../../flashcards/screens/deck_pack_list_screen.dart';
@@ -14,6 +15,7 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
+  bool _isChecking = true;
 
   @override
   void initState() {
@@ -31,13 +33,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         _navigateToHome();
       }
     }
+    if (mounted) {
+      setState(() {
+        _isChecking = false;
+      });
+    }
   }
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
 
     try {
-      final result = await _authService.signInWithGoogle();
+      final result = await _authService.signInWithGoogle(forceAccountSelection: true);
       if (result != null) {
         // Mark as not first launch
         final prefs = await SharedPreferences.getInstance();
@@ -45,6 +52,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         await prefs.setBool('isGuestMode', false);
         try {
           await DataService().initialize();
+          // Clear local data so we load only the signed-in account's cloud data
+          await DataService().clearAllLocalData();
+          // Reset local streak so it will be restored from the new account's cloud prefs
+          await BackgroundService().resetStudyStreak();
           await DataService().loadDataFromFirestore();
         } catch (e) {}
         
@@ -113,6 +124,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(
+        body: SizedBox.expand(
+          child: ColoredBox(
+            color: Colors.white,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(

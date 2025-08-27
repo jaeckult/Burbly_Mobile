@@ -4,10 +4,12 @@ import '../../../core/core.dart';
 
 class CreateDeckScreen extends StatefulWidget {
   final Function(Deck) onDeckCreated;
+  final String? initialPackId;
 
   const CreateDeckScreen({
     super.key,
     required this.onDeckCreated,
+    this.initialPackId,
   });
 
   @override
@@ -26,6 +28,7 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPackId = widget.initialPackId;
     _loadDeckPacks();
   }
 
@@ -155,10 +158,8 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
             ),
             const SizedBox(height: 24),
 
-
-
             // Deck Pack Selection
-            if (_availablePacks.isNotEmpty) ...[
+            if (_availablePacks.isNotEmpty && widget.initialPackId == null) ...[
               Text(
                 'Assign to Deck Pack (Optional)',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -191,51 +192,85 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
                 },
               ),
               const SizedBox(height: 32),
+            ] else if (widget.initialPackId != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.folder, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _availablePacks.firstWhere(
+                          (p) => p.id == widget.initialPackId,
+                          orElse: () => DeckPack(
+                            id: widget.initialPackId!,
+                            name: 'Selected Pack',
+                            description: '',
+                            createdAt: DateTime.now(),
+                            updatedAt: DateTime.now(),
+                            coverColor: '2196F3',
+                          ),
+                        ).name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
 
             // Create Button
-SizedBox(
-  width: double.infinity,
-  height: 50,
-  child: ElevatedButton(
-    onPressed: _isLoading ? null : _createDeck,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? Theme.of(context).colorScheme.secondary
-          : Theme.of(context).primaryColor,
-      foregroundColor: Theme.of(context).brightness == Brightness.dark
-          ? Colors.black
-          : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-    child: _isLoading
-        ? SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).brightness == Brightness.dark
-                    ? Colors.black
-                    : Colors.white,
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _createDeck,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.secondary
+                      : Theme.of(context).primaryColor,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.black
+                      : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Colors.black
+                                : Colors.white,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        'Create Deck',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.black
+                              : Colors.white,
+                        ),
+                      ),
               ),
-            ),
-          )
-        : Text(
-            'Create Deck',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black
-                  : Colors.white,
-            ),
-          ),
-  ),
-)
-],
+            )
+          ],
         ),
       ),
     );

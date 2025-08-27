@@ -165,12 +165,14 @@ class _NotesScreenState extends State<NotesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createNewNote,
-        backgroundColor: Colors.blue[800],
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _notes.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _createNewNote,
+              icon: const Icon(Icons.add),
+              label: const Text('New Note'),
+            )
+          : null,
+      
       
     );
   }

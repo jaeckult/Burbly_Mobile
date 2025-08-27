@@ -46,7 +46,7 @@ class Deck extends HiveObject {
     this.coverColor,
     this.cardCount = 0,
     this.packId,
-    this.spacedRepetitionEnabled = false,
+    this.spacedRepetitionEnabled = true,
     this.timerDuration,
     this.isSynced = false,
   });

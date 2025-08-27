@@ -34,6 +34,8 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   final DateTime _studyStartTime = DateTime.now();
   bool _isStudyComplete = false;
 
+  int get _effectiveTimerDuration => (widget.deck.timerDuration ?? 30);
+
   void _resetStudySession() {
     setState(() {
       _currentIndex = 0;
@@ -41,9 +43,13 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       _isStudyComplete = false;
       _correctAnswers = 0;
       _incorrectAnswers = 0;
-      if (_timerEnabled && widget.deck.timerDuration != null) {
-        _timeRemaining = widget.deck.timerDuration!;
+      _timerEnabled = _effectiveTimerDuration > 0;
+      _timer?.cancel();
+      if (_timerEnabled) {
+        _timeRemaining = _effectiveTimerDuration;
         _startTimer();
+      } else {
+        _timeRemaining = 0;
       }
     });
   }
@@ -55,9 +61,9 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   }
 
   void _initializeTimer() {
-    if (widget.deck.timerDuration != null && widget.deck.timerDuration! > 0) {
+    if (_effectiveTimerDuration > 0) {
       _timerEnabled = true;
-      _timeRemaining = widget.deck.timerDuration!;
+      _timeRemaining = _effectiveTimerDuration;
       _startTimer();
     }
   }
@@ -111,8 +117,8 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       setState(() {
         _currentIndex++;
         _showAnswer = false;
-        if (_timerEnabled && widget.deck.timerDuration != null) {
-          _timeRemaining = widget.deck.timerDuration!;
+        if (_timerEnabled) {
+          _timeRemaining = _effectiveTimerDuration;
           _startTimer();
         }
       });
@@ -126,8 +132,8 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       setState(() {
         _currentIndex--;
         _showAnswer = false;
-        if (_timerEnabled && widget.deck.timerDuration != null) {
-          _timeRemaining = widget.deck.timerDuration!;
+        if (_timerEnabled) {
+          _timeRemaining = _effectiveTimerDuration;
           _startTimer();
         }
       });
@@ -144,8 +150,8 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       _pauseTimer();
     }
     // If hiding answer and timer is enabled, restart the timer
-    else if (!_showAnswer && _timerEnabled && widget.deck.timerDuration != null) {
-      _timeRemaining = widget.deck.timerDuration!;
+    else if (!_showAnswer && _timerEnabled) {
+      _timeRemaining = _effectiveTimerDuration;
       _resumeTimer();
     }
   }
@@ -195,8 +201,21 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
     setState(() => _isLoading = true);
     
     try {
+      // Always record an update when rating to drive stats and progress
       if (widget.deck.spacedRepetitionEnabled) {
         await _dataService.updateFlashcardWithReview(currentCard, quality);
+      } else {
+        // Non-SR decks: minimally update review metadata for stats
+        await _dataService.updateFlashcard(
+          currentCard.copyWith(
+            lastReviewed: DateTime.now(),
+            reviewCount: currentCard.reviewCount + 1,
+            easeFactor: (quality >= 3)
+                ? (currentCard.easeFactor + 0.05).clamp(1.3, 2.5)
+                : (currentCard.easeFactor - 0.1).clamp(1.3, 2.5),
+            updatedAt: DateTime.now(),
+          ),
+        );
       }
       
       // Pause timer during transition
@@ -427,14 +446,27 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
             Container(
               width: double.infinity,
               height: 6,
-              child: LinearProgressIndicator(
-                value: _timeRemaining / (widget.deck.timerDuration ?? 1),
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  _timeRemaining > 10 ? Colors.green : 
-                  _timeRemaining > 5 ? Colors.orange : Colors.red,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(
+                  begin: (_timeRemaining + 1) / _effectiveTimerDuration,
+                  end: _timeRemaining / _effectiveTimerDuration,
                 ),
+                duration: const Duration(milliseconds: 300),
+                builder: (context, value, _) {
+                  return LinearProgressIndicator(
+                    value: value.clamp(0.0, 1.0),
+                    backgroundColor: Colors.grey[300],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _timeRemaining > 10
+                          ? Colors.green
+                          : _timeRemaining > 5
+                              ? Colors.orange
+                              : Colors.red,
+                    ),
+                  );
+                },
               ),
+
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -598,8 +630,8 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                   ),
                 ],
 
-                // Anki-style Rating Buttons (only when answer is shown)
-                if (_showAnswer && widget.deck.spacedRepetitionEnabled) ...[
+                // Anki-style Rating Buttons (show whenever answer is shown)
+                if (_showAnswer) ...[
                   const SizedBox(height: 16),
                   const Text(
                     'How well did you know this?',

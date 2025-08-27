@@ -145,6 +145,25 @@ class DataService {
     await initialize();
   }
 
+  // Clear all local Hive data (used when switching accounts)
+  Future<void> clearAllLocalData() async {
+    // Ensure boxes are open
+    if (!_isInitialized) {
+      await initialize();
+    }
+    try {
+      await _decksBox.clear();
+      await _flashcardsBox.clear();
+      await _deckPacksBox.clear();
+      await _notesBox.clear();
+      await _studySessionsBox.clear();
+      print('All local Hive data cleared');
+    } catch (e) {
+      print('Error clearing local data: $e');
+      rethrow;
+    }
+  }
+
   // Safely close all boxes
   Future<void> _safeCloseBoxes() async {
     try {

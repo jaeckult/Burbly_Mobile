@@ -1,9 +1,9 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart' as fl_chart;
 import '../../../core/core.dart';
 
 class LineChart extends StatefulWidget {
+  const LineChart({super.key});
   @override
   _LineChartState createState() => _LineChartState();
 }

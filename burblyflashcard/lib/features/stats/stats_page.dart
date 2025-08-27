@@ -12,6 +12,8 @@ class _StatsPageState extends State<StatsPage> {
   final DataService _dataService = DataService();
   Map<String, dynamic>? _overallStats;
   bool _isLoading = true;
+  Key _lineChartKey = UniqueKey();
+  Key _pieChartKey = UniqueKey();
 
   @override
   void initState() {
@@ -25,6 +27,8 @@ class _StatsPageState extends State<StatsPage> {
       setState(() {
         _overallStats = stats;
         _isLoading = false;
+        _lineChartKey = UniqueKey();
+        _pieChartKey = UniqueKey();
       });
     } catch (e) {
       setState(() {
@@ -34,6 +38,15 @@ class _StatsPageState extends State<StatsPage> {
         SnackBar(content: Text('Error loading stats: ${e.toString()}')),
       );
     }
+  }
+
+  Future<void> _syncFromCloud() async {
+    setState(() => _isLoading = true);
+    try {
+      await _dataService.initialize();
+      await _dataService.loadDataFromFirestore();
+    } catch (_) {}
+    await _loadStats();
   }
 
   @override
@@ -51,12 +64,22 @@ class _StatsPageState extends State<StatsPage> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Sync from cloud',
+            icon: Icon(Icons.cloud_download, color: Theme.of(context).colorScheme.primary),
+            onPressed: _isLoading ? null : _syncFromCloud,
+          ),
+        ],
       ),
       body: Container(
         child: Padding(
           padding: EdgeInsets.all(10.0),
-          child: SingleChildScrollView(
-            child: Column(
+          child: RefreshIndicator(
+            onRefresh: _loadStats,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Card(
@@ -125,7 +148,7 @@ class _StatsPageState extends State<StatsPage> {
                   elevation: 10,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: LineChart(),
+                    child: LineChart(key: _lineChartKey),
                   ),
                 ),
                 SizedBox(height: 15),
@@ -137,7 +160,7 @@ class _StatsPageState extends State<StatsPage> {
                   elevation: 10,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: PieChart(),
+                    child: PieChart(key: _pieChartKey),
                   ),
                 ),
                 SizedBox(height: 50),
@@ -146,7 +169,9 @@ class _StatsPageState extends State<StatsPage> {
           ),
         ),
       ),
+      )
     );
+    
   }
 }
 

@@ -8,6 +8,7 @@ import '../../../core/services/adaptive_theme_service.dart';
 import 'create_deck_screen.dart';
 import 'deck_detail_screen.dart';
 import 'search_screen.dart';
+import '../../../core/services/background_service.dart';
 import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
 import 'notification_settings_screen.dart';
@@ -87,11 +88,17 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
 
   Future<void> _signInWithGoogle() async {
     try {
-      final result = await _authService.signInWithGoogle();
+      final result = await _authService.signInWithGoogle(forceAccountSelection: true);
       if (result != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isGuestMode', false);
         setState(() => _isGuestMode = false);
+        try {
+          await _dataService.initialize();
+          await _dataService.clearAllLocalData();
+          await BackgroundService().resetStudyStreak();
+          await _loadDecks();
+        } catch (_) {}
         if (mounted) {
           SnackbarUtils.showSuccessSnackbar(
             context,
@@ -130,7 +137,13 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
 
   Future<void> _signOut() async {
     try {
-      await _authService.signOut();
+      await _authService.signOutGoogle();
+      try {
+        await _dataService.initialize();
+        await _dataService.clearAllLocalData();
+        await BackgroundService().resetStudyStreak();
+        await _loadDecks();
+      } catch (_) {}
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isGuestMode', true);
       setState(() => _isGuestMode = true);
@@ -173,12 +186,14 @@ drawer: _buildDrawer(),
               ),
             )
           : _buildBody(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showActionOptions,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Add'),
-      ),
+      floatingActionButton: _decks.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _showActionOptions,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            )
+          : null,
     );
   }
 
@@ -470,7 +485,7 @@ drawer: _buildDrawer(),
             icon: const Icon(Icons.add),
             label: const Text('Create Deck'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: Colors.blue[800],
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

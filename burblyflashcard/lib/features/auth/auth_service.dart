@@ -48,8 +48,15 @@ class AuthService {
     await firebaseAuth.currentUser?.sendEmailVerification();
   }
 
-  Future<UserCredential?> signInWithGoogle() async {
+  Future<UserCredential?> signInWithGoogle({bool forceAccountSelection = true}) async {
     try {
+      if (forceAccountSelection) {
+        // Ensure previous Google session is cleared so the account picker shows
+        try {
+          await googleSignIn.disconnect();
+        } catch (_) {}
+        await googleSignIn.signOut();
+      }
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       
@@ -76,7 +83,14 @@ class AuthService {
   }
 
   Future<void> signOutGoogle() async {
-    await googleSignIn.signOut();
-    await firebaseAuth.signOut();
+    try {
+      // Disconnect ensures the next sign-in prompts for account selection
+      try {
+        await googleSignIn.disconnect();
+      } catch (_) {}
+      await googleSignIn.signOut();
+    } finally {
+      await firebaseAuth.signOut();
+    }
   }
 }

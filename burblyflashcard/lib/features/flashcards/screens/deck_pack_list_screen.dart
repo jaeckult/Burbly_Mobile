@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/auth_service.dart';
 import '../../../core/core.dart';
 import '../../../core/services/adaptive_theme_service.dart';
+import '../../../core/services/background_service.dart';
 import 'create_deck_pack_screen.dart';
 import 'deck_detail_screen.dart';
 import 'create_deck_screen.dart';
@@ -101,6 +102,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   void _createNewDeck(DeckPack deckPack) {
     context.pushScale(
       CreateDeckScreen(
+        initialPackId: deckPack.id,
         onDeckCreated: (deck) async {
           try {
             await _dataService.addDeckToPack(deck.id, deckPack.id);
@@ -280,7 +282,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
   Future<void> _signInWithGoogle() async {
     try {
-      final result = await _authService.signInWithGoogle();
+      final result = await _authService.signInWithGoogle(forceAccountSelection: true);
       if (result != null) {
         // Update guest mode status
         final prefs = await SharedPreferences.getInstance();
@@ -291,6 +293,8 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         // After sign-in, pull cloud data and refresh lists
         try {
           await _dataService.initialize();
+          await _dataService.clearAllLocalData();
+          await BackgroundService().resetStudyStreak();
           await _dataService.loadDataFromFirestore();
           await _loadDeckPacks();
           await _loadAllDecks();
@@ -345,7 +349,13 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
   Future<void> _signOut() async {
     try {
-      await _authService.signOut();
+      await _authService.signOutGoogle();
+      // Clear local data on sign-out
+      try {
+        await _dataService.initialize();
+        await _dataService.clearAllLocalData();
+        await BackgroundService().resetStudyStreak();
+      } catch (_) {}
 
       // Update guest mode status
       final prefs = await SharedPreferences.getInstance();
@@ -739,8 +749,8 @@ Widget _buildDrawer() {
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Transform.translate(
-        offset: const Offset(0, -30), // move up by 20px
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 30),
         child: FloatingActionButton.extended(
           onPressed: _createNewDeckPack,
           backgroundColor: Theme.of(context).primaryColor,

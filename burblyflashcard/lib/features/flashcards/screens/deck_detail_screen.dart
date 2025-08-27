@@ -192,8 +192,8 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                     SnackbarUtils.showSuccessSnackbar(
                       context,
                       value
-                          ? 'Spaced repetition enabled! Cards will be scheduled for optimal review.'
-                          : 'Spaced repetition disabled. Cards will be shown in order.',
+                          ? 'Spaced repetition enabled!'
+                          : 'Spaced repetition disabled!',
                     );
                   }
                 } catch (e) {
