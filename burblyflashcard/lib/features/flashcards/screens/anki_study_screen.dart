@@ -21,7 +21,7 @@ class AnkiStudyScreen extends StatefulWidget {
 
 class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   final DataService _dataService = DataService();
-  final PetNotificationService _petNotificationService = PetNotificationService();
+  // final PetNotificationService _petNotificationService = PetNotificationService();
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
@@ -486,11 +486,11 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
               final hungerReduced = oldHunger - updatedPet.hunger;
               final happinessGained = updatedPet.happiness - oldHappiness;
               
-              _petNotificationService.showPetFeedingNotification(
-                updatedPet.name,
-                hungerReduced,
-                happinessGained,
-              );
+              // _petNotificationService.showPetFeedingNotification(
+              //   updatedPet.name,
+              //   hungerReduced,
+              //   happinessGained,
+              // );
             }
           }
         } catch (e) {

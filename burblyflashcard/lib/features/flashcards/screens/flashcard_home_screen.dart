@@ -26,7 +26,7 @@ class FlashcardHomeScreen extends StatefulWidget {
 class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   final DataService _dataService = DataService();
   final AuthService _authService = AuthService();
-  final PetNotificationService _petNotificationService = PetNotificationService();
+  // final PetNotificationService _petNotificationService = PetNotificationService();
   List<Deck> _decks = [];
   bool _isLoading = true;
   bool _isGuestMode = false;
@@ -36,35 +36,35 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
   void initState() {
     super.initState();
     _initializeData();
-    _registerPetNotifications();
+    // _registerPetNotifications();
   }
 
   @override
   void dispose() {
-    _petNotificationService.unregisterCallback();
+    // _petNotificationService.unregisterCallback();
     super.dispose();
   }
 
-  void _registerPetNotifications() {
-    _petNotificationService.registerCallback((message, type) {
-      if (mounted) {
-        switch (type) {
-          case 'success':
-            SnackbarUtils.showSuccessSnackbar(context, message);
-            break;
-          case 'warning':
-            SnackbarUtils.showWarningSnackbar(context, message);
-            break;
-          case 'error':
-            SnackbarUtils.showErrorSnackbar(context, message);
-            break;
-          case 'info':
-            SnackbarUtils.showInfoSnackbar(context, message);
-            break;
-        }
-      }
-    });
-  }
+  // void _registerPetNotifications() {
+  //   _petNotificationService.registerCallback((message, type) {
+  //     if (mounted) {
+  //       switch (type) {
+  //         case 'success':
+  //           SnackbarUtils.showSuccessSnackbar(context, message);
+  //           break;
+  //         case 'warning':
+  //           SnackbarUtils.showWarningSnackbar(context, message);
+  //           break;
+  //         case 'error':
+  //           SnackbarUtils.showErrorSnackbar(context, message);
+  //           break;
+  //         case 'info':
+  //           SnackbarUtils.showInfoSnackbar(context, message);
+  //           break;
+  //       }
+  //     }
+  //   });
+  // }
 
   Future<void> _initializeData() async {
     try {
@@ -327,36 +327,36 @@ drawer: _buildDrawer(),
                       });
                     },
                   ),
-                  ListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                    leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
-                    title: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Pet Management', style: TextStyle(fontSize: 14)),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade600,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Testing',
-                            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.pushSlide(
-                        const PetManagementScreen(),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1, thickness: 0.5),
+                  // ListTile(
+                  //   dense: true,
+                  //   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  //   leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
+                  //   title: Row(
+                  //     mainAxisSize: MainAxisSize.min,
+                  //     children: [
+                  //       const Text('Pet Management', style: TextStyle(fontSize: 14)),
+                  //       const SizedBox(width: 6),
+                  //       Container(
+                  //         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  //         decoration: BoxDecoration(
+                  //           color: Colors.orange.shade600,
+                  //           borderRadius: BorderRadius.circular(8),
+                  //         ),
+                  //         child: const Text(
+                  //           'Testing',
+                  //           style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  //   onTap: () {
+                  //     Navigator.pop(context);
+                  //     context.pushSlide(
+                  //       const PetManagementScreen(),
+                  //     );
+                  //   },
+                  // ),
+                  // const Divider(height: 1, thickness: 0.5),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Text(

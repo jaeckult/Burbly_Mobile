@@ -408,11 +408,11 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   );
 }
 
-  void _showPetManagement() {
-    context.pushSlide(
-      const PetManagementScreen(),
-    );
-  }
+  // void _showPetManagement() {
+  //   context.pushSlide(
+  //     const PetManagementScreen(),
+  //   );
+  // }
 
   // Method to refresh the notification widget by rebuilding the screen
   void _refreshNotificationWidget() {
@@ -567,40 +567,40 @@ Widget _buildDrawer() {
                     });
                   },
                 ),
-                ListTile(
-  dense: true,
-  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-  leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
-  title: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const Text(
-        'Pet Management',
-        style: TextStyle(fontSize: 14),
-      ),
-      const SizedBox(width: 6), // spacing between text and badge
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.orange.shade600,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          'Testing',
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    ],
-  ),
-  onTap: () {
-    Navigator.pop(context);
-    _showPetManagement();
-  },
-),
+//                 ListTile(
+//   dense: true,
+//   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+//   leading: const Icon(Icons.pets_outlined, size: 22, color: Colors.teal),
+//   title: Row(
+//     mainAxisSize: MainAxisSize.min,
+//     children: [
+//       const Text(
+//         'Pet Management',
+//         style: TextStyle(fontSize: 14),
+//       ),
+//       const SizedBox(width: 6), // spacing between text and badge
+//       Container(
+//         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+//         decoration: BoxDecoration(
+//           color: Colors.orange.shade600,
+//           borderRadius: BorderRadius.circular(8),
+//         ),
+//         child: const Text(
+//           'Testing',
+//           style: TextStyle(
+//             fontSize: 10,
+//             color: Colors.white,
+//             fontWeight: FontWeight.bold,
+//           ),
+//         ),
+//       ),
+//     ],
+//   ),
+//   // onTap: () {
+//   //   Navigator.pop(context);
+//   //   _showPetManagement();
+//   // },
+// ),
 
                 const Divider(height: 1, thickness: 0.5),
 
