@@ -9,6 +9,8 @@ import '../models/deck_pack.dart';
 import '../models/note.dart';
 import '../models/pet.dart';
 import '../models/study_session.dart';
+import '../models/trash_item.dart';
+// duplicate imports removed
 
 class DataService {
   static const String _decksBoxName = 'decks';
@@ -27,6 +29,7 @@ class DataService {
   late Box<DeckPack> _deckPacksBox;
   late Box<Note> _notesBox;
   late Box<StudySession> _studySessionsBox;
+  late Box<TrashItem> _trashBox;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isInitialized = false;
@@ -69,6 +72,10 @@ class DataService {
           Hive.registerAdapter(PetStageAdapter());
         }
       }
+      // Ensure Trash adapter is registered even if boxes are already open
+      if (!Hive.isAdapterRegistered(9)) {
+        Hive.registerAdapter(TrashItemAdapter());
+      }
       
       // Open boxes - this will preserve existing data
       _decksBox = await Hive.openBox<Deck>(_decksBoxName);
@@ -76,6 +83,7 @@ class DataService {
       _deckPacksBox = await Hive.openBox<DeckPack>(_deckPacksBoxName);
       _notesBox = await Hive.openBox<Note>(_notesBoxName);
       _studySessionsBox = await Hive.openBox<StudySession>(_studySessionsBoxName);
+      _trashBox = await Hive.openBox<TrashItem>('trash');
       
       _isInitialized = true;
       
@@ -366,14 +374,33 @@ class DataService {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
     }
-    
-    // Delete all flashcards in the deck
+    // Move deck and its flashcards to trash for recovery
+    final deck = _decksBox.get(deckId);
+    if (deck != null) {
+      final trashDeck = TrashItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        itemType: 'deck',
+        originalId: deck.id,
+        deletedAt: DateTime.now(),
+        payload: deck.toMap(),
+      );
+      await _trashBox.put(trashDeck.id, trashDeck);
+    }
+
     final flashcards = _flashcardsBox.values.where((card) => card.deckId == deckId).toList();
     for (final card in flashcards) {
+      final trashCard = TrashItem(
+        id: '${DateTime.now().millisecondsSinceEpoch}_${card.id}',
+        itemType: 'flashcard',
+        originalId: card.id,
+        deletedAt: DateTime.now(),
+        payload: card.toMap(),
+        parentId: deckId,
+      );
+      await _trashBox.put(trashCard.id, trashCard);
       await _flashcardsBox.delete(card.id);
     }
 
-    // Delete deck locally
     await _decksBox.delete(deckId);
   }
 
@@ -567,9 +594,17 @@ class DataService {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
     }
-    
     final flashcard = _flashcardsBox.get(flashcardId);
     if (flashcard != null) {
+      final trashCard = TrashItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        itemType: 'flashcard',
+        originalId: flashcard.id,
+        deletedAt: DateTime.now(),
+        payload: flashcard.toMap(),
+        parentId: flashcard.deckId,
+      );
+      await _trashBox.put(trashCard.id, trashCard);
       await _flashcardsBox.delete(flashcardId);
 
       // Update deck card count
@@ -618,6 +653,12 @@ class DataService {
 
       // Backup all notes
       final allNotes = _notesBox.values.toList();
+      // Backup trash items
+      final allTrash = _trashBox.values.toList();
+      print('Backing up ${allTrash.length} trash items...');
+      for (final item in allTrash) {
+        await _saveTrashItemToFirestore(item);
+      }
       print('Backing up ${allNotes.length} notes...');
       for (final note in allNotes) {
         await _saveNoteToFirestore(note);
@@ -758,6 +799,18 @@ class DataService {
     }
     print('Loaded ${studySessionsSnapshot.docs.length} study sessions');
 
+    // Load trash items
+    final trashSnapshot = await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('trash')
+        .get();
+    for (final doc in trashSnapshot.docs) {
+      final item = TrashItem.fromMap(doc.data());
+      await _trashBox.put(item.id, item);
+    }
+    print('Loaded ${trashSnapshot.docs.length} trash items');
+
     print('Data loading completed!');
 
     // Restore preferences after data
@@ -823,6 +876,93 @@ class DataService {
         .collection('study_sessions')
         .doc(session.id)
         .set(session.toJson());
+  }
+
+  Future<void> _saveTrashItemToFirestore(TrashItem item) async {
+    if (currentUserId == null) return;
+    await _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('trash')
+        .doc(item.id)
+        .set(item.toMap());
+  }
+
+  // ===== TRASH OPERATIONS =====
+  Future<List<TrashItem>> getTrashItems() async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+    return _trashBox.values.toList()
+      ..sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+  }
+
+  Future<void> deleteTrashItemForever(String trashId) async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+    await _trashBox.delete(trashId);
+    // Best-effort remote delete
+    try {
+      if (currentUserId != null) {
+        await _firestore.collection('users').doc(currentUserId).collection('trash').doc(trashId).delete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> restoreTrashItem(TrashItem item) async {
+    if (!_isInitialized) {
+      throw Exception('DataService has not been initialized. Please call initialize() first.');
+    }
+    switch (item.itemType) {
+      case 'deck':
+        final deck = Deck.fromMap(item.payload);
+        await _decksBox.put(deck.id, deck);
+        // Restore associated flashcards from trash
+        final associated = _trashBox.values.where((t) => t.itemType == 'flashcard' && t.parentId == deck.id).toList();
+        int restored = 0;
+        for (final t in associated) {
+          final card = Flashcard.fromMap(t.payload);
+          await _flashcardsBox.put(card.id, card);
+          await _trashBox.delete(t.id);
+          restored++;
+        }
+        // Update deck count based on restored cards
+        final currentCount = _flashcardsBox.values.where((c) => c.deckId == deck.id).length;
+        final restoredDeck = _decksBox.get(deck.id);
+        if (restoredDeck != null) {
+          await updateDeck(restoredDeck.copyWith(cardCount: currentCount));
+        }
+        break;
+      case 'flashcard':
+        final card = Flashcard.fromMap(item.payload);
+        await _flashcardsBox.put(card.id, card);
+        final deck = _decksBox.get(card.deckId);
+        if (deck != null) {
+          final currentCount = _flashcardsBox.values.where((c) => c.deckId == deck.id).length;
+          await updateDeck(deck.copyWith(cardCount: currentCount));
+        }
+        break;
+      case 'deck_pack':
+        final pack = DeckPack.fromMap(item.payload);
+        await _deckPacksBox.put(pack.id, pack);
+        break;
+      case 'note':
+        final note = Note.fromMap(item.payload);
+        await _notesBox.put(note.id, note);
+        break;
+      default:
+        // Unsupported type - keep for future
+        break;
+    }
+
+    await _trashBox.delete(item.id);
+    // Best-effort remote delete from trash (restored locally)
+    try {
+      if (currentUserId != null) {
+        await _firestore.collection('users').doc(currentUserId).collection('trash').doc(item.id).delete();
+      }
+    } catch (_) {}
   }
 
   // ===== PREFERENCES SYNC (streaks, notifications) =====
@@ -906,27 +1046,7 @@ class DataService {
     }
   }
 
-  Future<void> _deleteDeckFromFirestore(String deckId) async {
-    if (currentUserId == null) return;
-    
-    await _firestore
-        .collection('users')
-        .doc(currentUserId)
-        .collection('decks')
-        .doc(deckId)
-        .delete();
-  }
-
-  Future<void> _deleteFlashcardFromFirestore(String flashcardId) async {
-    if (currentUserId == null) return;
-    
-    await _firestore
-        .collection('users')
-        .doc(currentUserId)
-        .collection('flashcards')
-        .doc(flashcardId)
-        .delete();
-  }
+  // (Deprecated helpers removed)
 
   // ===== DECK PACK OPERATIONS =====
 
@@ -973,7 +1093,19 @@ class DataService {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
     }
-    
+    // Move deck pack to trash for recovery
+    final pack = _deckPacksBox.get(packId);
+    if (pack != null) {
+      final trashPack = TrashItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        itemType: 'deck_pack',
+        originalId: pack.id,
+        deletedAt: DateTime.now(),
+        payload: pack.toMap(),
+      );
+      await _trashBox.put(trashPack.id, trashPack);
+    }
+
     // Remove pack ID from all decks in this pack
     final decksInPack = _decksBox.values.where((deck) => deck.packId == packId).toList();
     for (final deck in decksInPack) {
@@ -1098,8 +1230,18 @@ class DataService {
     if (!_isInitialized) {
       throw Exception('DataService has not been initialized. Please call initialize() first.');
     }
-    
-    await _notesBox.delete(noteId);
+    final note = _notesBox.get(noteId);
+    if (note != null) {
+      final trashNote = TrashItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        itemType: 'note',
+        originalId: note.id,
+        deletedAt: DateTime.now(),
+        payload: note.toMap(),
+      );
+      await _trashBox.put(trashNote.id, trashNote);
+      await _notesBox.delete(noteId);
+    }
   }
 
   // ===== SEARCH OPERATIONS =====
@@ -1282,6 +1424,7 @@ class DataService {
     await _deckPacksBox.close();
     await _notesBox.close();
     await _studySessionsBox.close();
+    await _trashBox.close();
   }
 
   Future<String?> getDeckPackName(String s) async {

@@ -1,4 +1,4 @@
-import 'package:burblyflashcard/features/pets/screens/pet_management_screen.dart';
+// import 'package:burblyflashcard/features/pets/screens/pet_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,14 +7,15 @@ import '../../../core/core.dart';
 import '../../../core/services/adaptive_theme_service.dart';
 import 'create_deck_screen.dart';
 import 'deck_detail_screen.dart';
-import 'search_screen.dart';
+// import 'search_screen.dart';
 import '../../../core/services/background_service.dart';
 import 'deck_pack_list_screen.dart';
 import 'notes_screen.dart';
 import 'notification_settings_screen.dart';
 import '../../stats/stats_page.dart';
-import '../../../core/services/pet_notification_service.dart';
+// import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
+import 'trash_screen.dart';
 
 class FlashcardHomeScreen extends StatefulWidget {
   const FlashcardHomeScreen({super.key});
@@ -118,15 +119,35 @@ class _FlashcardHomeScreenState extends State<FlashcardHomeScreen> {
 
   Future<void> _backupToCloud() async {
     try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Dialog(
+          insetPadding: EdgeInsets.all(40),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Backing up your data...'),
+              ],
+            ),
+          ),
+        ),
+      );
       await _dataService.backupToFirestore();
       if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
         SnackbarUtils.showSuccessSnackbar(
-          context,
-          'Backup completed successfully!',
+                    context,
+                    'Backup completed successfully!',
         );
       }
     } catch (e) {
       if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
         SnackbarUtils.showErrorSnackbar(
           context,
           'Backup failed: ${e.toString()}',
@@ -408,6 +429,18 @@ drawer: _buildDrawer(),
                     onTap: () {
                       Navigator.pop(context);
                       _showAboutDialog();
+                    },
+                  ),
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.delete_outline, size: 22, color: Colors.brown),
+                    title: const Text('Trash', style: TextStyle(fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushFade(
+                        const TrashScreen(),
+                      );
                     },
                   ),
                 ],
@@ -709,8 +742,8 @@ drawer: _buildDrawer(),
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Deck "${deck.name}" deleted'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            content: Text('Deck "${deck.name}" moved to Trash'),
+            backgroundColor: Colors.orange,
           ),
         );
       }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+// duplicate import removed
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'firebase_options.dart';
-import 'features/auth/auth_service.dart';
+// import 'features/auth/auth_service.dart';
 import 'features/auth/screens/welcome_screen.dart';
 import 'features/flashcards/screens/deck_pack_list_screen.dart';
 import 'features/flashcards/screens/flashcard_home_screen.dart';
@@ -12,6 +12,7 @@ import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
 import 'core/services/adaptive_theme_service.dart';
 import 'core/services/pet_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,7 +77,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: theme,
         darkTheme: darkTheme,
-        home: const WelcomeScreen(),
+        home: const _RootScreen(),
         routes: {
           '/home': (context) => const DeckPackListScreen(),
           '/flashcards': (context) => const FlashcardHomeScreen(),
@@ -84,6 +85,56 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+
+class _RootScreen extends StatefulWidget {
+  const _RootScreen({Key? key}) : super(key: key);
+
+  @override
+  State<_RootScreen> createState() => _RootScreenState();
+}
+
+class _RootScreenState extends State<_RootScreen> {
+  Widget? _screen;
+
+  @override
+  void initState() {
+    super.initState();
+    _decideStart();
+  }
+
+  Future<void> _decideStart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+
+      // Only show welcome/login on fresh install; otherwise go straight to home
+      if (isFirstLaunch) {
+        setState(() => _screen = const WelcomeScreen());
+      } else {
+        setState(() => _screen = const DeckPackListScreen());
+      }
+    } catch (_) {
+      // Fallback to home
+      setState(() => _screen = const DeckPackListScreen());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_screen == null) {
+      return const Scaffold(
+        body: SizedBox.expand(
+          child: ColoredBox(
+            color: Colors.white,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+      );
+    }
+    return _screen!;
   }
 }
 

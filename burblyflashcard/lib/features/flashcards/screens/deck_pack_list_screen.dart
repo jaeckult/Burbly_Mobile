@@ -14,7 +14,8 @@ import 'flashcard_home_screen.dart';
 import '../../stats/stats_page.dart';
 import 'notification_settings_screen.dart';
 import '../widgets/notification_widget.dart';
-import '../../pets/screens/pet_management_screen.dart';
+// import '../../pets/screens/pet_management_screen.dart';
+import 'trash_screen.dart';
 
 class DeckPackListScreen extends StatefulWidget {
   const DeckPackListScreen({super.key});
@@ -171,7 +172,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
         if (mounted) {
           SnackbarUtils.showWarningSnackbar(
             context,
-            'Deck "${deck.name}" deleted',
+            'Deck "${deck.name}" moved to trash',
           );
         }
       } catch (e) {
@@ -252,28 +253,22 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
     if (confirmed == true) {
       try {
-        await _dataService.deleteDeckPack(deckPack.id);
-        setState(() {
-          _deckPacks.removeWhere((d) => d.id == deckPack.id);
-          _decksInPacks.remove(deckPack.id);
-          _expandedPacks.remove(deckPack.id);
-        });
+        // Delete deck locally (and its flashcards via service)
+        await _dataService.deleteDeck(deckPack.id);
+        await _loadDeckPacks();
+        await _loadAllDecks();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Deck pack "${deckPack.name}" deleted'),
-              backgroundColor: Colors.red,
-            ),
+          SnackbarUtils.showWarningSnackbar(
+            context,
+            'Deck Pack "${deckPack.name}" moved to trash',
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting deck pack: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
+          SnackbarUtils.showErrorSnackbar(
+            context,
+            'Error deleting deck: ${e.toString()}',
           );
         }
       }
@@ -325,9 +320,47 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
 
   Future<void> _backupToCloud() async {
     try {
+      // Show blocking loading dialog
+      showDialog(
+  context: context,
+  barrierDismissible: false,
+  builder: (_) => Dialog(
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+    insetPadding: const EdgeInsets.all(32),
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(strokeWidth: 3),
+          const SizedBox(height: 24),
+          Text(
+            'Backing up your data',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please wait a moment while we securely back up your content.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+
       await _dataService.backupToFirestore();
 
       if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Backup completed successfully!'),
@@ -337,6 +370,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
       }
     } catch (e) {
       if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Backup failed: ${e.toString()}'),
@@ -671,6 +705,18 @@ Widget _buildDrawer() {
                   onTap: () {
                     Navigator.pop(context);
                     _showAboutDialog();
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  leading: const Icon(Icons.delete_outline, size: 22, color: Colors.brown),
+                  title: const Text('Trash', style: TextStyle(fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushFade(
+                      const TrashScreen(),
+                    );
                   },
                 ),
               ],

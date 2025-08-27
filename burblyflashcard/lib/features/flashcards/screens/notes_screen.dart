@@ -129,8 +129,8 @@ class _NotesScreenState extends State<NotesScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Note "${note.title}" deleted'),
-              backgroundColor: Colors.redAccent,
+              content: Text('Note "${note.title}" moved to Trash'),
+              backgroundColor: Colors.orange,
             ),
           );
         }
