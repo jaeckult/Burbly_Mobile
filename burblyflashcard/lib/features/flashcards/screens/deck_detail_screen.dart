@@ -149,7 +149,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           // Timer Settings
           ListTile(
             leading: const Icon(Icons.timer),
-            title: const Text('Study Timer'),
+            title: const Text('Study Timer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             subtitle: Text(
               _currentDeck.timerDuration != null
                   ? '${_currentDeck.timerDuration} seconds per card'
@@ -169,44 +169,94 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           // Spaced Repetition Settings
           ListTile(
             leading: const Icon(Icons.repeat),
-            title: const Text('Spaced Repetition'),
+            title: const Text('Spaced Repetition', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             subtitle: Text(
               _currentDeck.spacedRepetitionEnabled
                   ? 'Enabled - Cards will be scheduled for optimal review'
                   : 'Disabled - Cards will be shown in order',
             ),
-            trailing: Switch(
-              value: _currentDeck.spacedRepetitionEnabled,
-              onChanged: (value) async {
-                try {
-                  final updatedDeck = _currentDeck.copyWith(
-                    spacedRepetitionEnabled: value,
-                  );
-                  await _dataService.updateDeck(updatedDeck);
-                  setState(() {
-                    _currentDeck = updatedDeck;
-                  });
-                  Navigator.pop(context);
+           trailing: Transform.scale(
+  scale: 0.8, // reduce switch size
+  child: Switch.adaptive(
+    value: _currentDeck.spacedRepetitionEnabled,
+    activeColor: Theme.of(context).colorScheme.primary,
+    activeTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+    inactiveThumbColor: Theme.of(context).colorScheme.onSurfaceVariant,
+    inactiveTrackColor: Theme.of(context).colorScheme.surfaceVariant,
+    onChanged: (value) async {
+      try {
+        final updatedDeck = _currentDeck.copyWith(
+          spacedRepetitionEnabled: value,
+        );
+        await _dataService.updateDeck(updatedDeck);
+        setState(() => _currentDeck = updatedDeck);
+        Navigator.pop(context);
 
-                  if (mounted) {
-                    SnackbarUtils.showSuccessSnackbar(
-                      context,
-                      value
-                          ? 'Spaced repetition enabled!'
-                          : 'Spaced repetition disabled!',
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    SnackbarUtils.showErrorSnackbar(
-                      context,
-                      'Error updating spaced repetition setting: ${e.toString()}',
-                    );
-                  }
-                }
-              },
+        if (mounted) {
+          SnackbarUtils.showSuccessSnackbar(
+            context,
+            value
+                ? 'Spaced repetition enabled!'
+                : 'Spaced repetition disabled!',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          SnackbarUtils.showErrorSnackbar(
+            context,
+            'Error updating spaced repetition setting: ${e.toString()}',
+          );
+        }
+      }
+    },
+  ),
+),
+),
+
+          // Study Stats Visibility Settings
+          ListTile(
+            leading: const Icon(Icons.visibility),
+            title: const Text('Show Study Stats', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            subtitle: Text(
+              _currentDeck.showStudyStats ?? true
+                  ? 'Stats bar will be visible during study'
+                  : 'Stats bar will be hidden during study',
             ),
-          ),
+            trailing: Transform.scale(
+  scale: 0.8, // reduce size a bit
+  child: Switch.adaptive(
+    value: _currentDeck.showStudyStats ?? true,
+    activeColor: Theme.of(context).colorScheme.primary, // consistent with theme
+    activeTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+    inactiveThumbColor: Theme.of(context).colorScheme.onSurfaceVariant,
+    inactiveTrackColor: Theme.of(context).colorScheme.surfaceVariant,
+    onChanged: (value) async {
+      try {
+        final updatedDeck = _currentDeck.copyWith(showStudyStats: value);
+        await _dataService.updateDeck(updatedDeck);
+        setState(() => _currentDeck = updatedDeck);
+        Navigator.pop(context);
+
+        if (mounted) {
+          SnackbarUtils.showSuccessSnackbar(
+            context,
+            value
+                ? 'Study stats will be shown!'
+                : 'Study stats will be hidden!',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          SnackbarUtils.showErrorSnackbar(
+            context,
+            'Error updating study stats setting: ${e.toString()}',
+          );
+        }
+      }
+    },
+  ),
+),
+),
 
           // Deck Pack Settings
           ListTile(
@@ -928,7 +978,7 @@ Widget _buildQuickTimerButton(
                   ),
                 ],
               ),
-            ],
+              ],
           ),
         ),
 

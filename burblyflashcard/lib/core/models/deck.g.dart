@@ -28,13 +28,14 @@ class DeckAdapter extends TypeAdapter<Deck> {
       spacedRepetitionEnabled: fields[8] as bool,
       timerDuration: fields[9] as int?,
       isSynced: fields[10] as bool,
+      showStudyStats: fields[11] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Deck obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class DeckAdapter extends TypeAdapter<Deck> {
       ..writeByte(9)
       ..write(obj.timerDuration)
       ..writeByte(10)
-      ..write(obj.isSynced);
+      ..write(obj.isSynced)
+      ..writeByte(11)
+      ..write(obj.showStudyStats);
   }
 
   @override

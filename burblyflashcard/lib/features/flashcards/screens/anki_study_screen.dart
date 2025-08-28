@@ -138,19 +138,21 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
             ),
           ),
 
-          // Study Stats Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[50],
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('Reviewed', _cardsReviewed, Colors.blue),
-                _buildStatItem('Correct', _cardsCorrect, Colors.green),
-                _buildStatItem('Incorrect', _cardsIncorrect, Colors.red),
-              ],
+          // Study Stats Bar (only show if enabled in deck settings)
+          if (widget.deck.showStudyStats ?? true) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.grey[50],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem('Reviewed', _cardsReviewed, Colors.blue),
+                  _buildStatItem('Correct', _cardsCorrect, Colors.green),
+                  _buildStatItem('Incorrect', _cardsIncorrect, Colors.red),
+                ],
+              ),
             ),
-          ),
+          ],
 
           // Flashcard Content
           Expanded(

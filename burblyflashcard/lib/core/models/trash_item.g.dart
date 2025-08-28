@@ -1,6 +1,10 @@
-// GENERATED CODE - MANUAL LITE ADAPTER (no build_runner)
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'trash_item.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class TrashItemAdapter extends TypeAdapter<TrashItem> {
   @override
@@ -9,16 +13,15 @@ class TrashItemAdapter extends TypeAdapter<TrashItem> {
   @override
   TrashItem read(BinaryReader reader) {
     final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{};
-    for (int i = 0; i < numOfFields; i++) {
-      fields[reader.readByte()] = reader.read();
-    }
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
     return TrashItem(
       id: fields[0] as String,
       itemType: fields[1] as String,
       originalId: fields[2] as String,
       deletedAt: fields[3] as DateTime,
-      payload: Map<String, dynamic>.from(fields[4] as Map),
+      payload: (fields[4] as Map).cast<String, dynamic>(),
       parentId: fields[5] as String?,
     );
   }
@@ -40,8 +43,14 @@ class TrashItemAdapter extends TypeAdapter<TrashItem> {
       ..writeByte(5)
       ..write(obj.parentId);
   }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TrashItemAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }
-
-
-
-

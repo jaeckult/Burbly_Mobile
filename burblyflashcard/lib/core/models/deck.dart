@@ -37,6 +37,9 @@ class Deck extends HiveObject {
   @HiveField(10)
   bool isSynced;
 
+  @HiveField(11)
+  bool? showStudyStats;
+
   Deck({
     required this.id,
     required this.name,
@@ -49,6 +52,7 @@ class Deck extends HiveObject {
     this.spacedRepetitionEnabled = true,
     this.timerDuration,
     this.isSynced = false,
+    this.showStudyStats = true,
   });
 
   Deck copyWith({
@@ -63,6 +67,7 @@ class Deck extends HiveObject {
     bool? spacedRepetitionEnabled,
     int? timerDuration,
     bool? isSynced,
+    bool? showStudyStats,
   }) {
     return Deck(
       id: id ?? this.id,
@@ -76,6 +81,7 @@ class Deck extends HiveObject {
       spacedRepetitionEnabled: spacedRepetitionEnabled ?? this.spacedRepetitionEnabled,
       timerDuration: timerDuration ?? this.timerDuration,
       isSynced: isSynced ?? this.isSynced,
+      showStudyStats: showStudyStats ?? this.showStudyStats,
     );
   }
 
@@ -92,6 +98,7 @@ class Deck extends HiveObject {
       'spacedRepetitionEnabled': spacedRepetitionEnabled,
       'timerDuration': timerDuration,
       'isSynced': isSynced,
+      'showStudyStats': showStudyStats,
     };
   }
 
@@ -108,6 +115,7 @@ class Deck extends HiveObject {
       spacedRepetitionEnabled: map['spacedRepetitionEnabled'] ?? false,
       timerDuration: map['timerDuration'],
       isSynced: map['isSynced'] ?? false,
+      showStudyStats: map['showStudyStats'] ?? true,
     );
   }
 }
