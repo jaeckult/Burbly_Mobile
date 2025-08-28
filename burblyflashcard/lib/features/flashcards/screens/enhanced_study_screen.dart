@@ -82,9 +82,14 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       } else {
         timer.cancel();
         if (!_showAnswer && !_isStudyComplete) {
+          // Use _toggleAnswer to properly manage timer state
           setState(() {
             _showAnswer = true;
           });
+          // Pause timer when answer is shown due to timeout
+          if (_timerEnabled) {
+            _pauseTimer();
+          }
           // Auto-rate as "Again" when timer expires
           Timer(const Duration(seconds: 2), () {
             if (mounted && !_isStudyComplete) {
@@ -145,11 +150,11 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       _showAnswer = !_showAnswer;
     });
     
-    // If showing answer and timer is enabled, pause the timer
+    // If showing answer and timer is enabled, stop the timer completely
     if (_showAnswer && _timerEnabled) {
       _pauseTimer();
     }
-    // If hiding answer and timer is enabled, restart the timer
+    // If hiding answer and timer is enabled, restart the timer with full duration
     else if (!_showAnswer && _timerEnabled) {
       _timeRemaining = _effectiveTimerDuration;
       _resumeTimer();
@@ -221,12 +226,15 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       // Pause timer during transition
       _pauseTimer();
       
-     
-      
       // Wait a moment then move to next card
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted && !_isStudyComplete) {
         _nextCard();
+        // Restart timer for the next card if timer is enabled
+        if (_timerEnabled) {
+          _timeRemaining = _effectiveTimerDuration;
+          _startTimer();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -454,9 +462,10 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                 duration: const Duration(milliseconds: 300),
                 builder: (context, value, _) {
                   return LinearProgressIndicator(
-                    value: value.clamp(0.0, 1.0),
+                    value: _showAnswer ? 0.0 : value.clamp(0.0, 1.0),
                     backgroundColor: Colors.grey[300],
                     valueColor: AlwaysStoppedAnimation<Color>(
+                      _showAnswer ? Colors.grey[400]! :
                       _timeRemaining > 10
                           ? Colors.green
                           : _timeRemaining > 5
@@ -476,18 +485,20 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                   Row(
                     children: [
                       Icon(
-                        Icons.timer,
+                        _showAnswer ? Icons.pause : Icons.timer,
                         size: 16,
-                        color: _timeRemaining > 10 ? Colors.green : 
+                        color: _showAnswer ? Colors.grey[600]! :
+                               _timeRemaining > 10 ? Colors.green : 
                                _timeRemaining > 5 ? Colors.orange : Colors.red,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '$_timeRemaining seconds',
+                        _showAnswer ? 'PAUSED' : '$_timeRemaining seconds',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: _timeRemaining > 10 ? Colors.green : 
+                          color: _showAnswer ? Colors.grey[600]! : 
+                                 _timeRemaining > 10 ? Colors.green : 
                                  _timeRemaining > 5 ? Colors.orange : Colors.red,
                         ),
                       ),
@@ -615,7 +626,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => setState(() => _showAnswer = true),
+                      onPressed: _toggleAnswer,
                       icon: const Icon(Icons.check),
                       label: const Text('Show Answer'),
                       style: ElevatedButton.styleFrom(

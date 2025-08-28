@@ -267,6 +267,14 @@ void _showTimerSettings() {
               spacing: 8,
               runSpacing: 8,
               children: [
+                _buildQuickTimerButton(1, '1s', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
+                _buildQuickTimerButton(3, '3s', selectedDuration, (value) {
+                  selectedDuration = value;
+                  setDialogState(() {}); // Force UI update
+                }),
                 _buildQuickTimerButton(10, '10s', selectedDuration, (value) {
                   selectedDuration = value;
                   setDialogState(() {}); // Force UI update
@@ -340,6 +348,7 @@ void _showTimerSettings() {
                 setState(() {
                   _currentDeck = updatedDeck;
                 });
+                Navigator.pop(context);
                 Navigator.pop(context);
 
                 if (mounted) {
