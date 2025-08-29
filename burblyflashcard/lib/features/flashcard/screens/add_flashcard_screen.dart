@@ -205,8 +205,8 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        width: 20,
                         height: 20,
+                        width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),

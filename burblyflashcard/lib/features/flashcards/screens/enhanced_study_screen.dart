@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:math';
 import '../../../core/core.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/background_service.dart';
@@ -8,94 +9,146 @@ import '../../../core/utils/snackbar_utils.dart';
 class EnhancedStudyScreen extends StatefulWidget {
   final Deck deck;
   final List<Flashcard> flashcards;
+  final bool useFSRS;
 
   const EnhancedStudyScreen({
     super.key,
     required this.deck,
     required this.flashcards,
+    this.useFSRS = false,
   });
 
   @override
   State<EnhancedStudyScreen> createState() => _EnhancedStudyScreenState();
 }
 
-class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
+class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerProviderStateMixin {
+  late final StudyService _studyService;
+  late final FSRSStudyService _fsrsStudyService;
   final DataService _dataService = DataService();
-  // final PetNotificationService _petNotificationService = PetNotificationService();
+  
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
-  Timer? _timer;
-  int _timeRemaining = 0;
-  bool _timerEnabled = false;
+  bool _showRatingButtons = false;
+  bool _isFlipping = false;
+  bool _showExtendedDescription = false;
+  bool _isStudyComplete = false;
   int _correctAnswers = 0;
   int _incorrectAnswers = 0;
-  final DateTime _studyStartTime = DateTime.now();
-  bool _isStudyComplete = false;
-
-  int get _effectiveTimerDuration => (widget.deck.timerDuration ?? 30);
-
-  void _resetStudySession() {
-    setState(() {
-      _currentIndex = 0;
-      _showAnswer = false;
-      _isStudyComplete = false;
-      _correctAnswers = 0;
-      _incorrectAnswers = 0;
-      _timerEnabled = _effectiveTimerDuration > 0;
-      _timer?.cancel();
-      if (_timerEnabled) {
-        _timeRemaining = _effectiveTimerDuration;
-        _startTimer();
-      } else {
-        _timeRemaining = 0;
-      }
-    });
-  }
+  DateTime _studyStartTime = DateTime.now();
+  bool _timerEnabled = false;
+  int _timeRemaining = 0;
+  Timer? _timer;
+  
+  // Study session tracking
+  late SimpleStudySession _studySession;
+  final Map<String, StudyRating> _cardResults = {};
+  
+  // Animation controllers for realistic flip effect
+  late AnimationController _flipController;
+  late Animation<double> _flipAnimation;
+  // Animation controller for text fade-in
+  late AnimationController _textFadeController;
+  late Animation<double> _textFadeAnimation;
+  // Animation controller for tap scale effect
+  late AnimationController _tapScaleController;
+  late Animation<double> _tapScaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _initializeTimer();
-  }
-
-  void _initializeTimer() {
-    if (_effectiveTimerDuration > 0) {
-      _timerEnabled = true;
+    _initializeStudyServices();
+    _initializeStudySession();
+    _initializeAnimations();
+    _timerEnabled = _effectiveTimerDuration > 0;
+    if (_timerEnabled) {
       _timeRemaining = _effectiveTimerDuration;
       _startTimer();
     }
   }
 
-  void _startTimer() {
-    if (!_timerEnabled) return;
+  void _initializeStudyServices() {
+    _studyService = StudyService();
+    _fsrsStudyService = FSRSStudyService();
+  }
+
+  void _initializeStudySession() {
+    _studySession = SimpleStudySession(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      deckId: widget.deck.id,
+      startTime: DateTime.now(),
+      totalCards: widget.flashcards.length,
+    );
+  }
+
+  void _initializeAnimations() {
+    _flipController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
     
-    // Cancel any existing timer
+    _flipAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _flipController,
+      curve: Curves.easeInOutCubic,
+    ));
+
+    _textFadeController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _textFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _textFadeController,
+      curve: Curves.easeIn,
+    ));
+
+    _tapScaleController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _tapScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(
+      parent: _tapScaleController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Start text fade animation
+    _textFadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _flipController.dispose();
+    _textFadeController.dispose();
+    _tapScaleController.dispose();
     _timer?.cancel();
-    
+    super.dispose();
+  }
+
+  int get _effectiveTimerDuration => (widget.deck.timerDuration ?? 30);
+
+  void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_timeRemaining > 0) {
+      if (!_showAnswer && _timeRemaining > 0) {
         setState(() {
           _timeRemaining--;
-        });
-      } else {
-        timer.cancel();
-        if (!_showAnswer && !_isStudyComplete) {
-          // Use _toggleAnswer to properly manage timer state
-          setState(() {
+          if (_timeRemaining <= 0) {
             _showAnswer = true;
-          });
-          // Pause timer when answer is shown due to timeout
-          if (_timerEnabled) {
-            _pauseTimer();
+            _showRatingButtons = true;
+            _timer?.cancel();
           }
-          // Auto-rate as "Again" when timer expires
-          Timer(const Duration(seconds: 2), () {
-            if (mounted && !_isStudyComplete) {
-              _rateCard(1); // Rate as "Again"
-            }
-          });
-        }
+        });
       }
     });
   }
@@ -105,15 +158,30 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   }
 
   void _resumeTimer() {
-    if (_timerEnabled && !_isStudyComplete) {
-      _startTimer();
-    }
+    _startTimer();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void _resetStudySession() {
+    setState(() {
+      _currentIndex = 0;
+      _showAnswer = false;
+      _showRatingButtons = false;
+      _isStudyComplete = false;
+      _correctAnswers = 0;
+      _incorrectAnswers = 0;
+      _studyStartTime = DateTime.now();
+      _cardResults.clear();
+      _showExtendedDescription = false;
+      _textFadeController.reset();
+      _textFadeController.forward();
+      _timerEnabled = _effectiveTimerDuration > 0;
+      if (_timerEnabled) {
+        _timeRemaining = _effectiveTimerDuration;
+        _startTimer();
+      } else {
+        _timeRemaining = 0;
+      }
+    });
   }
 
   void _nextCard() {
@@ -121,6 +189,10 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       setState(() {
         _currentIndex++;
         _showAnswer = false;
+        _showRatingButtons = false;
+        _showExtendedDescription = false;
+        _textFadeController.reset();
+        _textFadeController.forward();
         if (_timerEnabled) {
           _timeRemaining = _effectiveTimerDuration;
           _startTimer();
@@ -136,6 +208,10 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       setState(() {
         _currentIndex--;
         _showAnswer = false;
+        _showRatingButtons = false;
+        _showExtendedDescription = false;
+        _textFadeController.reset();
+        _textFadeController.forward();
         if (_timerEnabled) {
           _timeRemaining = _effectiveTimerDuration;
           _startTimer();
@@ -147,6 +223,10 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
   void _toggleAnswer() {
     setState(() {
       _showAnswer = !_showAnswer;
+      _showRatingButtons = _showAnswer;
+      _showExtendedDescription = false;
+      _textFadeController.reset();
+      _textFadeController.forward();
     });
     
     // If showing answer and timer is enabled, stop the timer completely
@@ -175,16 +255,8 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
         await petService.initialize();
         final currentPet = petService.getCurrentPet();
         if (currentPet != null) {
-          // Calculate points based on quality (3-5 = 1-3 points)
           final points = quality - 2;
-          final oldHunger = currentPet.hunger;
-          final oldHappiness = currentPet.happiness;
-          
           await petService.feedPetOnCorrectAnswer(currentPet, points);
-          
-          // Show notification for pet feeding
-          final updatedPet = petService.getCurrentPet();
-          // if (updatedPet != null) { /* can show feedback here */ }
         }
       } catch (e) {
         print('Error feeding pet: $e');
@@ -226,11 +298,6 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted && !_isStudyComplete) {
         _nextCard();
-        // Restart timer for the next card if timer is enabled
-        if (_timerEnabled) {
-          _timeRemaining = _effectiveTimerDuration;
-          _startTimer();
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -363,6 +430,21 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
     return accuracy.toStringAsFixed(1);
   }
 
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
   String _formatDuration(int seconds) {
     final minutes = seconds ~/ 60;
     final remainingSeconds = seconds % 60;
@@ -370,6 +452,47 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
       return '${minutes}m ${remainingSeconds}s';
     }
     return '${remainingSeconds}s';
+  }
+
+  void _handleDoubleTap() {
+    if (_isFlipping) return;
+    
+    setState(() {
+      _isFlipping = true;
+    });
+    
+    _flipController.forward().then((_) {
+      setState(() {
+        _showAnswer = !_showAnswer;
+        _showRatingButtons = _showAnswer;
+        _isFlipping = false;
+        _showExtendedDescription = false;
+        _textFadeController.reset();
+        _textFadeController.forward();
+      });
+      _flipController.reset();
+      // Handle timer when flipping
+      if (_showAnswer && _timerEnabled) {
+        _pauseTimer();
+      } else if (!_showAnswer && _timerEnabled) {
+        _timeRemaining = _effectiveTimerDuration;
+        _resumeTimer();
+      }
+    });
+  }
+
+  void _handleSwipeUp() {
+    if (_showAnswer) {
+      setState(() {
+        _showExtendedDescription = true;
+      });
+      if (widget.flashcards[_currentIndex].extendedDescription?.isEmpty ?? true) {
+        SnackbarUtils.showInfoSnackbar(
+          context,
+          'No extended description available for this card',
+        );
+      }
+    }
   }
 
   @override
@@ -441,7 +564,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
             value: (_currentIndex + 1) / widget.flashcards.length,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              Color(int.parse('0xFF${'2196F3'}')),
+              Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
             ),
           ),
 
@@ -471,7 +594,6 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                   );
                 },
               ),
-
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -518,95 +640,187 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
-                      ],
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Question/Answer Label
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: GestureDetector(
+                onDoubleTap: _handleDoubleTap,
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity! < 0) {
+                    _handleSwipeUp();
+                  }
+                },
+                onTapDown: (_) => _tapScaleController.forward(),
+                onTapUp: (_) => _tapScaleController.reverse(),
+                onTapCancel: () => _tapScaleController.reverse(),
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_flipAnimation, _tapScaleAnimation]),
+                  builder: (context, child) {
+                    final angle = _flipAnimation.value * pi;
+                    final transform = Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..rotateY(angle)
+                      ..scale(_tapScaleAnimation.value);
+                    
+                    return Transform(
+                      transform: transform,
+                      alignment: Alignment.center,
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Container(
+                          width: double.infinity,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _showAnswer ? 'ANSWER' : 'QUESTION',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Question/Answer Text
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              _showAnswer ? currentCard.answer : currentCard.question,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-
-                        // Spaced Repetition Info (if enabled)
-                        if (widget.deck.spacedRepetitionEnabled && _showAnswer) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Review Count: ${currentCard.reviewCount}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                if (currentCard.lastReviewed != null)
-                                  Text(
-                                    'Last: ${_formatDate(currentCard.lastReviewed!)}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
                               ],
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Question/Answer Label
+                                FadeTransition(
+                                  opacity: _textFadeAnimation,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _showAnswer ? 'ANSWER' : 'QUESTION',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Question/Answer Text
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: FadeTransition(
+                                      opacity: _textFadeAnimation,
+                                      child: Text(
+                                        _showAnswer ? currentCard.answer : currentCard.question,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.5,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.2),
+                                              blurRadius: 4,
+                                              offset: const Offset(2, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // Extended Description
+                                if (_showAnswer && _showExtendedDescription) ...[
+                                  const SizedBox(height: 16),
+                                  FadeTransition(
+                                    opacity: _textFadeAnimation,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.1),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        currentCard.extendedDescription?.isNotEmpty == true 
+                                          ? currentCard.extendedDescription!
+                                          : 'No extended description available',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w400,
+                                          height: 1.5,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.2),
+                                              blurRadius: 4,
+                                              offset: const Offset(1, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+
+                                // Spaced Repetition Info (if enabled)
+                                if (widget.deck.spacedRepetitionEnabled && _showAnswer) ...[
+                                  const SizedBox(height: 16),
+                                  FadeTransition(
+                                    opacity: _textFadeAnimation,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Review Count: ${currentCard.reviewCount}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          if (currentCard.lastReviewed != null)
+                                            Text(
+                                              'Last: ${_formatDate(currentCard.lastReviewed!)}',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -621,19 +835,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
                 if (!_showAnswer) ...[
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _toggleAnswer,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Show Answer'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                    
                   ),
                 ],
 
@@ -734,20 +936,5 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
   }
 }

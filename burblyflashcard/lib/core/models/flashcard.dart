@@ -58,6 +58,9 @@ class Flashcard extends HiveObject {
   @HiveField(17)
   bool? isReviewed;
 
+  @HiveField(18)
+  String? extendedDescription;
+
   Flashcard({
     required this.id,
     required this.deckId,
@@ -77,6 +80,7 @@ class Flashcard extends HiveObject {
     this.reviewedStartTime,
     this.isReviewNow = false,
     this.isReviewed = false,
+    this.extendedDescription,
   });
 
   Flashcard copyWith({
@@ -98,6 +102,7 @@ class Flashcard extends HiveObject {
     DateTime? reviewedStartTime,
     bool? isReviewNow,
     bool? isReviewed,
+    String? extendedDescription,
   }) {
     return Flashcard(
       id: id ?? this.id,
@@ -118,6 +123,7 @@ class Flashcard extends HiveObject {
       reviewedStartTime: reviewedStartTime ?? this.reviewedStartTime,
       isReviewNow: isReviewNow ?? this.isReviewNow,
       isReviewed: isReviewed ?? this.isReviewed,
+      extendedDescription: extendedDescription ?? this.extendedDescription,
     );
   }
 
@@ -141,6 +147,7 @@ class Flashcard extends HiveObject {
       'reviewedStartTime': reviewedStartTime?.toIso8601String(),
       'isReviewNow': isReviewNow,
       'isReviewed': isReviewed,
+      'extendedDescription': extendedDescription,
     };
   }
 
@@ -164,6 +171,7 @@ class Flashcard extends HiveObject {
       reviewedStartTime: map['reviewedStartTime'] != null ? DateTime.parse(map['reviewedStartTime']) : null,
       isReviewNow: map['isReviewNow'] ?? false,
       isReviewed: map['isReviewed'] ?? false,
+      extendedDescription: map['extendedDescription'],
     );
   }
 }

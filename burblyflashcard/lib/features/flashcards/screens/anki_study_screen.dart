@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
@@ -18,9 +19,8 @@ class AnkiStudyScreen extends StatefulWidget {
   State<AnkiStudyScreen> createState() => _AnkiStudyScreenState();
 }
 
-class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
+class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderStateMixin {
   final DataService _dataService = DataService();
-  // final PetNotificationService _petNotificationService = PetNotificationService();
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
@@ -32,15 +32,80 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   int _cardsCorrect = 0;
   int _cardsIncorrect = 0;
   DateTime _sessionStartTime = DateTime.now();
+
+  bool _isFlipping = false;
+  bool _showExtendedDescription = false;
   
+  // Animation controllers for realistic flip effect
+  late AnimationController _flipController;
+  late Animation<double> _flipAnimation;
+  // Animation controller for text fade-in
+  late AnimationController _textFadeController;
+  late Animation<double> _textFadeAnimation;
+  // Animation controller for tap scale effect
+  late AnimationController _tapScaleController;
+  late Animation<double> _tapScaleAnimation;
+
   // Deck information for mixed study
   List<Deck> _allDecks = [];
 
   @override
   void initState() {
     super.initState();
-    _sessionStartTime = DateTime.now();
+    _initializeAnimations();
     _loadDeckInformation();
+  }
+
+  void _initializeAnimations() {
+    _flipController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _flipAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _flipController,
+      curve: Curves.easeInOutCubic,
+    ));
+
+    _textFadeController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _textFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _textFadeController,
+      curve: Curves.easeIn,
+    ));
+
+    _tapScaleController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _tapScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(
+      parent: _tapScaleController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Start text fade animation
+    _textFadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _flipController.dispose();
+    _textFadeController.dispose();
+    _tapScaleController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDeckInformation() async {
@@ -66,6 +131,8 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       _cardsCorrect = 0;
       _cardsIncorrect = 0;
       _sessionStartTime = DateTime.now();
+      _textFadeController.reset();
+      _textFadeController.forward();
     });
   }
 
@@ -86,38 +153,37 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
     }
 
     if (_isStudyComplete) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('Study: ${widget.deck.name}'),
-      backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-      foregroundColor: Colors.white,
-      elevation: 0,
-    ),
-    body: Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.check_circle, size: 64, color: Colors.green),
-            SizedBox(height: 16),
-            Text(
-              'Complete!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Returning to deck...',
-              textAlign: TextAlign.center,
-            ),
-          ],
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Study: ${widget.deck.name}'),
+          backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
-      ),
-    ),
-  );
-}
-
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.check_circle, size: 64, color: Colors.green),
+                SizedBox(height: 16),
+                Text(
+                  'Complete!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Returning to deck...',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     final currentCard = widget.flashcards[_currentIndex];
 
@@ -149,7 +215,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
             value: (_currentIndex + 1) / widget.flashcards.length,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              Color(int.parse('0xFF${'2196F3'}')),
+              Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
             ),
           ),
 
@@ -173,184 +239,278 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
-                      ],
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Question/Answer Label with Deck Info for Mixed Study
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                _showAnswer ? 'ANSWER' : 'QUESTION',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            if (_isMixedStudy) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.9),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  _getDeckName(currentCard.deckId),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+              child: GestureDetector(
+                onDoubleTap: _handleDoubleTap,
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity! < 0) {
+                    _handleSwipeUp();
+                  }
+                },
+                onTapDown: (_) => _tapScaleController.forward(),
+                onTapUp: (_) => _tapScaleController.reverse(),
+                onTapCancel: () => _tapScaleController.reverse(),
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_flipAnimation, _tapScaleAnimation]),
+                  builder: (context, child) {
+                    final angle = _flipAnimation.value * pi;
+                    final transform = Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..rotateY(angle)
+                      ..scale(_tapScaleAnimation.value);
+                    
+                    return Transform(
+                      transform: transform,
+                      alignment: Alignment.center,
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        const SizedBox(height: 24),
-
-                        // Question/Answer Text
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              _showAnswer ? currentCard.answer : currentCard.question,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w600,
-                                height: 1.4,
-                              ),
-                              textAlign: TextAlign.center,
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
+                              ],
                             ),
                           ),
-                        ),
-
-                        // Spaced Repetition Info
-                        if (_showAnswer) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
                             child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildInfoItem('Reviews', '${currentCard.reviewCount}'),
-                                    _buildInfoItem('Ease', '${currentCard.easeFactor.toStringAsFixed(2)}'),
-                                  ],
-                                ),
-                                if (_isMixedStudy) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: BoxDecoration(
-                                            color: _getDeckColor(currentCard.deckId),
-                                            shape: BoxShape.circle,
+                                // Question/Answer Label with Deck Info for Mixed Study
+                                FadeTransition(
+                                  opacity: _textFadeAnimation,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(20),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          _showAnswer ? 'ANSWER' : 'QUESTION',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            letterSpacing: 1.2,
                                           ),
                                         ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _getDeckName(currentCard.deckId),
-                                          style: TextStyle(
-                                            color: _getDeckColor(currentCard.deckId),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                      ),
+                                      if (_isMixedStudy) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.9),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            _getDeckName(currentCard.deckId),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 10,
+                                            ),
                                           ),
                                         ),
                                       ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Question/Answer Text
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: FadeTransition(
+                                      opacity: _textFadeAnimation,
+                                      child: Text(
+                                        _showAnswer ? currentCard.answer : currentCard.question,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.5,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.2),
+                                              blurRadius: 4,
+                                              offset: const Offset(2, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // Extended Description
+                                if (_showAnswer && _showExtendedDescription) ...[
+                                  const SizedBox(height: 16),
+                                  FadeTransition(
+                                    opacity: _textFadeAnimation,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.1),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        currentCard.extendedDescription?.isNotEmpty == true 
+                                          ? currentCard.extendedDescription!
+                                          : 'No extended description available',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w400,
+                                          height: 1.5,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.2),
+                                              blurRadius: 4,
+                                              offset: const Offset(1, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+
+                                // Spaced Repetition Info
+                                if (_showAnswer) ...[
+                                  const SizedBox(height: 16),
+                                  FadeTransition(
+                                    opacity: _textFadeAnimation,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              _buildInfoItem('Reviews', '${currentCard.reviewCount}'),
+                                              _buildInfoItem('Ease', '${currentCard.easeFactor.toStringAsFixed(2)}'),
+                                            ],
+                                          ),
+                                          if (_isMixedStudy) ...[
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    width: 8,
+                                                    height: 8,
+                                                    decoration: BoxDecoration(
+                                                      color: _getDeckColor(currentCard.deckId),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    _getDeckName(currentCard.deckId),
+                                                    style: TextStyle(
+                                                      color: _getDeckColor(currentCard.deckId),
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+
+                                // Study Instructions
+                                if (!_showAnswer) ...[
+                                  const SizedBox(height: 16),
+                                  FadeTransition(
+                                    opacity: _textFadeAnimation,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const Icon(
+                                            Icons.lightbulb_outline,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Try to recall the answer before revealing it',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.9),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'This active recall strengthens your memory',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.7),
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ],
                             ),
                           ),
-                        ],
-
-                        // Study Instructions
-                        if (!_showAnswer) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.lightbulb_outline,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Try to recall the answer before revealing it',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'This active recall strengthens your memory',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 12,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -419,28 +579,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
             ),
           ] else ...[
             // Show Answer Button
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => setState(() => _showAnswer = true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Show Answer',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ),
-          ],
+           ],
         ],
       ),
     );
@@ -544,24 +683,8 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
           await petService.initialize();
           final currentPet = petService.getCurrentPet();
           if (currentPet != null) {
-            // Calculate points based on quality (3-5 = 1-3 points)
             final points = quality - 2;
-            final oldHunger = currentPet.hunger;
-            final oldHappiness = currentPet.happiness;
-            
             await petService.feedPetOnCorrectAnswer(currentPet, points);
-            
-            // Show notification for pet feeding
-            final updatedPet = petService.getCurrentPet();
-            if (updatedPet != null) {
-              // Intentionally not using delta variables to avoid lints
-              
-              // _petNotificationService.showPetFeedingNotification(
-              //   updatedPet.name,
-              //   hungerReduced,
-              //   happinessGained,
-              // );
-            }
           }
         } catch (e) {
           print('Error feeding pet: $e');
@@ -578,7 +701,6 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       } catch (e) {
         print('OverdueService markCardAsStudied failed: $e');
       }
-      
 
       // Wait a moment then move to next card
       await Future.delayed(const Duration(milliseconds: 800));
@@ -588,6 +710,10 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
         setState(() {
           _currentIndex++;
           _showAnswer = false;
+          _isAnswerRevealed = false;
+          _showExtendedDescription = false;
+          _textFadeController.reset();
+          _textFadeController.forward();
         });
       } else {
         // Study session completed
@@ -661,62 +787,60 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-          title: const Text('Study Complete! 🎉'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('You have completed studying "${widget.deck.name}"'),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 8),
-                  Text('Correct: $_cardsCorrect'),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.cancel, color: Colors.red, size: 20),
-                  const SizedBox(width: 8),
-                  Text('Incorrect: $_cardsIncorrect'),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.psychology, color: Colors.purple, size: 20),
-                  const SizedBox(width: 8),
-                  Text('Accuracy: $accuracy%'),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton.icon(
-              icon: const Icon(Icons.home),
-              label: const Text('Back to Deck'),
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Return to deck screen
-                Navigator.pop(context); // Return to deck screen
-              },
+        title: const Text('Study Complete! 🎉'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You have completed studying "${widget.deck.name}"'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Text('Correct: $_cardsCorrect'),
+              ],
             ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.refresh),
-              label: const Text('Study Again'),
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                _resetStudySession(); // Reset the study session
-              },
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.cancel, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Text('Incorrect: $_cardsIncorrect'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.psychology, color: Colors.purple, size: 20),
+                const SizedBox(width: 8),
+                Text('Accuracy: $accuracy%'),
+              ],
             ),
           ],
         ),
-     );
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.home),
+            label: const Text('Back to Deck'),
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Return to deck screen
+              Navigator.pop(context); // Return to deck screen
+            },
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.refresh),
+            label: const Text('Study Again'),
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _resetStudySession(); // Reset the study session
+            },
+          ),
+        ],
+      ),
+    );
   }
-
-  // Removed unused formatting helpers to satisfy lints
 
   Color _getDeckColor(String deckId) {
     try {
@@ -737,4 +861,38 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   }
 
   bool get _isMixedStudy => widget.deck.id == 'mixed_study_session';
+
+  void _handleDoubleTap() {
+    if (_isFlipping) return;
+    
+    setState(() {
+      _isFlipping = true;
+    });
+    
+    _flipController.forward().then((_) {
+      setState(() {
+        _showAnswer = !_showAnswer;
+        _isAnswerRevealed = _showAnswer;
+        _isFlipping = false;
+        _showExtendedDescription = false;
+        _textFadeController.reset();
+        _textFadeController.forward();
+      });
+      _flipController.reset();
+    });
+  }
+
+  void _handleSwipeUp() {
+    if (_showAnswer) {
+      setState(() {
+        _showExtendedDescription = true;
+      });
+      if (widget.flashcards[_currentIndex].extendedDescription?.isEmpty ?? true) {
+        SnackbarUtils.showInfoSnackbar(
+          context,
+          'No extended description available for this card',
+        );
+      }
+    }
+  }
 }

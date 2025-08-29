@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/services/pet_service.dart';
@@ -18,11 +19,81 @@ class StudyScreen extends StatefulWidget {
   State<StudyScreen> createState() => _StudyScreenState();
 }
 
-class _StudyScreenState extends State<StudyScreen> {
+class _StudyScreenState extends State<StudyScreen> with TickerProviderStateMixin {
   final DataService _dataService = DataService();
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
+  bool _isFlipping = false;
+  bool _showExtendedDescription = false;
+  
+  // Animation controllers for realistic flip effect
+  late AnimationController _flipController;
+  late Animation<double> _flipAnimation;
+  // Animation controller for text fade-in
+  late AnimationController _textFadeController;
+  late Animation<double> _textFadeAnimation;
+  // Animation controller for tap scale effect
+  late AnimationController _tapScaleController;
+  late Animation<double> _tapScaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+  }
+
+  void _initializeAnimations() {
+    _flipController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _flipAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _flipController,
+      curve: Curves.easeInOutCubic,
+    ));
+
+    _textFadeController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _textFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _textFadeController,
+      curve: Curves.easeIn,
+    ));
+
+    _tapScaleController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _tapScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(
+      parent: _tapScaleController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Start text fade animation
+    _textFadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _flipController.dispose();
+    _textFadeController.dispose();
+    _tapScaleController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,73 +149,227 @@ class _StudyScreenState extends State<StudyScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                        Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withOpacity(0.7),
-                      ],
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Question/Answer Label
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: GestureDetector(
+                onDoubleTap: _handleDoubleTap,
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity! < 0) {
+                    _handleSwipeUp();
+                  }
+                },
+                onTapDown: (_) => _tapScaleController.forward(),
+                onTapUp: (_) => _tapScaleController.reverse(),
+                onTapCancel: () => _tapScaleController.reverse(),
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_flipAnimation, _tapScaleAnimation]),
+                  builder: (context, child) {
+                    final angle = _flipAnimation.value * pi;
+                    final transform = Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..rotateY(angle)
+                      ..scale(_tapScaleAnimation.value);
+                    
+                    return Transform(
+                      transform: transform,
+                      alignment: Alignment.center,
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Container(
+                          width: double.infinity,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _showAnswer ? 'ANSWER' : 'QUESTION',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withOpacity(0.7),
+                              ],
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Question/Answer Label
+                                AnimatedSwitcher(
+  duration: const Duration(milliseconds: 400),
+  transitionBuilder: (child, animation) {
+    final rotation = Tween(begin: pi, end: 0.0).animate(animation);
 
-                        // Question/Answer Text
-                        Text(
-                          _showAnswer ? currentCard.answer : currentCard.question,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
+    return AnimatedBuilder(
+      animation: rotation,
+      child: child,
+      builder: (context, child) {
+        final isUnder = (child?.key != ValueKey(_showAnswer));
+        final value = isUnder ? min(rotation.value, pi / 2) : rotation.value;
 
-                        // Tap to reveal hint
-                        if (!_showAnswer)
-                          Text(
-                            'Tap to reveal answer',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                    ),
+        return Transform(
+          transform: Matrix4.rotationY(value),
+          alignment: Alignment.center,
+          child: child,
+        );
+      },
+    );
+  },
+  child: AnimatedSwitcher(
+  duration: const Duration(milliseconds: 400),
+  transitionBuilder: (child, animation) => FadeTransition(
+    opacity: animation,
+    child: child,
+  ),
+  child: Container(
+    key: ValueKey(_showAnswer),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: _showAnswer 
+          ? Colors.green.withOpacity(0.3) 
+          : Colors.white.withOpacity(0.2),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Text(
+      _showAnswer ? 'ANSWER' : 'QUESTION',
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+        fontSize: 14,
+        letterSpacing: 1.2,
+      ),
+    ),
+  ),
+)
+
+                              
+),
+                              
+const SizedBox(height: 24),
+
+                                // Question/Answer Text
+                                Expanded(
+  child: SingleChildScrollView(
+    child: Column(
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, animation) {
+            final rotation = Tween(begin: pi, end: 0.0).animate(animation);
+            return AnimatedBuilder(
+              animation: rotation,
+              child: child,
+              builder: (context, child) {
+                final isUnder = (child?.key != ValueKey(_showAnswer));
+                final value = isUnder ? min(rotation.value, pi / 2) : rotation.value;
+                return Transform(
+                  transform: Matrix4.rotationY(value),
+                  alignment: Alignment.center,
+                  child: child,
+                );
+              },
+            );
+          },
+          child: Text(
+            _showAnswer ? currentCard.answer : currentCard.question,
+            key: ValueKey(_showAnswer),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              height: 1.5,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(2, 2),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        if (_showAnswer && _showExtendedDescription) ...[
+          
+          const SizedBox(height: 16),
+          FadeTransition(
+            opacity: _textFadeAnimation,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
+                ],
+              ),
+             child: Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(
+      "Description: ",
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.95),
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.8,
+      ),
+    ),
+    Expanded(
+      child: Text(
+        currentCard.extendedDescription ?? '',
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.9),
+          fontSize: 16,
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 3, // adjust as needed
+      ),
+    ),
+  ],
+),
+
+             ),
+          ),
+        ],
+      ],
+    ),
+  ),
+),
+const SizedBox(height: 32),
+
+                                // Tap to reveal hint
+                                if (!_showAnswer)
+                                  FadeTransition(
+                                    opacity: _textFadeAnimation,
+                                    child: Text(
+                                      'Double tap to reveal answer',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 16,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -213,28 +438,7 @@ class _StudyScreenState extends State<StudyScreen> {
               ),
             ),
           ] else ...[
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => setState(() => _showAnswer = true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Show Answer',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
         ],
       ),
     );
@@ -266,22 +470,25 @@ class _StudyScreenState extends State<StudyScreen> {
         setState(() {
           _currentIndex++;
           _showAnswer = false;
+          _showExtendedDescription = false;
+          _textFadeController.reset();
+          _textFadeController.forward();
         });
-                  } else {
-              // Study session completed
-              // Update study streak
-              await BackgroundService().updateStudyStreak();
-              
-              // Update pet with study progress
-              final petService = PetService();
-              await petService.initialize();
-              final currentPet = petService.getCurrentPet();
-              if (currentPet != null) {
-                await petService.studyWithPet(currentPet, _currentIndex + 1);
-              }
-              
-              if (mounted) {
-                Navigator.pop(context);
+      } else {
+        // Study session completed
+        // Update study streak
+        await BackgroundService().updateStudyStreak();
+        
+        // Update pet with study progress
+        final petService = PetService();
+        await petService.initialize();
+        final currentPet = petService.getCurrentPet();
+        if (currentPet != null) {
+          await petService.studyWithPet(currentPet, _currentIndex + 1);
+        }
+        
+        if (mounted) {
+          Navigator.pop(context);
           SnackbarUtils.showSuccessSnackbar(
             context,
             'Study session completed! You reviewed ${widget.flashcards.length} cards.',
@@ -299,6 +506,34 @@ class _StudyScreenState extends State<StudyScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  void _handleDoubleTap() {
+    if (_isFlipping) return;
+    
+    setState(() {
+      _isFlipping = true;
+    });
+    
+    _flipController.forward().then((_) {
+      setState(() {
+        _showAnswer = !_showAnswer;
+        _isFlipping = false;
+        _showExtendedDescription = false;
+        _textFadeController.reset();
+        _textFadeController.forward();
+      });
+      _flipController.reset();
+    });
+  }
+
+  void _handleSwipeUp() {
+    if (_showAnswer) {
+      setState(() {
+        _showExtendedDescription = true;
+      });
+      
     }
   }
 }
