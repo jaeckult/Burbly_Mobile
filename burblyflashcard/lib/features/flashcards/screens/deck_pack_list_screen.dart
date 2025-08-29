@@ -15,6 +15,7 @@ import 'flashcard_home_screen.dart';
 import '../../stats/stats_page.dart';
 import 'notification_settings_screen.dart';
 import '../widgets/notification_widget.dart';
+import '../../schedules/schedules.dart';
 // import '../../pets/screens/pet_management_screen.dart';
 import 'trash_screen.dart';
 
@@ -34,13 +35,11 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   Map<String, bool> _expandedPacks = {};
   bool _isLoading = true;
   bool _isGuestMode = false;
-  bool _isTestingMode = false; // Testing mode state
 
   @override
   void initState() {
     super.initState();
     _initializeData();
-    _loadTestingModePreference();
   }
 
   Future<void> _initializeData() async {
@@ -143,37 +142,7 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     ).then((_) => _loadAllDecks());
   }
 
-  void _toggleTestingMode() async {
-    final newMode = !_isTestingMode;
-    
-    // Update global testing mode service
-    await TestingModeService().setTestingMode(newMode);
-    
-    setState(() {
-      _isTestingMode = newMode;
-    });
-    
-    // Show feedback to user
-    SnackbarUtils.showSuccessSnackbar(
-      context,
-      _isTestingMode 
-          ? 'Testing Mode Enabled - Faster intervals for testing'
-          : 'Testing Mode Disabled - Normal intervals restored',
-    );
-  }
 
-
-
-  Future<void> _loadTestingModePreference() async {
-    try {
-      await TestingModeService().loadTestingMode();
-      setState(() {
-        _isTestingMode = TestingModeService().isTestingMode;
-      });
-    } catch (e) {
-      print('Error loading testing mode preference: $e');
-    }
-  }
 
   Future<void> _confirmDeleteDeck(Deck deck) async {
     final confirmed = await showDialog<bool>(
@@ -1027,18 +996,19 @@ Widget _buildDrawer() {
           ),
         ),
         actions: [
-          // Testing mode toggle (only in debug mode)
-          if (const bool.fromEnvironment('dart.vm.product') == false)
-            IconButton(
-              onPressed: _toggleTestingMode,
-              icon: Icon(
-                _isTestingMode ? Icons.bug_report : Icons.bug_report_outlined,
-                color: _isTestingMode 
-                    ? Colors.orange 
-                    : Theme.of(context).appBarTheme.foregroundColor,
-              ),
-              tooltip: _isTestingMode ? 'Testing Mode ON' : 'Testing Mode OFF',
+          // My Schedules button
+          IconButton(
+            onPressed: () {
+              context.pushSlide(
+                const MySchedulesScreen(),
+              );
+            },
+            icon: Icon(
+              Icons.calendar_month,
+              color: Theme.of(context).appBarTheme.foregroundColor,
             ),
+            tooltip: 'My Schedules',
+          ),
           
           // Search button
           IconButton(
