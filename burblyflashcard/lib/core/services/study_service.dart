@@ -93,7 +93,59 @@ class StudyService {
     return 70 - daysOverdue.abs(); // Future due cards
   }
 
-  /// Process study result and update card
+  /// Calculate study result without applying changes
+  StudyResult calculateStudyResult(Flashcard card, StudyRating rating) {
+    final now = DateTime.now();
+    final oldInterval = card.interval;
+    final oldEaseFactor = card.easeFactor;
+    
+    // Calculate new interval and ease factor
+    final newInterval = _calculateNewInterval(card, rating);
+    final newEaseFactor = _calculateNewEaseFactor(card, rating);
+    
+    // Calculate next review date
+    final nextReview = _calculateNextReview(now, newInterval);
+    
+    // Create study result without updating the card
+    return StudyResult(
+      cardId: card.id,
+      oldInterval: oldInterval,
+      newInterval: newInterval,
+      oldEaseFactor: oldEaseFactor,
+      newEaseFactor: newEaseFactor,
+      rating: rating,
+      nextReview: nextReview,
+      isNewCard: card.lastReviewed == null,
+    );
+  }
+
+  /// Apply study results to cards
+  Future<void> applyStudyResults(List<StudyResult> studyResults, List<Flashcard> flashcards) async {
+    try {
+      final now = DateTime.now();
+      
+      for (final result in studyResults) {
+        final card = flashcards.firstWhere((c) => c.id == result.cardId);
+        
+        // Update card with the calculated values
+        final updatedCard = card.copyWith(
+          interval: result.newInterval,
+          easeFactor: result.newEaseFactor,
+          nextReview: result.nextReview,
+          lastReviewed: now,
+          reviewCount: card.reviewCount + 1,
+          updatedAt: now,
+        );
+
+        await _dataService.updateFlashcard(updatedCard);
+      }
+    } catch (e) {
+      print('Error applying study results: $e');
+      rethrow;
+    }
+  }
+
+  /// Process study result and update card (legacy method)
   Future<StudyResult> processStudyResult(Flashcard card, StudyRating rating) async {
     try {
       final now = DateTime.now();

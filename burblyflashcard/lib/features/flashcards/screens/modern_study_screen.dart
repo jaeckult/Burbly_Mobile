@@ -32,6 +32,7 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
   // Study session tracking
   late SimpleStudySession _studySession;
   final Map<String, StudyRating> _cardResults = {};
+  final List<StudyResult> _pendingStudyResults = [];
 
   @override
   void initState() {
@@ -368,10 +369,14 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
     try {
       final currentCard = widget.flashcards[_currentIndex];
       
-      // Process the study result using the appropriate service
+      // Calculate the study result without applying changes
       final studyResult = widget.useFSRS 
-          ? await _fsrsStudyService.processStudyResult(currentCard, rating)
-          : await _studyService.processStudyResult(currentCard, rating);
+          ? _fsrsStudyService.calculateStudyResult(currentCard, rating)
+          : _studyService.calculateStudyResult(currentCard, rating);
+      
+      // Store the pending result
+      _pendingStudyResults.add(studyResult);
+      
       // Update overdue/review tags: mark as studied (clears overdue/review-now and sets Reviewed for 10m)
       try {
         final quality = {
@@ -452,6 +457,20 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
 
   Future<void> _completeStudySession() async {
     try {
+      // Show scheduling consent dialog
+      if (mounted && _pendingStudyResults.isNotEmpty) {
+        final shouldApplySchedules = await _showSchedulingConsentDialog();
+        
+        if (shouldApplySchedules) {
+          // Apply the study results
+          if (widget.useFSRS) {
+            await _fsrsStudyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+          } else {
+            await _studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+          }
+        }
+      }
+      
       // Update study streak
       await BackgroundService().updateStudyStreak();
       
@@ -473,6 +492,30 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
     } catch (e) {
       print('Error completing study session: $e');
     }
+  }
+
+  Future<bool> _showSchedulingConsentDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SchedulingConsentDialog(
+        studyResults: _pendingStudyResults,
+        flashcards: widget.flashcards,
+        deckName: widget.deck.name,
+        onAccept: () => Navigator.pop(context, true),
+        onDecline: () => Navigator.pop(context, false),
+      ),
+    ) ?? false;
+  }
+
+  void _resetStudySession() {
+    setState(() {
+      _currentIndex = 0;
+      _showAnswer = false;
+      _showRatingButtons = false;
+      _cardResults.clear();
+      _pendingStudyResults.clear(); // Clear pending study results
+    });
   }
 
   String _getCardInfo(Flashcard card) {

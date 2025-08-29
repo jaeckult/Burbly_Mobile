@@ -51,6 +51,7 @@ dependencies:
   font_awesome_flutter: ^10.9.1
   spaced_repetition: ^0.1.0
   fsrs: ^2.0.1
+  syncfusion_flutter_calendar: ^28.1.37
 
 
 dev_dependencies:

@@ -44,6 +44,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
   // Study session tracking
   late SimpleStudySession _studySession;
   final Map<String, StudyRating> _cardResults = {};
+  final List<StudyResult> _pendingStudyResults = [];
   
   // Animation controllers for realistic flip effect
   late AnimationController _flipController;
@@ -171,6 +172,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
       _incorrectAnswers = 0;
       _studyStartTime = DateTime.now();
       _cardResults.clear();
+      _pendingStudyResults.clear(); // Clear pending study results
       _showExtendedDescription = false;
       _textFadeController.reset();
       _textFadeController.forward();
@@ -268,9 +270,14 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
     setState(() => _isLoading = true);
     
     try {
-      // Always record an update when rating to drive stats and progress
+      // Calculate study result for spaced repetition decks
       if (widget.deck.spacedRepetitionEnabled) {
-        await _dataService.updateFlashcardWithReview(currentCard, quality);
+        final rating = _qualityToStudyRating(quality);
+        final studyResult = widget.useFSRS 
+            ? _fsrsStudyService.calculateStudyResult(currentCard, rating)
+            : _studyService.calculateStudyResult(currentCard, rating);
+        
+        _pendingStudyResults.add(studyResult);
       } else {
         // Non-SR decks: minimally update review metadata for stats
         await _dataService.updateFlashcard(
@@ -318,6 +325,20 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
     
     // Stop timer
     _pauseTimer();
+    
+    // Show scheduling consent dialog for spaced repetition decks
+    if (widget.deck.spacedRepetitionEnabled && _pendingStudyResults.isNotEmpty) {
+      final shouldApplySchedules = await _showSchedulingConsentDialog();
+      
+      if (shouldApplySchedules) {
+        // Apply the study results
+        if (widget.useFSRS) {
+          await _fsrsStudyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+        } else {
+          await _studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+        }
+      }
+    }
     
     // Save study session
     try {
@@ -422,6 +443,20 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
         ),
       );
     }
+  }
+
+  Future<bool> _showSchedulingConsentDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SchedulingConsentDialog(
+        studyResults: _pendingStudyResults,
+        flashcards: widget.flashcards,
+        deckName: widget.deck.name,
+        onAccept: () => Navigator.pop(context, true),
+        onDecline: () => Navigator.pop(context, false),
+      ),
+    ) ?? false;
   }
 
   String _calculateAccuracy() {
@@ -936,5 +971,20 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
         ),
       ),
     );
+  }
+
+  StudyRating _qualityToStudyRating(int quality) {
+    switch (quality) {
+      case 1:
+        return StudyRating.again;
+      case 2:
+        return StudyRating.hard;
+      case 3:
+        return StudyRating.good;
+      case 4:
+        return StudyRating.easy;
+      default:
+        return StudyRating.good;
+    }
   }
 }

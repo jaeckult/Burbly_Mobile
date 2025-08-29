@@ -32,6 +32,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
   int _cardsCorrect = 0;
   int _cardsIncorrect = 0;
   DateTime _sessionStartTime = DateTime.now();
+  final List<StudyResult> _pendingStudyResults = [];
 
   bool _isFlipping = false;
   bool _showExtendedDescription = false;
@@ -131,6 +132,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
       _cardsCorrect = 0;
       _cardsIncorrect = 0;
       _sessionStartTime = DateTime.now();
+      _pendingStudyResults.clear(); // Clear pending study results
       _textFadeController.reset();
       _textFadeController.forward();
     });
@@ -693,8 +695,16 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
         _cardsIncorrect++;
       }
 
-      // Apply SM2 spaced repetition algorithm
-      await _dataService.updateFlashcardWithReview(currentCard, quality);
+      // Calculate study result for spaced repetition
+      if (widget.deck.spacedRepetitionEnabled) {
+        final rating = _qualityToStudyRating(quality);
+        final studyService = StudyService();
+        final studyResult = studyService.calculateStudyResult(currentCard, rating);
+        _pendingStudyResults.add(studyResult);
+      } else {
+        // Apply SM2 spaced repetition algorithm for non-SR decks
+        await _dataService.updateFlashcardWithReview(currentCard, quality);
+      }
       // Update overdue/review tags: mark as studied (clears overdue/review-now and sets Reviewed for 10m)
       try {
         await OverdueService().markCardAsStudied(currentCard, quality);
@@ -739,6 +749,17 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
     });
 
     try {
+      // Show scheduling consent dialog for spaced repetition decks
+      if (widget.deck.spacedRepetitionEnabled && _pendingStudyResults.isNotEmpty) {
+        final shouldApplySchedules = await _showSchedulingConsentDialog();
+        
+        if (shouldApplySchedules) {
+          // Apply the study results
+          final studyService = StudyService();
+          await studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+        }
+      }
+      
       // Update study streak
       await BackgroundService().updateStudyStreak();
       
@@ -780,6 +801,20 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
     } catch (e) {
       print('Error completing study session: $e');
     }
+  }
+
+  Future<bool> _showSchedulingConsentDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SchedulingConsentDialog(
+        studyResults: _pendingStudyResults,
+        flashcards: widget.flashcards,
+        deckName: widget.deck.name,
+        onAccept: () => Navigator.pop(context, true),
+        onDecline: () => Navigator.pop(context, false),
+      ),
+    ) ?? false;
   }
 
   Future<void> _showCompletionDialog(Duration sessionDuration, int accuracy) async {
@@ -893,6 +928,23 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
           'No extended description available for this card',
         );
       }
+    }
+  }
+
+  StudyRating _qualityToStudyRating(int quality) {
+    switch (quality) {
+      case 1:
+        return StudyRating.again;
+      case 2:
+        return StudyRating.hard;
+      case 3:
+        return StudyRating.good;
+      case 4:
+        return StudyRating.easy;
+      case 5:
+        return StudyRating.easy; // Map 5 to easy as well
+      default:
+        return StudyRating.good;
     }
   }
 }

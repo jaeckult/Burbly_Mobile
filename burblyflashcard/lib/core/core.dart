@@ -25,3 +25,4 @@ export 'utils/navigation_helper.dart';
 
 // Core Widgets
 export 'widgets/transition_demo_screen.dart';
+export 'widgets/scheduling_consent_dialog.dart';
