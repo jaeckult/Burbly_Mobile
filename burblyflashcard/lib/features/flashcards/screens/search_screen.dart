@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import '../../../core/core.dart';
 import 'deck_detail_screen.dart';
 import 'note_detail_screen.dart';
+import '../../../core/widgets/keyboard_dismissal_wrapper.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -62,336 +64,330 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Search'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-          // Enhanced Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.05),
-              border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).dividerColor.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search decks, flashcards, and notes...',
-                hintStyle: TextStyle(
-                  color: Theme.of(context).hintColor.withOpacity(0.7),
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Theme.of(context).primaryColor,
-                  size: 24,
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _performSearch('');
-                        },
-                        tooltip: 'Clear search',
-                      )
-                    : null,
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
+      body: KeyboardDismissWrapper(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Enhanced Search Bar
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.05),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search decks, flashcards, and notes...',
+                    hintStyle: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 24,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _performSearch('');
+                            },
+                            tooltip: 'Clear search',
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  textInputAction: TextInputAction.search,
+                  onChanged: (value) {
+                    if (value.length >= 2) {
+                      _performSearch(value);
+                    } else if (value.isEmpty) {
+                      _performSearch('');
+                    }
+                  },
+                  onSubmitted: (value) {
+                    if (value.isNotEmpty) {
+                      _performSearch(value);
+                    }
+                  },
                 ),
               ),
-              textInputAction: TextInputAction.search,
-              onChanged: (value) {
-                if (value.length >= 2) {
-                  _performSearch(value);
-                } else if (value.isEmpty) {
-                  _performSearch('');
-                }
-              },
-              onSubmitted: (value) {
-                if (value.isNotEmpty) {
-                  _performSearch(value);
-                }
-              },
-            ),
-          ),
-
-          // Search Results
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => FocusScope.of(context).unfocus(),
+              // Search Results
+              Expanded(
                 child: _buildSearchResults(),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
- Widget _buildSearchResults() {
-  if (!_hasSearched) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.search,
-                size: 64,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Search Your Content',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).primaryColor,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Find decks, flashcards, and notes quickly',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+  Widget _buildSearchResults() {
+    if (!_hasSearched) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.search,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.tips_and_updates,
-                    size: 20,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Start typing to search...',
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.w500,
+              const SizedBox(height: 16),
+              Text(
+                'Search Your Content',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  ),
-                ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  if (_isLoading) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 60,
-              height: 60,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).primaryColor,
+              const SizedBox(height: 8),
+              Text(
+                'Find decks, flashcards, and notes',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Searching...',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  final decks = _searchResults['decks'] as List<Deck>? ?? [];
-  final flashcards = _searchResults['flashcards'] as List<Flashcard>? ?? [];
-  final notes = _searchResults['notes'] as List<Note>? ?? [];
-
-  if (decks.isEmpty && flashcards.isEmpty && notes.isEmpty) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.search_off,
-                size: 64,
-                color: Colors.orange,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Results Found',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Try different keywords or check your spelling',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.orange.withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.lightbulb_outline,
-                    size: 20,
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Search suggestions: deck, card, note',
-                      style: const TextStyle(
-                        color: Colors.orange,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.tips_and_updates,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Start typing to search...',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w500,
                       ),
-                      softWrap: true,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      );
+    }
+
+    if (_isLoading) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Searching...',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final decks = _searchResults['decks'] as List<Deck>? ?? [];
+    final flashcards = _searchResults['flashcards'] as List<Flashcard>? ?? [];
+    final notes = _searchResults['notes'] as List<Note>? ?? [];
+
+    if (decks.isEmpty && flashcards.isEmpty && notes.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.search_off,
+                  size: 48,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Results Found',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Try different keywords or check your spelling',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.lightbulb_outline,
+                      size: 16,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Search suggestions: deck, card, note',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Decks Section
+        if (decks.isNotEmpty) ...[
+          _buildSectionHeader('Decks', decks.length),
+          const SizedBox(height: 8),
+          ...decks.map((deck) => _buildDeckCard(deck)),
+          const SizedBox(height: 16),
+        ],
+        // Flashcards Section
+        if (flashcards.isNotEmpty) ...[
+          _buildSectionHeader('Flashcards', flashcards.length),
+          const SizedBox(height: 8),
+          ...flashcards.map((flashcard) => _buildFlashcardCard(flashcard)),
+          const SizedBox(height: 16),
+        ],
+        // Notes Section
+        if (notes.isNotEmpty) ...[
+          _buildSectionHeader('Notes', notes.length),
+          const SizedBox(height: 8),
+          ...notes.map((note) => _buildNoteCard(note)),
+        ],
+      ],
     );
   }
-
-  // Results found
-  return ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      // Decks Section
-      if (decks.isNotEmpty) ...[
-        _buildSectionHeader('Decks', decks.length),
-        const SizedBox(height: 8),
-        ...decks.map((deck) => _buildDeckCard(deck)),
-        const SizedBox(height: 16),
-      ],
-
-      // Flashcards Section
-      if (flashcards.isNotEmpty) ...[
-        _buildSectionHeader('Flashcards', flashcards.length),
-        const SizedBox(height: 8),
-        ...flashcards.map((flashcard) => _buildFlashcardCard(flashcard)),
-        const SizedBox(height: 16),
-      ],
-
-      // Notes Section
-      if (notes.isNotEmpty) ...[
-        _buildSectionHeader('Notes', notes.length),
-        const SizedBox(height: 8),
-        ...notes.map((note) => _buildNoteCard(note)),
-      ],
-    ],
-  );
-}
 
   Widget _buildSectionHeader(String title, int count) {
     return Row(
       children: [
-                 Text(
-           title,
-           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-             fontWeight: FontWeight.bold,
-           ),
-         ),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor,
+            color: Theme.of(context).colorScheme.primary,
             borderRadius: BorderRadius.circular(12),
           ),
-                     child: Text(
-             count.toString(),
-             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-               color: Colors.white,
-               fontWeight: FontWeight.bold,
-             ),
-           ),
+          child: Text(
+            count.toString(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
         ),
       ],
     );
@@ -413,24 +409,24 @@ class _SearchScreenState extends State<SearchScreen> {
             color: Colors.white,
           ),
         ),
-                 title: Text(
-           deck.name,
-           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-             fontWeight: FontWeight.w600,
-           ),
-         ),
-                 subtitle: Text(
-           deck.description,
-           style: Theme.of(context).textTheme.bodyMedium,
-           maxLines: 2,
-           overflow: TextOverflow.ellipsis,
-         ),
-                 trailing: Text(
-           '${deck.cardCount} cards',
-           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-             color: Colors.grey,
-           ),
-         ),
+        title: Text(
+          deck.name,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        subtitle: Text(
+          deck.description,
+          style: Theme.of(context).textTheme.bodySmall,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Text(
+          '${deck.cardCount} cards',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
         onTap: () {
           context.pushSharedAxis(
             DeckDetailScreen(deck: deck),
@@ -539,7 +535,6 @@ class _SearchScreenState extends State<SearchScreen> {
             NoteDetailScreen(note: note),
           );
           if (updated != null) {
-            // update local results view
             setState(() {
               final notes = (_searchResults['notes'] as List<Note>? ?? []).toList();
               final idx = notes.indexWhere((n) => n.id == updated.id);
@@ -554,7 +549,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final difference = date.difference(now);
 
     if (difference.inDays == 0) {
       return 'Today';

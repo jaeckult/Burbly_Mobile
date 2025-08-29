@@ -21,7 +21,21 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   void initState() {
     super.initState();
     _loadCalendarData();
+    // Show a helpful message about refreshing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('💡 Tip: Pull down or tap refresh to update after studying'),
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
   }
+
+
 
   Future<void> _loadCalendarData() async {
     setState(() => _isLoading = true);
@@ -164,22 +178,52 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadCalendarData,
+            onPressed: () async {
+              await _loadCalendarData();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Calendar refreshed'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
             tooltip: 'Refresh',
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildCalendarHeader(),
-                Expanded(
-                  child: _buildCalendar(),
-                ),
-                _buildLegend(),
-              ],
+          : RefreshIndicator(
+              onRefresh: _loadCalendarData,
+              child: Column(
+                children: [
+                  _buildCalendarHeader(),
+                  Expanded(
+                    child: _buildCalendar(),
+                  ),
+                  _buildLegend(),
+                ],
+              ),
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await _loadCalendarData();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Calendar updated!'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          }
+        },
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.refresh),
+        tooltip: 'Refresh Calendar',
+      ),
     );
   }
 
