@@ -1,6 +1,7 @@
 import '../../../core/models/flashcard.dart';
 import '../../../core/models/study_result.dart';
 import 'data_service.dart';
+import '../../../core/models/study_session.dart';
 
 class FSRSStudyService {
   static final FSRSStudyService _instance = FSRSStudyService._internal();

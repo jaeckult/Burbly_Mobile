@@ -66,13 +66,10 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                     const SizedBox(height: 24),
                     
                     // Interval Distribution
-                    _buildIntervalDistributionSection(),
-                    const SizedBox(height: 24),
+                    // _buildIntervalDistributionSection(),
+                    // const SizedBox(height: 24),
                     
-                    // Due Cards Overview
-                    _buildDueCardsSection(),
-                    const SizedBox(height: 24),
-                    
+                   
                     // Learning Progress
                     _buildLearningProgressSection(),
                     const SizedBox(height: 24),
@@ -88,7 +85,7 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
 
   Widget _buildOverviewSection() {
     final totalCards = _studyStats['totalCards'] ?? _flashcards.length;
-    final learningCards = _studyStats['learningCards'] ?? 0;
+    final overdueCards = _studyStats['overdueCards'] ?? 0;
     final reviewCards = _studyStats['reviewCards'] ?? 0;
     final dueCards = _studyStats['dueCards'] ?? 0;
 
@@ -111,10 +108,9 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
           childAspectRatio: 1.2,
           children: [
             _buildStatCard('Total Cards', totalCards.toString(), Icons.style, Colors.blue),
-            _buildStatCard('Learning', learningCards.toString(), Icons.school, Colors.orange),
-            _buildStatCard('Review', reviewCards.toString(), Icons.refresh, Colors.green),
-            _buildStatCard('Due Today', dueCards.toString(), Icons.schedule,
-                dueCards > 0 ? Colors.red : Colors.grey),
+            _buildStatCard('Overdue', overdueCards.toString(), Icons.school, Colors.red),
+            _buildStatCard('Review', reviewCards.toString(),Icons.refresh, Colors.green),
+            _buildStatCard('Due Today', dueCards.toString(),Icons.schedule,Colors.orange),
           ],
         ),
       ],
@@ -178,48 +174,72 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Custom Bar Chart
-                SizedBox(
-                  height: 200,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: sortedIntervals.map((interval) {
-                      final count = intervalMap[interval]!;
-                      final maxCount = intervalMap.values.isEmpty ? 1 : intervalMap.values.reduce((a, b) => a > b ? a : b);
-                      final height = count / maxCount * 150;
-                      final label = _getIntervalLabel(interval);
-                      
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            count.toString(),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                // Horizontal Bar Chart (Much clearer than vertical bars)
+                ...sortedIntervals.map((interval) {
+                  final count = intervalMap[interval]!;
+                  final percentage = (count / _flashcards.length * 100).round();
+                  final maxCount = intervalMap.values.isEmpty ? 1 : intervalMap.values.reduce((a, b) => a > b ? a : b);
+                  final barWidth = count / maxCount;
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _getIntervalLabel(interval),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                            Text(
+                              '$count cards ($percentage%)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: barWidth,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _getIntervalColor(interval),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: count > 0 ? Text(
+                                  count.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ) : null,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            width: 40,
-                            height: height,
-                            decoration: BoxDecoration(
-                              color: _getIntervalColor(interval),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            label,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
                 const SizedBox(height: 16),
                 // Interval Legend
                 Wrap(
@@ -247,6 +267,49 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
                       ],
                     );
                   }).toList(),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Summary and Insights
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.lightbulb_outline, color: Colors.blue[700], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'What This Means',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '• Learning (1 day): Cards you\'re currently learning or need to review frequently\n'
+                        '• Short intervals (3-14 days): Cards you know moderately well\n'
+                        '• Long intervals (30+ days): Cards you know very well - great progress!\n'
+                        '• More cards in longer intervals = better retention and learning',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -281,71 +344,8 @@ class _SpacedRepetitionStatsScreenState extends State<SpacedRepetitionStatsScree
     }
   }
 
-  Widget _buildDueCardsSection() {
-    final overdueCards = _studyStats['overdueCards'] ?? 0;
-    final dueTodayCards = _studyStats['dueCards'] ?? 0;
-    final dueTomorrowCards = _getDueTomorrowCount();
+ 
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Due Cards Overview',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const SizedBox(height: 16),
-        Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDueCard(
-                    'Overdue',
-                    overdueCards,
-                    Colors.red,
-                    Icons.warning,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildDueCard(
-                    'Due Today',
-                    dueTodayCards,
-                    Colors.orange,
-                    Icons.today,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildDueCard(
-              'Due Tomorrow',
-              dueTomorrowCards,
-              Colors.blue,
-              Icons.schedule,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  int _getDueTomorrowCount() {
-    final now = DateTime.now();
-    final tomorrow = DateTime(now.year, now.month, now.day + 1);
-    
-    return _flashcards.where((card) {
-      if (card.nextReview == null) return false;
-      final reviewDate = DateTime(
-        card.nextReview!.year,
-        card.nextReview!.month,
-        card.nextReview!.day,
-      );
-      return reviewDate.isAtSameMomentAs(tomorrow);
-    }).length;
-  }
 
   Widget _buildDueCard(String title, int count, Color color, IconData icon) {
     return Card(

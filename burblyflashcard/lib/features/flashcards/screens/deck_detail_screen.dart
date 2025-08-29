@@ -817,12 +817,15 @@ Widget _buildQuickTimerButton(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addFlashcard,
-        backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _flashcards.isNotEmpty
+          ? FloatingActionButton(
+              onPressed: _addFlashcard,
+              backgroundColor: Color(int.parse('0xFF${_currentDeck.coverColor ?? '2196F3'}')),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add),
+            )
+          : null,
+
     );
   }
 

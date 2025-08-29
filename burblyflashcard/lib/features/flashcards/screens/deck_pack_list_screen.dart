@@ -1069,7 +1069,8 @@ Widget _buildDrawer() {
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Padding(
+      floatingActionButton: _deckPacks.isNotEmpty
+    ? Padding(
         padding: const EdgeInsets.only(bottom: 30),
         child: FloatingActionButton.extended(
           onPressed: _createNewDeckPack,
@@ -1079,7 +1080,9 @@ Widget _buildDrawer() {
           label: const Text('New Pack'),
           elevation: 5,
         ),
-      ),
+      )
+    : null,
+
 
     );
   }

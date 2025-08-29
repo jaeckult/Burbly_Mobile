@@ -200,6 +200,7 @@ class StudyService {
   Future<Map<String, dynamic>> getStudyStats(String deckId) async {
     try {
       final allCards = await _dataService.getFlashcardsForDeck(deckId);
+      final studySessions = await _dataService.getStudySessionsForDeck(deckId);
       final now = DateTime.now();
       
       // Calculate various statistics
@@ -208,7 +209,7 @@ class StudyService {
       final learningCards = allCards.where((card) => card.interval == 1).length;
       final reviewCards = allCards.where((card) => card.interval > 1).length;
       
-      // Due cards
+      // Due cards calculation
       final dueCards = allCards.where((card) {
         if (card.lastReviewed == null) return true;
         if (card.nextReview != null) {
@@ -218,10 +219,29 @@ class StudyService {
         return daysSinceReview >= card.interval;
       }).length;
       
-      // Overdue cards
+      // Overdue cards calculation
       final overdueCards = allCards.where((card) {
         if (card.nextReview == null || card.lastReviewed == null) return false;
         return card.nextReview!.isBefore(now);
+      }).length;
+      
+      // Due tomorrow calculation
+      final tomorrow = DateTime(now.year, now.month, now.day + 1);
+      final dueTomorrowCards = allCards.where((card) {
+        if (card.nextReview == null) return false;
+        final reviewDate = DateTime(
+          card.nextReview!.year,
+          card.nextReview!.month,
+          card.nextReview!.day,
+        );
+        return reviewDate.isAtSameMomentAs(tomorrow);
+      }).length;
+      
+      // Due this week calculation
+      final endOfWeek = now.add(const Duration(days: 7));
+      final dueThisWeekCards = allCards.where((card) {
+        if (card.nextReview == null) return false;
+        return card.nextReview!.isAfter(now) && card.nextReview!.isBefore(endOfWeek);
       }).length;
       
       // Average ease factor
@@ -235,6 +255,46 @@ class StudyService {
           ? 1 
           : allCards.fold<int>(0, (sum, card) => sum + card.interval) / allCards.length;
       
+      // Total reviews across all cards
+      final totalReviews = allCards.fold<int>(0, (sum, card) => sum + card.reviewCount);
+      
+      // Cards with reviews
+      final cardsWithReviews = allCards.where((card) => card.reviewCount > 0).length;
+      
+      // Study session statistics
+      final totalSessions = studySessions.length;
+      final totalStudyTime = studySessions.fold<int>(0, (sum, session) => sum + session.studyTimeSeconds);
+      final avgStudyTime = totalSessions > 0 ? totalStudyTime / totalSessions : 0;
+      
+      // Accuracy statistics
+      final avgAccuracy = totalSessions > 0 
+          ? studySessions.fold<double>(0, (sum, session) => sum + session.averageScore) / totalSessions 
+          : 0.0;
+      
+      final bestScore = totalSessions > 0 
+          ? studySessions.map((s) => s.averageScore).reduce((a, b) => a > b ? a : b)
+          : 0.0;
+      
+      // Recent activity (last 7 days)
+      final recentCards = allCards.where((card) => 
+          card.lastReviewed != null && 
+          card.lastReviewed!.isAfter(now.subtract(const Duration(days: 7)))).length;
+      
+      // Study streak calculation
+      final studyStreak = _calculateStudyStreak(studySessions);
+      
+      // Interval distribution
+      final Map<int, int> intervalDistribution = {};
+      for (final card in allCards) {
+        final interval = card.interval;
+        intervalDistribution[interval] = (intervalDistribution[interval] ?? 0) + 1;
+      }
+      
+      // Performance trends (last 5 sessions)
+      final recentSessions = studySessions
+        ..sort((a, b) => b.date.compareTo(a.date));
+      final recentScores = recentSessions.take(5).map((s) => s.averageScore).toList();
+      
       return {
         'totalCards': totalCards,
         'newCards': newCards,
@@ -242,13 +302,53 @@ class StudyService {
         'reviewCards': reviewCards,
         'dueCards': dueCards,
         'overdueCards': overdueCards,
+        'dueTomorrowCards': dueTomorrowCards,
+        'dueThisWeekCards': dueThisWeekCards,
         'avgEaseFactor': avgEaseFactor,
         'avgInterval': avgInterval,
+        'totalReviews': totalReviews,
+        'cardsWithReviews': cardsWithReviews,
+        'totalSessions': totalSessions,
+        'totalStudyTime': totalStudyTime,
+        'avgStudyTime': avgStudyTime,
+        'avgAccuracy': avgAccuracy,
+        'bestScore': bestScore,
+        'recentCards': recentCards,
+        'studyStreak': studyStreak,
+        'intervalDistribution': intervalDistribution,
+        'recentScores': recentScores,
+        'lastUpdated': now.toIso8601String(),
       };
     } catch (e) {
       print('Error getting study stats: $e');
       return {};
     }
+  }
+  
+  /// Calculate study streak based on study sessions
+  int _calculateStudyStreak(List<StudySession> sessions) {
+    if (sessions.isEmpty) return 0;
+    
+    final sortedSessions = List<StudySession>.from(sessions)
+      ..sort((a, b) => b.date.compareTo(a.date));
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    int streak = 0;
+    DateTime currentDate = today;
+    
+    for (final session in sortedSessions) {
+      final sessionDate = DateTime(session.date.year, session.date.month, session.date.day);
+      if (sessionDate.isAtSameMomentAs(currentDate)) {
+        streak++;
+        currentDate = currentDate.subtract(const Duration(days: 1));
+      } else if (sessionDate.isBefore(currentDate)) {
+        break;
+      }
+    }
+    
+    return streak;
   }
 
   /// Reset card progress (for relearning)
