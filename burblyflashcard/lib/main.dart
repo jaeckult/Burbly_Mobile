@@ -78,6 +78,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: theme,
         darkTheme: darkTheme,
+        navigatorKey: NotificationService().navigatorKey,
         home: const _RootScreen(),
         routes: {
           '/home': (context) => const DeckPackListScreen(),

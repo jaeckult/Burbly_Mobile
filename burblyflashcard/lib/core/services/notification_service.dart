@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/deck.dart';
 import '../models/flashcard.dart';
 import 'data_service.dart';
+import 'package:flutter/material.dart';
+import '../../features/flashcards/screens/mixed_study_screen.dart';
+import '../../features/flashcards/screens/deck_detail_screen.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -14,6 +17,8 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   final DataService _dataService = DataService();
+  // Global navigator to handle navigation on notification taps
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   
   // Store the detected timezone
   tz.Location? _detectedTimezone;
@@ -226,44 +231,60 @@ class NotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle navigation when user taps a notification
-    print('Notification tapped: ${response.payload}');
-    
-    // Handle different notification types based on payload
-    if (response.payload?.startsWith('scheduled_review_') == true) {
-      // Extract deck ID from payload
-      final deckId = response.payload!.replaceFirst('scheduled_review_', '');
-      print('Scheduled review notification tapped for deck: $deckId');
-      // Navigate to the specific deck for review
-      // This will be handled by the app's navigation system
-    } else if (response.payload?.startsWith('card_review_') == true) {
-      // Extract flashcard ID from payload
-      final flashcardId = response.payload!.replaceFirst('card_review_', '');
-      print('Card review notification tapped for flashcard: $flashcardId');
-      // Navigate to the specific flashcard for review
-      // This will be handled by the app's navigation system
-    } else {
-      switch (response.payload) {
+    try {
+      final payload = response.payload ?? '';
+      print('Notification tapped: $payload');
+      final nav = navigatorKey.currentState;
+      if (nav == null) {
+        print('Navigator not ready; cannot navigate from notification');
+        return;
+      }
+
+      if (payload.startsWith('scheduled_review_')) {
+        final deckId = payload.replaceFirst('scheduled_review_', '');
+        _navigateToDeck(nav, deckId);
+        return;
+      }
+      if (payload.startsWith('card_review_')) {
+        // For simplicity, navigate to Mixed Study for now
+        _navigateToMixed(nav);
+        return;
+      }
+
+      switch (payload) {
         case 'study_reminder':
-          // Navigate to flashcards screen when study reminder is tapped
-          // This will be handled by the app's navigation system
-          print('Study reminder notification tapped - should navigate to flashcards');
+          _navigateToMixed(nav);
           break;
         case 'review_now':
-          // Navigate to cards due for review
-          print('Review now notification tapped - should navigate to study');
+          _navigateToMixed(nav);
           break;
         case 'overdue_card':
-          // Navigate to overdue cards or mixed study
-          print('Overdue card notification tapped - should navigate to study');
-          break;
-        case 'pet_notification':
-          // Navigate to pet screen when pet notification is tapped
-          print('Pet notification tapped - should navigate to pets');
+          _navigateToMixed(nav);
           break;
         default:
-          print('Unknown notification payload: ${response.payload}');
+          // no-op
+          break;
       }
+    } catch (e) {
+      print('Error handling notification tap: $e');
+    }
+  }
+
+  void _navigateToMixed(NavigatorState nav) {
+    nav.push(MaterialPageRoute(builder: (_) => const MixedStudyScreen()));
+  }
+
+  Future<void> _navigateToDeck(NavigatorState nav, String deckId) async {
+    try {
+      final deck = await _dataService.getDeck(deckId);
+      if (deck != null) {
+        nav.push(MaterialPageRoute(builder: (_) => DeckDetailScreen(deck: deck)));
+      } else {
+        _navigateToMixed(nav);
+      }
+    } catch (e) {
+      print('Error navigating to deck: $e');
+      _navigateToMixed(nav);
     }
   }
 
@@ -320,6 +341,7 @@ class NotificationService {
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
             // No matchDateTimeComponents for today
+            payload: 'study_reminder',
           );
           print('Scheduled TODAY reminder for day $day (${_getDayName(day)}) at ${scheduledTime.toString()}');
         } else {
@@ -333,6 +355,7 @@ class NotificationService {
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
             matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+            payload: 'study_reminder',
           );
           print('Scheduled FUTURE reminder for day $day (${_getDayName(day)}) at ${scheduledTime.toString()}');
         }
@@ -392,6 +415,7 @@ class NotificationService {
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'overdue_card',
       );
       
       print('Scheduled overdue cards reminder for ${scheduledTime.toString()}');
@@ -436,6 +460,7 @@ class NotificationService {
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'streak_reminder',
       );
       
       print('Scheduled study streak reminder for ${scheduledTime.toString()}');

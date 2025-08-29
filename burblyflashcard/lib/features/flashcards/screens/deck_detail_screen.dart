@@ -872,18 +872,62 @@ Widget _buildQuickTimerButton(
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  IconButton(
-                    onPressed: _showScheduledReviewSettings,
-                    icon: const Icon(
-                      Icons.alarm_add,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    tooltip: 'Schedule Review',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      foregroundColor: Colors.white,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Builder(
+                          builder: (context) {
+                            final enabled = _currentDeck.scheduledReviewEnabled ?? false;
+                            final time = _currentDeck.scheduledReviewTime;
+                            if (!enabled || time == null) {
+                              return const Text(
+                                'No schedule',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            }
+                            final now = DateTime.now();
+                            if (time.isAfter(now)) {
+                              return Text(
+                                'Next: ${_formatScheduledTime(time)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            }
+                            // Past scheduled time → show Overdue without the 'Next:' prefix
+                            return const Text(
+                              'No schedule yet',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _showScheduledReviewSettings,
+                        icon: const Icon(
+                          Icons.alarm_add,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        tooltip: 'Schedule Review',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1504,24 +1548,7 @@ Widget _buildQuickTimerButton(
               ),
               
                             // Debug: Manual Overdue Check Button (only in debug mode)
-              if (const bool.fromEnvironment('dart.vm.product') == false) ...[
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    OverdueService().startOverdueMonitoring();
-                    _refreshDeck();
-                    _loadFlashcards();
-                  },
-                  icon: const Icon(Icons.refresh, size: 14),
-                  label: const Text('Check Overdue', style: TextStyle(fontSize: 11)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.withOpacity(0.2),
-                    foregroundColor: Colors.purple[700],
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: const Size(0, 24),
-                  ),
-                ),
-              ],
+              
               const SizedBox(height: 8),
               Text(
                 'A: ${flashcard.answer}',
@@ -1619,7 +1646,7 @@ Widget _buildQuickTimerButton(
     final remaining = 10 - elapsed.inMinutes;
     if (remaining <= 0) return 'Review Now';
     if (remaining == 10) return 'Review Now';
-    return 'Review Now (${remaining}m)';
+    return 'Review Now';
   }
 
   String _formatDeckReviewedText(DateTime? start) {
@@ -1805,11 +1832,14 @@ _buildQuickScheduleChip(
                     const Icon(Icons.info_outline, color: Colors.blue, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'Next: ${_formatScheduledTime(selectedDateTime)}',
-                        style: const TextStyle(fontSize: 12, color: Colors.blue),
-                      ),
-                    ),
+  child: Text(
+    selectedDateTime.isBefore(DateTime.now())
+        ? 'Not scheduled yet'
+        : 'Next: ${_formatScheduledTime(selectedDateTime)}',
+    style: const TextStyle(fontSize: 12, color: Colors.blue),
+  ),
+),
+
                   ],
                 ),
               ),

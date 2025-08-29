@@ -92,8 +92,10 @@ class OverdueService {
             }
           }
         } else {
-          // Scheduled time has passed: show Overdue (unless recently reviewed by user)
-          if (updated.deckIsOverdue != true && updated.deckIsReviewed != true) {
+          // Scheduled time has passed: show Overdue ONLY if not reviewed after schedule
+          final reviewedAfterSchedule =
+              (updated.deckReviewedStartTime != null && updated.deckReviewedStartTime!.isAfter(scheduled));
+          if (updated.deckIsOverdue != true && !reviewedAfterSchedule) {
             updated = updated.copyWith(
               deckIsReviewNow: false,
               deckReviewNowStartTime: null,
