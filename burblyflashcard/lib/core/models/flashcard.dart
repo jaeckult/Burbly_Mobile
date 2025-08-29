@@ -40,6 +40,24 @@ class Flashcard extends HiveObject {
   @HiveField(11)
   bool isSynced;
 
+  @HiveField(12)
+  DateTime? overdueStartTime;
+
+  @HiveField(13)
+  bool? isOverdue;
+
+  @HiveField(14)
+  DateTime? reviewNowStartTime;
+
+  @HiveField(15)
+  DateTime? reviewedStartTime;
+
+  @HiveField(16)
+  bool? isReviewNow;
+
+  @HiveField(17)
+  bool? isReviewed;
+
   Flashcard({
     required this.id,
     required this.deckId,
@@ -53,6 +71,12 @@ class Flashcard extends HiveObject {
     this.lastReviewed,
     this.reviewCount = 0,
     this.isSynced = false,
+    this.overdueStartTime,
+    this.isOverdue = false,
+    this.reviewNowStartTime,
+    this.reviewedStartTime,
+    this.isReviewNow = false,
+    this.isReviewed = false,
   });
 
   Flashcard copyWith({
@@ -68,6 +92,12 @@ class Flashcard extends HiveObject {
     DateTime? lastReviewed,
     int? reviewCount,
     bool? isSynced,
+    DateTime? overdueStartTime,
+    bool? isOverdue,
+    DateTime? reviewNowStartTime,
+    DateTime? reviewedStartTime,
+    bool? isReviewNow,
+    bool? isReviewed,
   }) {
     return Flashcard(
       id: id ?? this.id,
@@ -82,6 +112,12 @@ class Flashcard extends HiveObject {
       lastReviewed: lastReviewed ?? this.lastReviewed,
       reviewCount: reviewCount ?? this.reviewCount,
       isSynced: isSynced ?? this.isSynced,
+      overdueStartTime: overdueStartTime ?? this.overdueStartTime,
+      isOverdue: isOverdue ?? this.isOverdue,
+      reviewNowStartTime: reviewNowStartTime ?? this.reviewNowStartTime,
+      reviewedStartTime: reviewedStartTime ?? this.reviewedStartTime,
+      isReviewNow: isReviewNow ?? this.isReviewNow,
+      isReviewed: isReviewed ?? this.isReviewed,
     );
   }
 
@@ -99,6 +135,12 @@ class Flashcard extends HiveObject {
       'lastReviewed': lastReviewed?.toIso8601String(),
       'reviewCount': reviewCount,
       'isSynced': isSynced,
+      'overdueStartTime': overdueStartTime?.toIso8601String(),
+      'isOverdue': isOverdue,
+      'reviewNowStartTime': reviewNowStartTime?.toIso8601String(),
+      'reviewedStartTime': reviewedStartTime?.toIso8601String(),
+      'isReviewNow': isReviewNow,
+      'isReviewed': isReviewed,
     };
   }
 
@@ -116,6 +158,12 @@ class Flashcard extends HiveObject {
       lastReviewed: map['lastReviewed'] != null ? DateTime.parse(map['lastReviewed']) : null,
       reviewCount: map['reviewCount'] ?? 0,
       isSynced: map['isSynced'] ?? false,
+      overdueStartTime: map['overdueStartTime'] != null ? DateTime.parse(map['overdueStartTime']) : null,
+      isOverdue: map['isOverdue'] ?? false,
+      reviewNowStartTime: map['reviewNowStartTime'] != null ? DateTime.parse(map['reviewNowStartTime']) : null,
+      reviewedStartTime: map['reviewedStartTime'] != null ? DateTime.parse(map['reviewedStartTime']) : null,
+      isReviewNow: map['isReviewNow'] ?? false,
+      isReviewed: map['isReviewed'] ?? false,
     );
   }
 }

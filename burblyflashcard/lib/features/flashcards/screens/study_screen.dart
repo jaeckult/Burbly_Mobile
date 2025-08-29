@@ -252,6 +252,14 @@ class _StudyScreenState extends State<StudyScreen> {
       );
 
       await _dataService.updateFlashcard(updatedCard);
+      // Update overdue/review tags: mark as studied (clears overdue/review-now and sets Reviewed for 10m)
+      try {
+        // Map original difficulty (1,3,5) to quality scale roughly
+        final quality = difficulty <= 1 ? 1 : (difficulty == 3 ? 3 : 4);
+        await OverdueService().markCardAsStudied(updatedCard, quality);
+      } catch (e) {
+        print('OverdueService markCardAsStudied failed: $e');
+      }
 
       // Move to next card or finish
       if (_currentIndex < widget.flashcards.length - 1) {

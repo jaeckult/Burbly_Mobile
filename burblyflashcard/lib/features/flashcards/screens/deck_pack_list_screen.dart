@@ -34,11 +34,13 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
   Map<String, bool> _expandedPacks = {};
   bool _isLoading = true;
   bool _isGuestMode = false;
+  bool _isTestingMode = false; // Testing mode state
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+    _loadTestingModePreference();
   }
 
   Future<void> _initializeData() async {
@@ -139,6 +141,38 @@ class _DeckPackListScreenState extends State<DeckPackListScreen> {
     context.pushSharedAxis(
       DeckDetailScreen(deck: deck),
     ).then((_) => _loadAllDecks());
+  }
+
+  void _toggleTestingMode() async {
+    final newMode = !_isTestingMode;
+    
+    // Update global testing mode service
+    await TestingModeService().setTestingMode(newMode);
+    
+    setState(() {
+      _isTestingMode = newMode;
+    });
+    
+    // Show feedback to user
+    SnackbarUtils.showSuccessSnackbar(
+      context,
+      _isTestingMode 
+          ? 'Testing Mode Enabled - Faster intervals for testing'
+          : 'Testing Mode Disabled - Normal intervals restored',
+    );
+  }
+
+
+
+  Future<void> _loadTestingModePreference() async {
+    try {
+      await TestingModeService().loadTestingMode();
+      setState(() {
+        _isTestingMode = TestingModeService().isTestingMode;
+      });
+    } catch (e) {
+      print('Error loading testing mode preference: $e');
+    }
   }
 
   Future<void> _confirmDeleteDeck(Deck deck) async {
@@ -993,6 +1027,19 @@ Widget _buildDrawer() {
           ),
         ),
         actions: [
+          // Testing mode toggle (only in debug mode)
+          if (const bool.fromEnvironment('dart.vm.product') == false)
+            IconButton(
+              onPressed: _toggleTestingMode,
+              icon: Icon(
+                _isTestingMode ? Icons.bug_report : Icons.bug_report_outlined,
+                color: _isTestingMode 
+                    ? Colors.orange 
+                    : Theme.of(context).appBarTheme.foregroundColor,
+              ),
+              tooltip: _isTestingMode ? 'Testing Mode ON' : 'Testing Mode OFF',
+            ),
+          
           // Search button
           IconButton(
             onPressed: () {

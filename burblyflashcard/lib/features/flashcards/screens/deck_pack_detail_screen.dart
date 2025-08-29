@@ -19,6 +19,46 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
   final DataService _dataService = DataService();
   List<Deck> _decks = [];
   bool _isLoading = true;
+  
+  String _formatScheduledTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = dateTime.difference(now);
+    if (difference.isNegative) return 'Overdue';
+    if (difference.inDays > 0) return '${difference.inDays}d ${difference.inHours % 24}h from now';
+    if (difference.inHours > 0) return '${difference.inHours}h ${difference.inMinutes % 60}m from now';
+    if (difference.inMinutes > 0) return '${difference.inMinutes}m from now';
+    return 'Now';
+  }
+
+  String _formatDeckReviewNowText(DateTime? start) {
+    if (start == null) return 'Review Now';
+    final now = DateTime.now();
+    final elapsed = now.difference(start);
+    final remaining = 10 - elapsed.inMinutes;
+    if (remaining <= 0) return 'Review Now';
+    if (remaining == 1) return 'Review Now (1m)';
+    return 'Review Now (${remaining}m)';
+  }
+
+  String _formatDeckReviewedText(DateTime? start) {
+    if (start == null) return 'Reviewed';
+    final now = DateTime.now();
+    final elapsed = now.difference(start);
+    if (elapsed.inMinutes < 60) {
+      final mins = elapsed.inMinutes;
+      if (mins <= 0) return 'Reviewed just now';
+      if (mins == 1) return 'Reviewed 1m ago';
+      return 'Reviewed ${mins}m ago';
+    }
+    if (elapsed.inHours < 24) {
+      final hrs = elapsed.inHours;
+      if (hrs == 1) return 'Reviewed 1h ago';
+      return 'Reviewed ${hrs}h ago';
+    }
+    final days = elapsed.inDays;
+    if (days == 1) return 'Reviewed 1d ago';
+    return 'Reviewed ${days}d ago';
+  }
 
   @override
   void initState() {
@@ -734,20 +774,228 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
                             color: Colors.grey[500],
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        // Deck-level status chip
+                        _buildDeckStatusChip(deck),
                       ],
                     ),
                   ],
                 ),
               ),
               
-              // Remove Button
-              IconButton(
-                onPressed: () => _removeDeckFromPack(deck),
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.orange),
-                tooltip: 'Remove from pack',
+              // Actions: Schedule and Remove
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () => _showDeckScheduleDialog(deck),
+                    icon: const Icon(Icons.alarm_add, color: Colors.blue),
+                    tooltip: 'Schedule Review',
+                  ),
+                  IconButton(
+                    onPressed: () => _removeDeckFromPack(deck),
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.orange),
+                    tooltip: 'Remove from pack',
+                  ),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeckStatusChip(Deck deck) {
+    // Review Now
+    if (deck.deckIsReviewNow == true) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange.withOpacity(0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.schedule, size: 14, color: Colors.orange),
+            const SizedBox(width: 4),
+            Text(
+              _formatDeckReviewNowText(deck.deckReviewNowStartTime),
+              style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+    // Overdue
+    if (deck.deckIsOverdue == true) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.withOpacity(0.35)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning, size: 14, color: Colors.red),
+            SizedBox(width: 4),
+            Text('Overdue', style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
+    }
+    // Reviewed ago
+    if (deck.deckReviewedStartTime != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.withOpacity(0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, size: 14, color: Colors.green),
+            const SizedBox(width: 4),
+            Text(
+              _formatDeckReviewedText(deck.deckReviewedStartTime),
+              style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+    // No status: show "No schedules" action chip (taps open schedule popup)
+    return InkWell(
+      onTap: () => _showDeckScheduleDialog(deck),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue.withOpacity(0.25)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_alarm, size: 14, color: Colors.blue),
+            SizedBox(width: 4),
+            Text('No schedules', style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeckScheduleDialog(Deck deck) {
+    DateTime selectedDateTime = deck.scheduledReviewTime ?? DateTime.now().add(const Duration(hours: 1));
+    bool enabled = deck.scheduledReviewEnabled ?? false;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Scheduled Review'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile.adaptive(
+                value: enabled,
+                onChanged: (v) => setDialogState(() => enabled = v),
+                title: const Text('Enable Scheduled Review'),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Date'),
+                subtitle: Text('${selectedDateTime.year}-${selectedDateTime.month.toString().padLeft(2, '0')}-${selectedDateTime.day.toString().padLeft(2, '0')}'),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDateTime,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (date != null) {
+                    setDialogState(() {
+                      selectedDateTime = DateTime(
+                        date.year, date.month, date.day, selectedDateTime.hour, selectedDateTime.minute,
+                      );
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.access_time),
+                title: const Text('Time'),
+                subtitle: Text('${selectedDateTime.hour.toString().padLeft(2, '0')}:${selectedDateTime.minute.toString().padLeft(2, '0')}'),
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(hour: selectedDateTime.hour, minute: selectedDateTime.minute),
+                  );
+                  if (time != null) {
+                    setDialogState(() {
+                      selectedDateTime = DateTime(
+                        selectedDateTime.year,
+                        selectedDateTime.month,
+                        selectedDateTime.day,
+                        time.hour,
+                        time.minute,
+                      );
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  enabled ? 'Next: ${_formatScheduledTime(selectedDateTime)}' : 'Disabled',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final updatedDeck = deck.copyWith(
+                    scheduledReviewTime: selectedDateTime,
+                    scheduledReviewEnabled: enabled,
+                    updatedAt: DateTime.now(),
+                  );
+                  await _dataService.updateDeck(updatedDeck);
+                  setState(() {
+                    final idx = _decks.indexWhere((d) => d.id == deck.id);
+                    if (idx != -1) _decks[idx] = updatedDeck;
+                  });
+                  if (enabled) {
+                    await NotificationService().updateDeckReviewNotification(updatedDeck);
+                    OverdueService().startOverdueMonitoring();
+                  } else {
+                    await NotificationService().cancelDeckReviewNotification(updatedDeck);
+                  }
+                  if (mounted) {
+                    Navigator.pop(context);
+                    SnackbarUtils.showSuccessSnackbar(context, enabled ? 'Scheduled review set!' : 'Scheduled review disabled');
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    SnackbarUtils.showErrorSnackbar(context, 'Error saving schedule: ${e.toString()}');
+                  }
+                }
+              },
+              child: const Text('Save Settings'),
+            ),
+          ],
         ),
       ),
     );

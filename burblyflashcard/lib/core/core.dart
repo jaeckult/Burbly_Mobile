@@ -11,6 +11,9 @@ export 'models/study_result.dart';
 export 'services/data_service.dart';
 export 'services/study_service.dart';
 export 'services/fsrs_study_service.dart';
+export 'services/notification_service.dart';
+export 'services/testing_mode_service.dart';
+export 'services/overdue_service.dart';
 
 // Core Constants
 export 'constants/app_constants.dart';

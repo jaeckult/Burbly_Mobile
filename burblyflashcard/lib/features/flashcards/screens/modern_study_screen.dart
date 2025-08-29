@@ -372,6 +372,18 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
       final studyResult = widget.useFSRS 
           ? await _fsrsStudyService.processStudyResult(currentCard, rating)
           : await _studyService.processStudyResult(currentCard, rating);
+      // Update overdue/review tags: mark as studied (clears overdue/review-now and sets Reviewed for 10m)
+      try {
+        final quality = {
+          StudyRating.again: 1,
+          StudyRating.hard: 2,
+          StudyRating.good: 3,
+          StudyRating.easy: 4,
+        }[rating] ?? 3;
+        await OverdueService().markCardAsStudied(currentCard, quality);
+      } catch (e) {
+        print('OverdueService markCardAsStudied failed: $e');
+      }
       
       // Track the result
       _cardResults[currentCard.id] = rating;

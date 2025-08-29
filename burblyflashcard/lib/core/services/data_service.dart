@@ -359,6 +359,14 @@ class DataService {
     return _decksBox.values.toList();
   }
 
+  // Get a specific deck by ID
+  Future<Deck?> getDeck(String deckId) async {
+    if (!areBoxesAccessible) {
+      throw Exception('DataService has not been initialized or boxes are not accessible. Please call initialize() first.');
+    }
+    return _decksBox.get(deckId);
+  }
+
   // Update deck
   Future<void> updateDeck(Deck deck) async {
     if (!_isInitialized) {

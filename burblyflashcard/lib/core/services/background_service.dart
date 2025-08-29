@@ -16,7 +16,7 @@ class BackgroundService {
   // Start background service
   Future<void> start() async {
     // Check every 30 minutes for better responsiveness
-    _timer = Timer.periodic(const Duration(minutes: 30), (timer) {
+    _timer = Timer.periodic(const Duration(minutes: 30), (timer) async {
       _checkNotifications();
     });
 
@@ -70,12 +70,15 @@ class BackgroundService {
         final lastOverdueCheck = prefs.getString('last_overdue_check');
         final now = DateTime.now();
         
-        if (lastOverdueCheck == null || 
-            now.difference(DateTime.parse(lastOverdueCheck)).inHours >= 2) {
-          // Schedule overdue cards reminder
+        final hoursSince = lastOverdueCheck == null
+            ? 999
+            : now.difference(DateTime.parse(lastOverdueCheck)).inHours;
+
+        // Daily alarm for overdue: schedule once per day when overdue exists
+        if (hoursSince >= 24) {
           await _notificationService.scheduleOverdueCardsReminder();
           await prefs.setString('last_overdue_check', now.toIso8601String());
-          print('Scheduled overdue cards reminder for ${overdueCards.length} cards');
+          print('Scheduled daily overdue reminder for ${overdueCards.length} cards');
         }
       }
     } catch (e) {

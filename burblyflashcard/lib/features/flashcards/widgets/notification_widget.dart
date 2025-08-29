@@ -3,6 +3,7 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/core.dart';
 import '../../../core/models/flashcard.dart';
 import '../screens/anki_study_screen.dart';
+import '../screens/mixed_study_screen.dart';
 import '../screens/notification_settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -47,8 +48,11 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
   }
 
   void _setupPeriodicRefresh() {
-    // Refresh every 15 minutes to check for new due cards
-    _refreshTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
+          // Testing mode: much shorter refresh intervals for testing
+      final refreshInterval = TestingModeService().periodicRefreshInterval;
+    
+    // Refresh periodically to check for new due cards
+    _refreshTimer = Timer.periodic(refreshInterval, (timer) {
       if (mounted) {
         _loadNotificationData();
       }
@@ -57,10 +61,13 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
 
   Future<void> _startAutomaticStudy() async {
     try {
-      // Dismiss widget for a shorter period (1 hour instead of full day)
+      // Testing mode: much shorter dismissal periods for testing
+      final dismissDuration = TestingModeService().widgetDismissalInterval;
+      
+      // Dismiss widget for the specified period
       final prefs = await SharedPreferences.getInstance();
       final now = DateTime.now();
-      final dismissUntil = now.add(const Duration(hours: 4));
+      final dismissUntil = now.add(dismissDuration);
       await prefs.setString('notification_widget_dismissed_until', dismissUntil.toIso8601String());
       
       if (mounted) {
@@ -70,52 +77,12 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
         });
       }
 
-      // Decide target set: prefer overdue; else today's due
-      final targetCards = _overdueCards.isNotEmpty ? _overdueCards : _cardsDueToday;
-      if (targetCards.isEmpty) {
-        // Fallback to My Decks if nothing to review
-        Navigator.pushNamed(context, '/flashcards');
-        return;
-      }
-
-      // Group by deckId and pick deck with most due cards
-      final Map<String, List<Flashcard>> byDeck = {};
-      for (final card in targetCards) {
-        byDeck.putIfAbsent(card.deckId, () => []).add(card);
-      }
-      String bestDeckId = byDeck.keys.first;
-      int bestCount = byDeck[bestDeckId]!.length;
-      byDeck.forEach((deckId, cards) {
-        if (cards.length > bestCount) {
-          bestDeckId = deckId;
-          bestCount = cards.length;
-        }
-      });
-
-      // Load deck
-      final decks = await _dataService.getDecks();
-      final deck = decks.firstWhere((d) => d.id == bestDeckId, orElse: () => decks.isNotEmpty ? decks.first : throw Exception('No decks found'));
-
-      // Use only due cards for that deck (overdue preferred; else today's due)
-      final dueCardsForDeck = targetCards.where((c) => c.deckId == deck.id).toList();
-      if (dueCardsForDeck.isEmpty) {
-        // Fallback: if something went wrong, load all deck cards
-        final fallback = await _dataService.getFlashcardsForDeck(deck.id);
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AnkiStudyScreen(deck: deck, flashcards: fallback),
-          ),
-        );
-        return;
-      }
-
+      // Navigate to Mixed Study Screen instead of individual deck
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => AnkiStudyScreen(deck: deck, flashcards: dueCardsForDeck),
+          builder: (context) => const MixedStudyScreen(),
         ),
       );
     } catch (e) {
@@ -184,6 +151,11 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
       
       print('Notification widget: Found ${overdueCards.length} overdue cards and ${cardsDueToday.length} due today');
       
+      // Show notification if there are cards to review
+      if (overdueCards.isNotEmpty || cardsDueToday.isNotEmpty) {
+        await _showStudyReminderNotification(overdueCards.length, cardsDueToday.length);
+      }
+      
       if (mounted) {
         setState(() {
           _overdueCards = overdueCards;
@@ -196,6 +168,49 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
         setState(() => _isLoading = false);
       }
       print('Error loading notification data: $e');
+    }
+  }
+
+  Future<void> _showStudyReminderNotification(int overdueCount, int dueTodayCount) async {
+    try {
+      // Check if we should show notification (avoid spam)
+      final prefs = await SharedPreferences.getInstance();
+      final lastNotificationTime = prefs.getString('last_study_reminder_notification');
+      
+      // Testing mode: much shorter intervals for testing
+      final minInterval = TestingModeService().notificationInterval;
+      
+      if (lastNotificationTime != null) {
+        final lastTime = DateTime.parse(lastNotificationTime);
+        final now = DateTime.now();
+        // Only show notification if it's been at least the minimum interval since last one
+        if (now.difference(lastTime) < minInterval) {
+          return;
+        }
+      }
+
+      String title;
+      String body;
+      
+      if (overdueCount > 0) {
+        title = 'Cards Need Review! ⚠️';
+        body = '$overdueCount cards are overdue for review. Time to catch up!';
+      } else if (dueTodayCount > 0) {
+        title = 'Study Reminder 📚';
+        body = '$dueTodayCount cards are due for review today.';
+      } else {
+        return; // No cards to review
+      }
+
+      // Show the notification
+      await _notificationService.showStudyReminderNotification(title, body);
+      
+      // Save the notification time
+      await prefs.setString('last_study_reminder_notification', DateTime.now().toIso8601String());
+      
+      print('Notification widget: Showed study reminder notification');
+    } catch (e) {
+      print('Notification widget: Error showing study reminder notification: $e');
     }
   }
 
@@ -365,11 +380,14 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () async {
-                        // Dismiss for 1 hour instead of full day
+                        // Testing mode: much shorter dismissal periods for testing
+                        final dismissDuration = TestingModeService().notNowDismissalInterval;
+                        
+                        // Dismiss for the specified period
                         try {
                           final prefs = await SharedPreferences.getInstance();
                           final now = DateTime.now();
-                          final dismissUntil = now.add(const Duration(hours: 1));
+                          final dismissUntil = now.add(dismissDuration);
                           await prefs.setString('notification_widget_dismissed_until', dismissUntil.toIso8601String());
                         } catch (_) {}
                         if (!mounted) return;
@@ -384,7 +402,82 @@ class _NotificationWidgetState extends State<NotificationWidget> with WidgetsBin
                 ],
               ),
               // Debug buttons (only show in debug mode)
-           ],
+            //   if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+            //     const SizedBox(height: 12),
+            //     // Testing mode indicator
+            //     Container(
+            //       padding: const EdgeInsets.all(8),
+            //       decoration: BoxDecoration(
+            //         color: Colors.orange.withOpacity(0.1),
+            //         borderRadius: BorderRadius.circular(8),
+            //         border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            //       ),
+            //       child: Row(
+            //         children: [
+            //           Icon(Icons.bug_report, color: Colors.orange, size: 16),
+            //           const SizedBox(width: 8),
+            //           Text(
+            //             'Testing Mode: 1min intervals',
+            //             style: TextStyle(
+            //               color: Colors.orange[700],
+            //               fontSize: 12,
+            //               fontWeight: FontWeight.w600,
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //     const SizedBox(height: 12),
+            //     Row(
+            //       children: [
+            //         Expanded(
+            //           child: OutlinedButton(
+            //             onPressed: _testNotificationService,
+            //             child: const Text('Test Service'),
+            //           ),
+            //         ),
+            //         const SizedBox(width: 8),
+            //         Expanded(
+            //           child: OutlinedButton(
+            //             onPressed: () async {
+            //               await _notificationService.showStudyReminderNotification(
+            //                 'Test Notification 📚',
+            //                 'This is a test notification for study reminders.',
+            //               );
+            //             },
+            //             child: const Text('Test Notification'),
+            //           ),
+            //         ),
+            //       ],
+            //     ),
+            //     const SizedBox(height: 8),
+            //     Row(
+            //       children: [
+            //         Expanded(
+            //           child: OutlinedButton(
+            //             onPressed: () async {
+            //               // Force clear all dismissal timers for testing
+            //               final prefs = await SharedPreferences.getInstance();
+            //               await prefs.remove('notification_widget_dismissed_until');
+            //               await prefs.remove('last_study_reminder_notification');
+            //               if (mounted) {
+            //                 _loadNotificationData();
+            //               }
+            //             },
+            //             child: const Text('Clear Timers'),
+            //           ),
+            //         ),
+            //         const SizedBox(width: 8),
+            //         Expanded(
+            //           child: OutlinedButton(
+            //             onPressed: _forceShowWidget,
+            //             child: const Text('Force Show'),
+            //           ),
+            //         ),
+            //       ],
+            //     ),
+            //   ],
+            ],
           ),
         ),
       ),

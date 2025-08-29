@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/services/pet_service.dart';
-import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
 class AnkiStudyScreen extends StatefulWidget {
@@ -33,11 +32,28 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
   int _cardsCorrect = 0;
   int _cardsIncorrect = 0;
   DateTime _sessionStartTime = DateTime.now();
+  
+  // Deck information for mixed study
+  List<Deck> _allDecks = [];
 
   @override
   void initState() {
     super.initState();
     _sessionStartTime = DateTime.now();
+    _loadDeckInformation();
+  }
+
+  Future<void> _loadDeckInformation() async {
+    try {
+      final decks = await _dataService.getDecks();
+      if (mounted) {
+        setState(() {
+          _allDecks = decks;
+        });
+      }
+    } catch (e) {
+      print('Error loading deck information: $e');
+    }
   }
 
   void _resetStudySession() {
@@ -104,7 +120,6 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
 
 
     final currentCard = widget.flashcards[_currentIndex];
-    final isLastCard = _currentIndex == widget.flashcards.length - 1;
 
     return Scaffold(
       appBar: AppBar(
@@ -181,21 +196,44 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Question/Answer Label
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _showAnswer ? 'ANSWER' : 'QUESTION',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                        // Question/Answer Label with Deck Info for Mixed Study
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _showAnswer ? 'ANSWER' : 'QUESTION',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
-                          ),
+                            if (_isMixedStudy) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _getDeckName(currentCard.deckId),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 24),
 
@@ -233,7 +271,38 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
                                     _buildInfoItem('Ease', '${currentCard.easeFactor.toStringAsFixed(2)}'),
                                   ],
                                 ),
-                                
+                                if (_isMixedStudy) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: _getDeckColor(currentCard.deckId),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _getDeckName(currentCard.deckId),
+                                          style: TextStyle(
+                                            color: _getDeckColor(currentCard.deckId),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -485,8 +554,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
             // Show notification for pet feeding
             final updatedPet = petService.getCurrentPet();
             if (updatedPet != null) {
-              final hungerReduced = oldHunger - updatedPet.hunger;
-              final happinessGained = updatedPet.happiness - oldHappiness;
+              // Intentionally not using delta variables to avoid lints
               
               // _petNotificationService.showPetFeedingNotification(
               //   updatedPet.name,
@@ -504,7 +572,12 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
 
       // Apply SM2 spaced repetition algorithm
       await _dataService.updateFlashcardWithReview(currentCard, quality);
-
+      // Update overdue/review tags: mark as studied (clears overdue/review-now and sets Reviewed for 10m)
+      try {
+        await OverdueService().markCardAsStudied(currentCard, quality);
+      } catch (e) {
+        print('OverdueService markCardAsStudied failed: $e');
+      }
       
 
       // Wait a moment then move to next card
@@ -643,24 +716,25 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> {
      );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+  // Removed unused formatting helpers to satisfy lints
 
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Tomorrow';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d';
-    } else {
-      return '${date.day}/${date.month}';
+  Color _getDeckColor(String deckId) {
+    try {
+      final deck = _allDecks.firstWhere((d) => d.id == deckId);
+      return Color(int.parse('0xFF${deck.coverColor ?? '2196F3'}'));
+    } catch (e) {
+      return Colors.blue; // Default color
     }
   }
 
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes}m ${seconds}s';
+  String _getDeckName(String deckId) {
+    try {
+      final deck = _allDecks.firstWhere((d) => d.id == deckId);
+      return deck.name;
+    } catch (e) {
+      return 'Unknown Deck';
+    }
   }
+
+  bool get _isMixedStudy => widget.deck.id == 'mixed_study_session';
 }

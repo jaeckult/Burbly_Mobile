@@ -162,6 +162,54 @@ class NotificationService {
           playSound: true,
         ),
       );
+
+      // Scheduled review channel
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'scheduled_review_channel',
+          'Scheduled Review',
+          description: 'Notifications for scheduled deck reviews',
+          importance: Importance.high,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+
+      // Review now channel
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'review_now_channel',
+          'Review Now',
+          description: 'Notifications for cards due for review',
+          importance: Importance.high,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+
+      // Overdue cards channel
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'overdue_cards_channel',
+          'Overdue Cards',
+          description: 'Notifications for overdue cards',
+          importance: Importance.high,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
+
+      // Card review channel
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'card_review_channel',
+          'Card Review',
+          description: 'Notifications for scheduled card reviews',
+          importance: Importance.defaultImportance,
+          enableVibration: true,
+          playSound: true,
+        ),
+      );
     }
   }
 
@@ -178,9 +226,45 @@ class NotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // TODO: Handle navigation when user taps a notification
-    // For now, we'll just log the tap
+    // Handle navigation when user taps a notification
     print('Notification tapped: ${response.payload}');
+    
+    // Handle different notification types based on payload
+    if (response.payload?.startsWith('scheduled_review_') == true) {
+      // Extract deck ID from payload
+      final deckId = response.payload!.replaceFirst('scheduled_review_', '');
+      print('Scheduled review notification tapped for deck: $deckId');
+      // Navigate to the specific deck for review
+      // This will be handled by the app's navigation system
+    } else if (response.payload?.startsWith('card_review_') == true) {
+      // Extract flashcard ID from payload
+      final flashcardId = response.payload!.replaceFirst('card_review_', '');
+      print('Card review notification tapped for flashcard: $flashcardId');
+      // Navigate to the specific flashcard for review
+      // This will be handled by the app's navigation system
+    } else {
+      switch (response.payload) {
+        case 'study_reminder':
+          // Navigate to flashcards screen when study reminder is tapped
+          // This will be handled by the app's navigation system
+          print('Study reminder notification tapped - should navigate to flashcards');
+          break;
+        case 'review_now':
+          // Navigate to cards due for review
+          print('Review now notification tapped - should navigate to study');
+          break;
+        case 'overdue_card':
+          // Navigate to overdue cards or mixed study
+          print('Overdue card notification tapped - should navigate to study');
+          break;
+        case 'pet_notification':
+          // Navigate to pet screen when pet notification is tapped
+          print('Pet notification tapped - should navigate to pets');
+          break;
+        default:
+          print('Unknown notification payload: ${response.payload}');
+      }
+    }
   }
 
   // Daily reminders
@@ -438,6 +522,115 @@ class NotificationService {
       print('Showed pet notification: $message');
     } catch (e) {
       print('Error showing pet notification: $e');
+    }
+  }
+
+  Future<void> showStudyReminderNotification(String title, String body) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        overdueCardsChannelId,
+        'Overdue Cards',
+        channelDescription: 'Reminders for cards that need review',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+        playSound: true,
+        category: AndroidNotificationCategory.reminder,
+        autoCancel: true,
+        ongoing: false,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        categoryIdentifier: 'STUDY_REMINDER',
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
+      await _notifications.show(
+        notificationId,
+        title,
+        body,
+        details,
+        payload: 'study_reminder',
+      );
+      
+      print('Showed study reminder notification: $title - $body');
+    } catch (e) {
+      print('Error showing study reminder notification: $e');
+    }
+  }
+
+  Future<void> scheduleStudyReminderNotification({
+    required TimeOfDay time,
+    required List<int> daysOfWeek,
+  }) async {
+    try {
+      // Cancel existing study reminder notifications first
+      await _cancelStudyReminderNotifications();
+
+      if (daysOfWeek.isEmpty) return;
+
+      final androidDetails = AndroidNotificationDetails(
+        overdueCardsChannelId,
+        'Overdue Cards',
+        channelDescription: 'Reminders for cards that need review',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+        playSound: true,
+        category: AndroidNotificationCategory.reminder,
+        autoCancel: true,
+        ongoing: false,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        categoryIdentifier: 'STUDY_REMINDER',
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      // Schedule for each selected day
+      for (final dayOfWeek in daysOfWeek) {
+        final scheduledTime = _nextInstanceOfDay(time, dayOfWeek);
+        
+        await _notifications.zonedSchedule(
+          studyStreakId + dayOfWeek, // Unique ID for each day
+          'Study Reminder 📚',
+          'Time to review your flashcards!',
+          scheduledTime,
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          payload: 'study_reminder',
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        );
+        
+        print('Scheduled study reminder for ${scheduledTime.toString()}: ${time.hour}:${time.minute.toString().padLeft(2, '0')} on day $dayOfWeek');
+      }
+    } catch (e) {
+      print('Error scheduling study reminder notifications: $e');
+    }
+  }
+
+  Future<void> _cancelStudyReminderNotifications() async {
+    try {
+      // Cancel all study reminder notifications (IDs 3001-3007 for each day of week)
+      for (int i = 1; i <= 7; i++) {
+        await _notifications.cancel(studyStreakId + i);
+      }
+      print('Cancelled all study reminder notifications');
+    } catch (e) {
+      print('Error cancelling study reminder notifications: $e');
     }
   }
 
@@ -951,6 +1144,205 @@ class NotificationService {
       print('=== END DEBUG ===');
     } catch (e) {
       print('Error in time calculations: $e');
+    }
+  }
+
+  // Scheduled Review Notification Methods
+  Future<void> scheduleDeckReviewNotification(Deck deck) async {
+    if (deck.scheduledReviewEnabled != true) {
+      return;
+    }
+    if (deck.scheduledReviewTime == null) {
+      return;
+    }
+
+    try {
+      final timezone = _detectedTimezone ?? tz.local;
+      final scheduledTime = tz.TZDateTime.from(deck.scheduledReviewTime!, timezone);
+      
+      // Don't schedule if the time has already passed
+      if (scheduledTime.isBefore(tz.TZDateTime.now(timezone))) {
+        print('Scheduled review time has already passed for deck: ${deck.name}');
+        return;
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        'scheduled_review_channel',
+        'Scheduled Review',
+        channelDescription: 'Notifications for scheduled deck reviews',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        color: Color(0xFF2196F3),
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      // Use deck ID as notification ID to avoid duplicates
+      final notificationId = 5000 + (deck.id.hashCode % 1000);
+
+      await _notifications.zonedSchedule(
+        notificationId,
+        'Time to Review: ${deck.name}',
+        'Your scheduled review for "${deck.name}" is due now!',
+        scheduledTime,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'scheduled_review_${deck.id}',
+      );
+
+      print('Scheduled review notification set for deck "${deck.name}" at ${scheduledTime.toString()}');
+    } catch (e) {
+      print('Error scheduling deck review notification: $e');
+    }
+  }
+
+  Future<void> cancelDeckReviewNotification(Deck deck) async {
+    try {
+      // Use the same ID generation logic as in scheduleDeckReviewNotification
+      final notificationId = 5000 + (deck.id.hashCode % 1000);
+      await _notifications.cancel(notificationId);
+      print('Cancelled scheduled review notification for deck: ${deck.name}');
+    } catch (e) {
+      print('Error cancelling deck review notification: $e');
+    }
+  }
+
+  Future<void> updateDeckReviewNotification(Deck deck) async {
+    // Cancel existing notification and schedule new one
+    await cancelDeckReviewNotification(deck);
+    await scheduleDeckReviewNotification(deck);
+  }
+
+  // Method to check and schedule all deck review notifications
+  Future<void> scheduleAllDeckReviewNotifications() async {
+    try {
+      final decks = await _dataService.getDecks();
+      for (final deck in decks) {
+        if (deck.scheduledReviewEnabled == true && deck.scheduledReviewTime != null) {
+          await scheduleDeckReviewNotification(deck);
+        }
+      }
+      print('Scheduled review notifications updated for all decks');
+    } catch (e) {
+      print('Error scheduling all deck review notifications: $e');
+    }
+  }
+
+  // Show review now notification
+  Future<void> showReviewNowNotification(String deckName, String question) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'review_now_channel',
+        'Review Now',
+        channelDescription: 'Notifications for cards due for review',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        color: Color(0xFF4CAF50),
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _notifications.show(
+        DateTime.now().millisecondsSinceEpoch % 100000,
+        'Review Now: $deckName',
+        'Time to review: ${question.length > 50 ? question.substring(0, 50) + '...' : question}',
+        details,
+        payload: 'review_now',
+      );
+    } catch (e) {
+      print('Error showing review now notification: $e');
+    }
+  }
+
+  // Show overdue card notification
+  Future<void> showOverdueCardNotification(String deckName, String question) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'overdue_cards_channel',
+        'Overdue Cards',
+        channelDescription: 'Notifications for overdue cards',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        color: Color(0xFFFF5722),
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _notifications.show(
+        DateTime.now().millisecondsSinceEpoch % 100000,
+        'Card Overdue: $deckName',
+        'Time to review: ${question.length > 50 ? question.substring(0, 50) + '...' : question}',
+        details,
+        payload: 'overdue_card',
+      );
+    } catch (e) {
+      print('Error showing overdue card notification: $e');
+    }
+  }
+
+  // Schedule notification for next card review
+  Future<void> scheduleCardReviewNotification(Flashcard flashcard, Deck deck, DateTime nextReview) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'card_review_channel',
+        'Card Review',
+        channelDescription: 'Notifications for scheduled card reviews',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+        icon: '@mipmap/ic_launcher',
+        color: Color(0xFF4CAF50),
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      // Use flashcard ID as notification ID
+      final notificationId = 6000 + (flashcard.id.hashCode % 1000);
+
+      final timezone = _detectedTimezone ?? tz.local;
+      final scheduledTime = tz.TZDateTime.from(nextReview, timezone);
+
+      await _notifications.zonedSchedule(
+        notificationId,
+        'Review Due: ${deck.name}',
+        'Time to review: ${flashcard.question.length > 50 ? flashcard.question.substring(0, 50) + '...' : flashcard.question}',
+        scheduledTime,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'card_review_${flashcard.id}',
+      );
+
+      print('Scheduled card review notification for ${flashcard.id} at ${scheduledTime.toString()}');
+    } catch (e) {
+      print('Error scheduling card review notification: $e');
     }
   }
 }

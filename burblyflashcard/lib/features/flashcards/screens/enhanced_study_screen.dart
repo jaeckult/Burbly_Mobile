@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../core/core.dart';
 import '../../../core/services/pet_service.dart';
-import '../../../core/services/pet_notification_service.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
@@ -185,16 +184,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
           
           // Show notification for pet feeding
           final updatedPet = petService.getCurrentPet();
-          if (updatedPet != null) {
-            final hungerReduced = oldHunger - updatedPet.hunger;
-            final happinessGained = updatedPet.happiness - oldHappiness;
-            
-            // _petNotificationService.showPetFeedingNotification(
-            //   updatedPet.name,
-            //   hungerReduced,
-            //   happinessGained,
-            // );
-          }
+          // if (updatedPet != null) { /* can show feedback here */ }
         }
       } catch (e) {
         print('Error feeding pet: $e');
@@ -221,6 +211,12 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> {
             updatedAt: DateTime.now(),
           ),
         );
+      }
+      // Update overdue/review tags: mark as studied (clears overdue/review-now and sets Reviewed for 10m)
+      try {
+        await OverdueService().markCardAsStudied(currentCard, quality);
+      } catch (e) {
+        print('OverdueService markCardAsStudied failed: $e');
       }
       
       // Pause timer during transition

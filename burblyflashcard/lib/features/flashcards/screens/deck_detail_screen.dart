@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import 'add_flashcard_screen.dart';
 import 'study_mode_selection_screen.dart';
 import 'spaced_repetition_stats_screen.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final Deck deck;
@@ -22,12 +22,19 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   List<Flashcard> _flashcards = [];
   bool _isLoading = true;
   late Deck _currentDeck;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _currentDeck = widget.deck;
     _loadFlashcards();
+    _startPeriodicRefresh();
+    
+    // Start overdue monitoring for this deck
+    if (_currentDeck.spacedRepetitionEnabled) {
+      OverdueService().startOverdueMonitoring();
+    }
   }
 
   Future<void> _loadFlashcards() async {
@@ -51,6 +58,115 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     } catch (e) {
       print('Error refreshing deck: $e');
     }
+  }
+
+  void _startPeriodicRefresh() {
+    // Refresh every 30 seconds to keep tag states updated
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _refreshDeck();
+        _loadFlashcards();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Widget _buildStatusItem(String label, int count, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewStatusTags(Flashcard flashcard) {
+    final overdueService = OverdueService();
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        // Review Now Tag
+        if (overdueService.shouldShowReviewNowTag(flashcard))
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(0.6)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule, color: Colors.orange[700], size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  overdueService.getReviewNowTagText(flashcard),
+                  style: TextStyle(
+                    color: Colors.orange[700],
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        
+        // Overdue Tag
+        if (overdueService.shouldShowOverdueTag(flashcard))
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red.withOpacity(0.6)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.warning, color: Colors.red[700], size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  overdueService.getOverdueTagText(flashcard),
+                  style: TextStyle(
+                    color: Colors.red[700],
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        
+        // Reviewed tag intentionally omitted at flashcard level; deck card shows deck-level Reviewed
+      ],
+    );
   }
 
   void _addFlashcard() {
@@ -258,18 +374,10 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
 ),
 ),
 
+          // Scheduled Review Settings removed (use header alarm button instead)
+
           // Deck Pack Settings
-          ListTile(
-            leading: const Icon(Icons.folder),
-            title: const Text('Deck Pack'),
-            subtitle: Text(
-              _currentDeck.packId != null ? 'Assigned to pack' : 'No pack assigned',
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              _showDeckPackSettings();
-            },
-          ),
+          
         ],
       ),
     ),
@@ -476,84 +584,7 @@ Widget _buildQuickTimerButton(
 
     String? selectedPackId = _currentDeck.packId;
     
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Deck Pack Assignment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Assign this deck to a pack:'),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: selectedPackId,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Deck Pack',
-              ),
-              items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('No Pack'),
-                ),
-                ...availablePacks.map((pack) => DropdownMenuItem(
-                  value: pack.id,
-                  child: Text(pack.name),
-                )),
-              ],
-              onChanged: (value) {
-                selectedPackId = value;
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-                             try {
-                 if (selectedPackId != null) {
-                   await _dataService.addDeckToPack(_currentDeck.id, selectedPackId!);
-                 } else if (_currentDeck.packId != null) {
-                   await _dataService.removeDeckFromPack(_currentDeck.id, _currentDeck.packId!);
-                 }
-                 
-                 final updatedDeck = _currentDeck.copyWith(
-                   packId: selectedPackId,
-                 );
-                 await _dataService.updateDeck(updatedDeck);
-                 
-                 setState(() {
-                   _currentDeck = updatedDeck;
-                 });
-                 Navigator.pop(context);
-                
-                                 if (mounted) {
-                   SnackbarUtils.showSuccessSnackbar(
-                     context,
-                     selectedPackId != null 
-                         ? 'Deck assigned to pack successfully!' 
-                         : 'Deck removed from pack successfully!',
-                   );
-                 }
-              } catch (e) {
-                                 if (mounted) {
-                   SnackbarUtils.showErrorSnackbar(
-                     context,
-                     'Error updating deck pack: ${e.toString()}',
-                   );
-                 }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
+    }
 
   Future<void> _editDeck() async {
     String name = _currentDeck.name;
@@ -827,16 +858,35 @@ Widget _buildQuickTimerButton(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                             Text(
-                 _currentDeck.name,
-                 style: const TextStyle(
-                   color: Colors.white,
-                   fontSize: 24,
-                   fontWeight: FontWeight.bold,
-                 ),
-                 maxLines: 2,
-                 overflow: TextOverflow.ellipsis,
-               ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _currentDeck.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _showScheduledReviewSettings,
+                    icon: const Icon(
+                      Icons.alarm_add,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    tooltip: 'Schedule Review',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
                if (_currentDeck.description.isNotEmpty) ...[
                  const SizedBox(height: 8),
                  Text(
@@ -849,6 +899,139 @@ Widget _buildQuickTimerButton(
                    overflow: TextOverflow.ellipsis,
                  ),
                ],
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  if (_currentDeck.deckIsReviewNow == true) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.35)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule,   color: Color.fromARGB(255, 239, 212, 173), size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            _formatDeckReviewNowText(_currentDeck.deckReviewNowStartTime),
+                            style: const TextStyle(
+                              color: Color.fromARGB(255, 239, 212, 173),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (_currentDeck.deckIsOverdue == true) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.red.withOpacity(0.35)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning, color: Colors.red, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'Overdue',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (_currentDeck.deckReviewedStartTime != null) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.35)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle, color: Color.fromARGB(255, 255, 255, 255), size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            _formatDeckReviewedText(_currentDeck.deckReviewedStartTime),
+                            style: const TextStyle(
+                              color: Color.fromARGB(255, 255, 255, 255),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if ((_currentDeck.scheduledReviewEnabled ?? false) && _currentDeck.scheduledReviewTime != null) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule, color: Colors.white, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Next: ${_formatScheduledTime(_currentDeck.scheduledReviewTime!)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  // No status yet: show Schedule Review chip to open the popup
+                  return InkWell(
+                    onTap: _showScheduledReviewSettings,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_alarm, color: Colors.white, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'Schedule Review',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -888,6 +1071,196 @@ Widget _buildQuickTimerButton(
             ],
           ),
         ),
+
+        // // Review Status Card
+        // if (_currentDeck.spacedRepetitionEnabled) ...[
+        //   Container(
+        //     margin: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 8),
+        //     padding: EdgeInsets.all(isWide ? 16 : 12),
+        //     decoration: BoxDecoration(
+        //       color: Theme.of(context).cardColor,
+        //       borderRadius: BorderRadius.circular(12),
+        //       border: Border.all(
+        //         color: Colors.grey.withOpacity(0.2),
+        //       ),
+        //     ),
+        //     child: Column(
+        //       crossAxisAlignment: CrossAxisAlignment.start,
+        //       children: [
+        //         Row(
+        //           children: [
+        //             Icon(
+        //               Icons.assignment_turned_in,
+        //               size: 16,
+        //               color: Colors.blue[600],
+        //             ),
+        //             const SizedBox(width: 8),
+        //             Text(
+        //               'Review Status',
+        //               style: TextStyle(
+        //                 fontSize: 14,
+        //                 fontWeight: FontWeight.w600,
+        //                 color: Colors.blue[700],
+        //               ),
+        //             ),
+        //           ],
+        //         ),
+        //         const SizedBox(height: 12),
+        //         FutureBuilder<Map<String, dynamic>>(
+        //           future: OverdueService().getOverdueStats(_currentDeck.id),
+        //           builder: (context, snapshot) {
+        //             if (snapshot.connectionState == ConnectionState.waiting) {
+        //               return const Center(child: CircularProgressIndicator());
+        //             }
+                    
+        //             if (snapshot.hasError) {
+        //               return Text(
+        //                 'Error loading review status',
+        //                 style: TextStyle(color: Colors.red[600], fontSize: 12),
+        //               );
+        //             }
+                    
+        //             final stats = snapshot.data ?? {};
+        //             final totalOverdue = stats['totalOverdue'] ?? 0;
+        //             final totalCards = _flashcards.length;
+        //             final reviewNowCards = _flashcards.where((card) => 
+        //               OverdueService().shouldShowReviewNowTag(card)).length;
+        //             final reviewedCards = _flashcards.where((card) => 
+        //               OverdueService().shouldShowReviewedTag(card)).length;
+                    
+        //             return Column(
+        //               children: [
+        //                 Row(
+        //                   children: [
+        //                     Expanded(
+        //                       child: _buildStatusItem(
+        //                         'Review Now',
+        //                         (_currentDeck.deckIsReviewNow ?? false) ? 1 : 0,
+        //                         Colors.orange,
+        //                         Icons.schedule,
+        //                       ),
+        //                     ),
+        //                     Expanded(
+        //                       child: _buildStatusItem(
+        //                         'Overdue',
+        //                         (_currentDeck.deckIsOverdue ?? false) ? 1 : 0,
+        //                         Colors.red,
+        //                         Icons.warning,
+        //                       ),
+        //                     ),
+        //                     Expanded(
+        //                       child: _buildStatusItem(
+        //                         'Reviewed',
+        //                         (_currentDeck.deckIsReviewed ?? false) ? 1 : 0,
+        //                         Colors.green,
+        //                         Icons.check_circle,
+        //                       ),
+        //                     ),
+        //                   ],
+        //                 ),
+        //                 const SizedBox(height: 8),
+        //                 // Deck-level tags (badges)
+        //                 Wrap(
+        //                   spacing: 8,
+        //                   runSpacing: 8,
+        //                   children: [
+        //                     if ((_currentDeck.deckIsReviewNow ?? false))
+        //                       Container(
+        //                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        //                         decoration: BoxDecoration(
+        //                           color: Colors.orange.withOpacity(0.15),
+        //                           borderRadius: BorderRadius.circular(16),
+        //                           border: Border.all(color: Colors.orange.withOpacity(0.35)),
+        //                         ),
+        //                         child: Row(
+        //                           mainAxisSize: MainAxisSize.min,
+        //                           children: [
+        //                             const Icon(Icons.schedule, size: 14, color: Colors.orange),
+        //                             const SizedBox(width: 6),
+        //                             Text(
+        //                               _formatDeckReviewNowText(_currentDeck.deckReviewNowStartTime),
+        //                               style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600),
+        //                             ),
+        //                           ],
+        //                         ),
+        //                       ),
+        //                     if ((_currentDeck.deckIsOverdue ?? false))
+        //                       Container(
+        //                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        //                         decoration: BoxDecoration(
+        //                           color: Colors.red.withOpacity(0.15),
+        //                           borderRadius: BorderRadius.circular(16),
+        //                           border: Border.all(color: Colors.red.withOpacity(0.35)),
+        //                         ),
+        //                         child: const Row(
+        //                           mainAxisSize: MainAxisSize.min,
+        //                           children: [
+        //                             Icon(Icons.warning, size: 14, color: Colors.red),
+        //                             SizedBox(width: 6),
+        //                             Text(
+        //                               'Overdue',
+        //                               style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
+        //                             ),
+        //                           ],
+        //                         ),
+        //                       ),
+        //                     if ((_currentDeck.deckIsReviewed ?? false))
+        //                       Container(
+        //                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        //                         decoration: BoxDecoration(
+        //                           color: Colors.green.withOpacity(0.15),
+        //                           borderRadius: BorderRadius.circular(16),
+        //                           border: Border.all(color: Colors.green.withOpacity(0.35)),
+        //                         ),
+        //                         child: Row(
+        //                           mainAxisSize: MainAxisSize.min,
+        //                           children: [
+        //                             const Icon(Icons.check_circle, size: 14, color: Colors.green),
+        //                             const SizedBox(width: 6),
+        //                             Text(
+        //                               _formatDeckReviewedText(_currentDeck.deckReviewedStartTime),
+        //                               style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600),
+        //                             ),
+        //                           ],
+        //                         ),
+        //                       ),
+        //                   ],
+        //                 ),
+        //                 if (totalOverdue > 0) ...[
+        //                   const SizedBox(height: 8),
+        //                   Container(
+        //                     padding: const EdgeInsets.all(8),
+        //                     decoration: BoxDecoration(
+        //                       color: Colors.red.withOpacity(0.1),
+        //                       borderRadius: BorderRadius.circular(8),
+        //                       border: Border.all(color: Colors.red.withOpacity(0.3)),
+        //                     ),
+        //                     child: Row(
+        //                       children: [
+        //                         Icon(Icons.info, color: Colors.red[600], size: 16),
+        //                         const SizedBox(width: 8),
+        //                         Expanded(
+        //                           child: Text(
+        //                             'You have $totalOverdue overdue cards that need attention!',
+        //                             style: TextStyle(
+        //                               color: Colors.red[700],
+        //                               fontSize: 12,
+        //                               fontWeight: FontWeight.w500,
+        //                             ),
+        //                           ),
+        //                         ),
+        //                       ],
+        //                     ),
+        //                   ),
+        //                 ],
+        //               ],
+        //             );
+        //           },
+        //         ),
+        //       ],
+        //     ),
+        //   ),
+        // ],
 
         // Settings Indicator
         Container(
@@ -1016,6 +1389,23 @@ Widget _buildQuickTimerButton(
       ],
     ),
   ),
+  
+  // Overdue Stats Button
+  // if (_currentDeck.spacedRepetitionEnabled) ...[
+  //   Container(
+  //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  //     child: ElevatedButton.icon(
+  //       onPressed: _showOverdueStats,
+  //       icon: const Icon(Icons.warning, color: Colors.orange),
+  //       label: const Text('Overdue Stats'),
+  //       style: ElevatedButton.styleFrom(
+  //         backgroundColor: Colors.orange,
+  //         foregroundColor: Colors.white,
+  //         padding: const EdgeInsets.symmetric(vertical: 12),
+  //       ),
+  //     ),
+  //   ),
+  // ],
 ],
 
         // Flashcards List
@@ -1112,6 +1502,26 @@ Widget _buildQuickTimerButton(
                   ),
                 ],
               ),
+              
+                            // Debug: Manual Overdue Check Button (only in debug mode)
+              if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    OverdueService().startOverdueMonitoring();
+                    _refreshDeck();
+                    _loadFlashcards();
+                  },
+                  icon: const Icon(Icons.refresh, size: 14),
+                  label: const Text('Check Overdue', style: TextStyle(fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.withOpacity(0.2),
+                    foregroundColor: Colors.purple[700],
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: const Size(0, 24),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 'A: ${flashcard.answer}',
@@ -1122,6 +1532,13 @@ Widget _buildQuickTimerButton(
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
+              
+              // Review Status Tags
+              if (_currentDeck.spacedRepetitionEnabled) ...[
+                const SizedBox(height: 8),
+                _buildReviewStatusTags(flashcard),
+              ],
+              
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -1175,6 +1592,356 @@ Widget _buildQuickTimerButton(
       return '${difference.inDays}d ago';
     } else {
       return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  String _formatScheduledTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = dateTime.difference(now);
+
+    if (difference.isNegative) {
+      return 'Overdue';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d ${difference.inHours % 24}h from now';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ${difference.inMinutes % 60}m from now';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m from now';
+    } else {
+      return 'Now';
+    }
+  }
+
+  String _formatDeckReviewNowText(DateTime? start) {
+    if (start == null) return 'Review Now';
+    final now = DateTime.now();
+    final elapsed = now.difference(start);
+    final remaining = 10 - elapsed.inMinutes;
+    if (remaining <= 0) return 'Review Now';
+    if (remaining == 10) return 'Review Now';
+    return 'Review Now (${remaining}m)';
+  }
+
+  String _formatDeckReviewedText(DateTime? start) {
+    if (start == null) return 'Reviewed';
+    final now = DateTime.now();
+    final elapsed = now.difference(start);
+    if (elapsed.inMinutes < 60) {
+      final mins = elapsed.inMinutes;
+      if (mins <= 0) return 'Reviewed just now';
+      if (mins == 1) return 'Reviewed 1m ago';
+      return 'Reviewed ${mins}m ago';
+    }
+    if (elapsed.inHours < 24) {
+      final hrs = elapsed.inHours;
+      if (hrs == 1) return 'Reviewed 1h ago';
+      return 'Reviewed ${hrs}h ago';
+    }
+    final days = elapsed.inDays;
+    if (days == 1) return 'Reviewed 1d ago';
+    return 'Reviewed ${days}d ago';
+  }
+
+  void _showScheduledReviewSettings() {
+    DateTime selectedDateTime = _currentDeck.scheduledReviewTime ?? DateTime.now().add(const Duration(hours: 1));
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.alarm_add, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text('Schedule Review'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Pick a date and time for your next review. We’ll remind you and show a "Review Now" window 10 minutes before.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+
+              // Quick picks
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Quick picks', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[800])),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildQuickScheduleChip(
+  'In 10m',
+  selectedDateTime.difference(DateTime.now()).inMinutes <= 10 &&
+      selectedDateTime.difference(DateTime.now()).inMinutes >= 9,
+  () {
+    setDialogState(
+        () => selectedDateTime = DateTime.now().add(const Duration(minutes: 10)));
+  },
+),
+_buildQuickScheduleChip(
+  'In 15m',
+  selectedDateTime.difference(DateTime.now()).inMinutes <= 15 &&
+      selectedDateTime.difference(DateTime.now()).inMinutes >= 14,
+  () {
+    setDialogState(
+        () => selectedDateTime = DateTime.now().add(const Duration(minutes: 15)));
+  },
+),
+_buildQuickScheduleChip(
+  'In 30m',
+  selectedDateTime.difference(DateTime.now()).inMinutes <= 30 &&
+      selectedDateTime.difference(DateTime.now()).inMinutes >= 29,
+  () {
+    setDialogState(
+        () => selectedDateTime = DateTime.now().add(const Duration(minutes: 30)));
+  },
+),
+_buildQuickScheduleChip(
+  'In 1h',
+  selectedDateTime.difference(DateTime.now()).inMinutes <= 60 &&
+      selectedDateTime.difference(DateTime.now()).inMinutes >= 59,
+  () {
+    setDialogState(
+        () => selectedDateTime = DateTime.now().add(const Duration(hours: 1)));
+  },
+),
+_buildQuickScheduleChip(
+  'In 6h',
+  selectedDateTime.difference(DateTime.now()).inMinutes <= 360 &&
+      selectedDateTime.difference(DateTime.now()).inMinutes >= 359,
+  () {
+    setDialogState(
+        () => selectedDateTime = DateTime.now().add(const Duration(hours: 6)));
+  },
+),
+_buildQuickScheduleChip(
+  'In 24h',
+  selectedDateTime.difference(DateTime.now()).inMinutes <= 1440 &&
+      selectedDateTime.difference(DateTime.now()).inMinutes >= 1439,
+  () {
+    setDialogState(
+        () => selectedDateTime = DateTime.now().add(const Duration(hours: 24)));
+  },
+),
+
+                 
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              // Date Picker
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Date'),
+                subtitle: Text(
+                  '${selectedDateTime.day}/${selectedDateTime.month}/${selectedDateTime.year}',
+                ),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDateTime,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (date != null) {
+                    setDialogState(() {
+                      selectedDateTime = DateTime(
+                        date.year,
+                        date.month,
+                        date.day,
+                        selectedDateTime.hour,
+                        selectedDateTime.minute,
+                      );
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              // Time Picker
+              ListTile(
+                leading: const Icon(Icons.access_time),
+                title: const Text('Time'),
+                subtitle: Text(
+                  '${selectedDateTime.hour.toString().padLeft(2, '0')}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
+                ),
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.fromDateTime(selectedDateTime),
+                  );
+                  if (time != null) {
+                    setDialogState(() {
+                      selectedDateTime = DateTime(
+                        selectedDateTime.year,
+                        selectedDateTime.month,
+                        selectedDateTime.day,
+                        time.hour,
+                        time.minute,
+                      );
+                    });
+                  }
+                },
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Info Box
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Next: ${_formatScheduledTime(selectedDateTime)}',
+                        style: const TextStyle(fontSize: 12, color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final updatedDeck = _currentDeck.copyWith(
+                    scheduledReviewTime: selectedDateTime,
+                    scheduledReviewEnabled: true,
+                  );
+                  await _dataService.updateDeck(updatedDeck);
+                  setState(() => _currentDeck = updatedDeck);
+                  
+                  // Handle notification scheduling based on enabled state
+                  await NotificationService().updateDeckReviewNotification(updatedDeck);
+                  // Start overdue monitoring for this deck
+                  OverdueService().startOverdueMonitoring();
+                  
+                  Navigator.pop(context);
+
+                  if (mounted) {
+                    final message = 'Scheduled for ${_formatScheduledTime(selectedDateTime)}';
+                    SnackbarUtils.showSuccessSnackbar(context, message);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    SnackbarUtils.showErrorSnackbar(
+                      context,
+                      'Error setting scheduled review time: ${e.toString()}',
+                    );
+                  }
+                }
+              },
+              child: const Text('Schedule'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickScheduleChip(String label, bool isActive, VoidCallback onTap) {
+    final Color baseColor = const Color.fromARGB(255, 55, 66, 115);
+    final Color notBaseColor = const Color.fromARGB(255, 0, 47, 255);
+ final Color bg = isActive ? notBaseColor.withOpacity(0.25) : baseColor.withOpacity(0.12);
+final Color border = isActive ? notBaseColor.withOpacity(0.9) : baseColor.withOpacity(0.5);
+final Color text = isActive ? notBaseColor : baseColor.withOpacity(0.9);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      highlightColor: notBaseColor.withOpacity(0.12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: text),
+        ),
+      ),
+    );
+  }
+
+  void _showOverdueStats() async {
+    try {
+      final stats = await OverdueService().getOverdueStats(_currentDeck.id);
+      
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.warning, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Text('Overdue Statistics'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total Overdue Cards: ${stats['totalOverdue']}'),
+                const SizedBox(height: 8),
+                if (stats['totalOverdue'] > 0) ...[
+                  Text('Total Overdue Time: ${stats['totalOverdueMinutes']} minutes'),
+                  const SizedBox(height: 4),
+                  Text('Average Overdue Time: ${stats['averageOverdueMinutes'].toStringAsFixed(1)} minutes'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Review Now and Reviewed tags last 10 minutes. Overdue stays until you study the deck.',
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
+                ] else ...[
+                  const Text('No overdue cards! 🎉'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'All cards are up to date with their review schedule.',
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error loading overdue statistics: ${e.toString()}',
+        );
+      }
     }
   }
 }

@@ -29,13 +29,21 @@ class DeckAdapter extends TypeAdapter<Deck> {
       timerDuration: fields[9] as int?,
       isSynced: fields[10] as bool,
       showStudyStats: fields[11] as bool?,
+      scheduledReviewTime: fields[12] as DateTime?,
+      scheduledReviewEnabled: fields[13] as bool?,
+      deckIsReviewNow: fields[14] as bool?,
+      deckReviewNowStartTime: fields[15] as DateTime?,
+      deckIsOverdue: fields[16] as bool?,
+      deckOverdueStartTime: fields[17] as DateTime?,
+      deckIsReviewed: fields[18] as bool?,
+      deckReviewedStartTime: fields[19] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Deck obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(20)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +67,23 @@ class DeckAdapter extends TypeAdapter<Deck> {
       ..writeByte(10)
       ..write(obj.isSynced)
       ..writeByte(11)
-      ..write(obj.showStudyStats);
+      ..write(obj.showStudyStats)
+      ..writeByte(12)
+      ..write(obj.scheduledReviewTime)
+      ..writeByte(13)
+      ..write(obj.scheduledReviewEnabled)
+      ..writeByte(14)
+      ..write(obj.deckIsReviewNow)
+      ..writeByte(15)
+      ..write(obj.deckReviewNowStartTime)
+      ..writeByte(16)
+      ..write(obj.deckIsOverdue)
+      ..writeByte(17)
+      ..write(obj.deckOverdueStartTime)
+      ..writeByte(18)
+      ..write(obj.deckIsReviewed)
+      ..writeByte(19)
+      ..write(obj.deckReviewedStartTime);
   }
 
   @override
