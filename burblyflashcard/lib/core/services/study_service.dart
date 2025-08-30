@@ -30,31 +30,16 @@ class StudyService {
   static const double _hardPenalty = 0.20;
   static const double _againPenalty = 0.30;
 
-  /// Get cards that are due for study
+  /// Get cards that are due for study (deck-level scheduling)
   Future<List<Flashcard>> getDueCards(String deckId) async {
     try {
+      // With deck-level scheduling, all cards in a deck are available for study
+      // The deck itself determines when it's due for review
       final allCards = await _dataService.getFlashcardsForDeck(deckId);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-
-      return allCards.where((card) {
-        // New cards (never studied) are always due
-        if (card.lastReviewed == null) return true;
-        
-        // Cards with nextReview set
-        if (card.nextReview != null) {
-          final reviewDate = DateTime(
-            card.nextReview!.year,
-            card.nextReview!.month,
-            card.nextReview!.day,
-          );
-          return reviewDate.isBefore(today) || reviewDate.isAtSameMomentAs(today);
-        }
-
-        // Fallback: cards that haven't been reviewed in their interval
-        final daysSinceReview = now.difference(card.lastReviewed!).inDays;
-        return daysSinceReview >= card.interval;
-      }).toList();
+      
+      // For now, return all cards since individual scheduling is disabled
+      // In the future, this could be enhanced to filter based on deck-level scheduling
+      return allCards;
     } catch (e) {
       print('Error getting due cards: $e');
       return [];
@@ -137,19 +122,17 @@ class StudyService {
     );
   }
 
-  /// Apply study results to cards
+  /// Apply study results to cards (deck-level scheduling)
   Future<void> applyStudyResults(List<StudyResult> studyResults, List<Flashcard> flashcards) async {
     try {
       final now = DateTime.now();
       
+      // Update individual cards with basic metadata (no scheduling)
       for (final result in studyResults) {
         final card = flashcards.firstWhere((c) => c.id == result.cardId);
         
-        // Update card with the calculated values
+        // Update card with basic metadata only (no nextReview scheduling)
         final updatedCard = card.copyWith(
-          interval: result.newInterval,
-          easeFactor: result.newEaseFactor,
-          nextReview: result.nextReview,
           lastReviewed: now,
           reviewCount: card.reviewCount + 1,
           updatedAt: now,
@@ -157,6 +140,10 @@ class StudyService {
 
         await _dataService.updateFlashcard(updatedCard);
       }
+      
+      // Note: Deck-level scheduling is now handled separately by DeckSchedulingService
+      // Individual cards no longer have their own nextReview dates
+      print('Study results applied to ${flashcards.length} cards (deck-level scheduling enabled)');
     } catch (e) {
       print('Error applying study results: $e');
       rethrow;

@@ -21,18 +21,6 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   void initState() {
     super.initState();
     _loadCalendarData();
-    // Show a helpful message about refreshing
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('💡 Tip: Pull down or tap refresh to update after studying'),
-            duration: Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    });
   }
 
 
@@ -175,24 +163,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await _loadCalendarData();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Calendar refreshed'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              }
-            },
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
+        ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

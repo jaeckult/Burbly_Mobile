@@ -380,6 +380,21 @@ drawer: _buildDrawer(),
                       );
                     },
                   ),
+                  
+                  // Mixed Study (temporarily disabled)
+                  // ListTile(
+                  //   dense: true,
+                  //   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  //   leading: const Icon(Icons.shuffle, size: 22, color: Colors.purple),
+                  //   title: const Text('Mixed Study', style: TextStyle(fontSize: 14)),
+                  //   subtitle: const Text('Study cards from all decks', style: TextStyle(fontSize: 12)),
+                  //   onTap: () {
+                  //     Navigator.pop(context);
+                  //     context.pushFade(
+                  //       const MixedStudyScreen(),
+                  //     );
+                  //   },
+                  // ),
                   const Divider(height: 1, thickness: 0.5),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),

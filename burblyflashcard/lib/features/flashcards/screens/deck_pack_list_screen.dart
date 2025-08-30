@@ -931,19 +931,19 @@ Widget _buildDrawer() {
                 ],
 
                 // Debug: Profile Demo (remove in production)
-                ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: const Icon(Icons.person_outline, size: 22, color: Colors.orange),
-                  title: const Text('Profile Demo', style: TextStyle(fontSize: 14)),
-                  subtitle: const Text('Test profile storage', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushFade(
-                      const ProfileDemoScreen(),
-                    );
-                  },
-                ),
+                // ListTile(
+                //   dense: true,
+                //   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                //   leading: const Icon(Icons.person_outline, size: 22, color: Colors.orange),
+                //   title: const Text('Profile Demo', style: TextStyle(fontSize: 14)),
+                //   subtitle: const Text('Test profile storage', style: TextStyle(fontSize: 12)),
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //     context.pushFade(
+                //       const ProfileDemoScreen(),
+                //     );
+                //   },
+                // ),
 
                 const Divider(height: 1, thickness: 0.5),
 

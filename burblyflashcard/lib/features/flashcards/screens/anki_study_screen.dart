@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../../../core/services/background_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/deck_scheduling_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
 class AnkiStudyScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class AnkiStudyScreen extends StatefulWidget {
 
 class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderStateMixin {
   final DataService _dataService = DataService();
+  late final DeckSchedulingService _deckSchedulingService;
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = false;
@@ -58,6 +60,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
   }
 
   void _initializeAnimations() {
+    _deckSchedulingService = DeckSchedulingService();
     _flipController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -754,9 +757,12 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
         final shouldApplySchedules = await _showSchedulingConsentDialog();
         
         if (shouldApplySchedules) {
-          // Apply the study results
+          // Apply the study results to individual cards
           final studyService = StudyService();
           await studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+          
+          // Apply deck-level scheduling
+          await _deckSchedulingService.scheduleDeckReview(widget.deck, _pendingStudyResults);
         }
       }
       
@@ -810,7 +816,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
       builder: (context) => SchedulingConsentDialog(
         studyResults: _pendingStudyResults,
         flashcards: widget.flashcards,
-        deckName: widget.deck.name,
+        deck: widget.deck,
         onAccept: () => Navigator.pop(context, true),
         onDecline: () => Navigator.pop(context, false),
       ),

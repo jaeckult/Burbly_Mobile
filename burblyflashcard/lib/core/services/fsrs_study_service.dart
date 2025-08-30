@@ -80,24 +80,23 @@ class FSRSStudyService {
     }
   }
 
-  /// Calculate FSRS-inspired priority for a card
+  /// Calculate FSRS-inspired priority for a card (deck-level scheduling)
   double _getFSRSPriority(Flashcard card) {
     if (card.lastReviewed == null) return 100.0; // New cards highest priority
     
+    // With deck-level scheduling, individual cards no longer have nextReview dates
+    // Priority is now based on last review time and difficulty
     final now = DateTime.now();
-    final daysOverdue = now.difference(card.nextReview ?? card.lastReviewed!).inDays;
+    if (card.lastReviewed == null) return 100.0; // New cards highest priority
     
-    if (daysOverdue > 0) {
-      // Overdue cards get higher priority based on how overdue they are
-      return 90.0 + daysOverdue;
-    } else if (daysOverdue == 0) {
-      // Due today
-      return 80.0;
-    } else {
-      // Future due cards - prioritize based on difficulty
-      final difficulty = _getCardDifficulty(card);
-      return 70.0 - daysOverdue.abs() + difficulty;
-    }
+    final daysSinceReview = now.difference(card.lastReviewed!).inDays;
+    final difficulty = _getCardDifficulty(card);
+    
+    // Prioritize cards that haven't been reviewed recently
+    if (daysSinceReview >= 7) return 90.0 + difficulty; // Not reviewed in a week
+    if (daysSinceReview >= 3) return 80.0 + difficulty; // Not reviewed in 3 days
+    if (daysSinceReview >= 1) return 70.0 + difficulty; // Not reviewed yesterday
+    return 60.0 + difficulty; // Reviewed today
   }
 
   /// Get card difficulty score (0-10)
@@ -156,19 +155,17 @@ class FSRSStudyService {
     );
   }
 
-  /// Apply study results to cards (FSRS-inspired)
+  /// Apply study results to cards (deck-level scheduling)
   Future<void> applyStudyResults(List<StudyResult> studyResults, List<Flashcard> flashcards) async {
     try {
       final now = DateTime.now();
       
+      // Update individual cards with basic metadata (no scheduling)
       for (final result in studyResults) {
         final card = flashcards.firstWhere((c) => c.id == result.cardId);
         
-        // Update card with the calculated values
+        // Update card with basic metadata only (no nextReview scheduling)
         final updatedCard = card.copyWith(
-          interval: result.newInterval,
-          easeFactor: result.newEaseFactor,
-          nextReview: result.nextReview,
           lastReviewed: now,
           reviewCount: card.reviewCount + 1,
           updatedAt: now,
@@ -176,6 +173,10 @@ class FSRSStudyService {
 
         await _dataService.updateFlashcard(updatedCard);
       }
+      
+      // Note: Deck-level scheduling is now handled separately by DeckSchedulingService
+      // Individual cards no longer have their own nextReview dates
+      print('Study results applied to ${flashcards.length} cards (deck-level scheduling enabled)');
     } catch (e) {
       print('Error applying study results: $e');
       rethrow;

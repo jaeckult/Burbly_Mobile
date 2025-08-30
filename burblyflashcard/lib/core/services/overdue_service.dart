@@ -337,26 +337,10 @@ class OverdueService {
   // Get all overdue cards across all decks
   Future<List<Flashcard>> getAllOverdueCards() async {
     try {
-      final decks = await _dataService.getDecks();
-      List<Flashcard> allOverdueCards = [];
-      
-      for (final deck in decks) {
-        if (deck.spacedRepetitionEnabled) {
-          final flashcards = await _dataService.getFlashcardsForDeck(deck.id);
-          final overdueCards = flashcards.where((card) => card.isOverdue == true).toList();
-          allOverdueCards.addAll(overdueCards);
-        }
-      }
-      
-      // Sort by overdue start time (most overdue first)
-      allOverdueCards.sort((a, b) {
-        if (a.overdueStartTime == null && b.overdueStartTime == null) return 0;
-        if (a.overdueStartTime == null) return 1;
-        if (b.overdueStartTime == null) return -1;
-        return a.overdueStartTime!.compareTo(b.overdueStartTime!);
-      });
-      
-      return allOverdueCards;
+      // With deck-level scheduling, individual cards no longer have nextReview dates
+      // This method is kept for backward compatibility but returns empty list
+      // Overdue functionality is now handled at the deck level
+      return [];
     } catch (e) {
       print('Error getting all overdue cards: $e');
       return [];

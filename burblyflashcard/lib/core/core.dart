@@ -15,6 +15,7 @@ export 'services/notification_service.dart';
 export 'services/testing_mode_service.dart';
 export 'services/overdue_service.dart';
 export 'services/user_profile_service.dart';
+export 'services/deck_scheduling_service.dart';
 
 // Core Constants
 export 'constants/app_constants.dart';

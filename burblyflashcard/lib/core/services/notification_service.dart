@@ -659,12 +659,13 @@ class NotificationService {
     }
   }
 
-  // Helpers
+  // Helpers - Updated for deck-level scheduling
   Future<List<Flashcard>> getOverdueCards() async {
     try {
-      final now = DateTime.now();
-      final allCards = await _dataService.getAllFlashcards();
-      return allCards.where((c) => c.nextReview != null && c.nextReview!.isBefore(now)).toList();
+      // With deck-level scheduling, individual cards no longer have nextReview dates
+      // This method is kept for backward compatibility but returns empty list
+      // Overdue functionality is now handled at the deck level
+      return [];
     } catch (e) {
       print('Error getting overdue cards: $e');
       return [];
@@ -673,14 +674,10 @@ class NotificationService {
 
   Future<List<Flashcard>> getCardsDueToday() async {
     try {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final allCards = await _dataService.getAllFlashcards();
-      return allCards.where((c) {
-        if (c.nextReview == null) return false;
-        final reviewDate = DateTime(c.nextReview!.year, c.nextReview!.month, c.nextReview!.day);
-        return reviewDate.isAtSameMomentAs(today);
-      }).toList();
+      // With deck-level scheduling, individual cards no longer have nextReview dates
+      // This method is kept for backward compatibility but returns empty list
+      // Due functionality is now handled at the deck level
+      return [];
     } catch (e) {
       print('Error getting cards due today: $e');
       return [];
@@ -689,10 +686,10 @@ class NotificationService {
 
   Future<List<Flashcard>> getCardsDueSoon() async {
     try {
-      final now = DateTime.now();
-      final threeDaysFromNow = now.add(const Duration(days: 3));
-      final allCards = await _dataService.getAllFlashcards();
-      return allCards.where((c) => c.nextReview != null && c.nextReview!.isAfter(now) && c.nextReview!.isBefore(threeDaysFromNow)).toList();
+      // With deck-level scheduling, individual cards no longer have nextReview dates
+      // This method is kept for backward compatibility but returns empty list
+      // Due functionality is now handled at the deck level
+      return [];
     } catch (e) {
       print('Error getting cards due soon: $e');
       return [];

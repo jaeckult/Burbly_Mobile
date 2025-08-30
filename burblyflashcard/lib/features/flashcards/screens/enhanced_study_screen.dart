@@ -4,6 +4,7 @@ import 'dart:math';
 import '../../../core/core.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/background_service.dart';
+import '../../../core/services/deck_scheduling_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 
 class EnhancedStudyScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
   late final StudyService _studyService;
   late final FSRSStudyService _fsrsStudyService;
   final DataService _dataService = DataService();
+  late final DeckSchedulingService _deckSchedulingService;
   
   int _currentIndex = 0;
   bool _showAnswer = false;
@@ -72,6 +74,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
   void _initializeStudyServices() {
     _studyService = StudyService();
     _fsrsStudyService = FSRSStudyService();
+    _deckSchedulingService = DeckSchedulingService();
   }
 
   void _initializeStudySession() {
@@ -330,14 +333,17 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
     if (widget.deck.spacedRepetitionEnabled && _pendingStudyResults.isNotEmpty) {
       final shouldApplySchedules = await _showSchedulingConsentDialog();
       
-      if (shouldApplySchedules) {
-        // Apply the study results
-        if (widget.useFSRS) {
-          await _fsrsStudyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
-        } else {
-          await _studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+              if (shouldApplySchedules) {
+          // Apply the study results to individual cards
+          if (widget.useFSRS) {
+            await _fsrsStudyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+          } else {
+            await _studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+          }
+          
+          // Apply deck-level scheduling
+          await _deckSchedulingService.scheduleDeckReview(widget.deck, _pendingStudyResults);
         }
-      }
     }
     
     // Save study session
@@ -452,7 +458,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
       builder: (context) => SchedulingConsentDialog(
         studyResults: _pendingStudyResults,
         flashcards: widget.flashcards,
-        deckName: widget.deck.name,
+        deck: widget.deck,
         onAccept: () => Navigator.pop(context, true),
         onDecline: () => Navigator.pop(context, false),
       ),

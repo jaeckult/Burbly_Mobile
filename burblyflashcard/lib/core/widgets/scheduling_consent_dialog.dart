@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import '../models/study_result.dart';
 import '../models/flashcard.dart';
+import '../models/deck.dart';
+import '../services/deck_scheduling_service.dart';
 
 class SchedulingConsentDialog extends StatefulWidget {
   final List<StudyResult> studyResults;
   final List<Flashcard> flashcards;
+  final Deck deck;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
-  final String deckName;
 
   const SchedulingConsentDialog({
     super.key,
     required this.studyResults,
     required this.flashcards,
+    required this.deck,
     required this.onAccept,
     required this.onDecline,
-    required this.deckName,
   });
 
   @override
@@ -112,12 +114,12 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
                         fontWeight: FontWeight.bold,
                       ),
                 ),
-                Text(
-                  '"${widget.deckName}"',
+                                Text(
+                  '"${widget.deck.name}"',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 10,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
