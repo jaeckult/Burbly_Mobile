@@ -99,11 +99,28 @@ class StudyService {
     final oldInterval = card.interval;
     final oldEaseFactor = card.easeFactor;
     
-    // Calculate new interval and ease factor
-    final newInterval = _calculateNewInterval(card, rating);
-    final newEaseFactor = _calculateNewEaseFactor(card, rating);
+    // Capture the previously scheduled review time
+    final previouslyScheduledReview = card.nextReview;
     
-    // Calculate next review date
+    // Check if this is an early review (card is being reviewed before its scheduled time)
+    final isEarlyReview = previouslyScheduledReview != null && 
+                         previouslyScheduledReview.isAfter(now);
+    
+    int newInterval;
+    double newEaseFactor;
+    
+    if (isEarlyReview) {
+      // If reviewing early, maintain the current interval level
+      // Don't advance to the next interval - just reset the current one from now
+      newInterval = oldInterval;
+      newEaseFactor = oldEaseFactor;
+    } else {
+      // Normal review timing - calculate new interval and ease factor
+      newInterval = _calculateNewInterval(card, rating);
+      newEaseFactor = _calculateNewEaseFactor(card, rating);
+    }
+    
+    // Always calculate next review date starting from NOW
     final nextReview = _calculateNextReview(now, newInterval);
     
     // Create study result without updating the card
@@ -116,6 +133,7 @@ class StudyService {
       rating: rating,
       nextReview: nextReview,
       isNewCard: card.lastReviewed == null,
+      previouslyScheduledReview: previouslyScheduledReview, // Include previously scheduled time
     );
   }
 

@@ -296,6 +296,36 @@ Widget _buildDetailedScheduleList(BuildContext context) {
             ),
       ),
       const SizedBox(height: 6),
+      
+      // Show early review information if any cards were reviewed early
+      if (_hasEarlyReviews()) ...[
+        Container(
+          padding: const EdgeInsets.all(8),
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orange, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _getEarlyReviewMessage(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.orange[800],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      
       SizedBox(
         height: 200, // or MediaQuery.of(context).size.height * 0.3
         child: ListView.builder(
@@ -359,11 +389,25 @@ Widget _buildDetailedScheduleList(BuildContext context) {
   Widget _buildIntervalChange(BuildContext context, StudyResult result) {
     final isIncrease = result.newInterval > result.oldInterval;
     final isDecrease = result.newInterval < result.oldInterval;
+    final hasPreviouslyScheduled = result.previouslyScheduledReview != null;
 
     return Container(
       padding: const EdgeInsets.all(4),
       child: Column(
         children: [
+          // Show previously scheduled time with strike-through if it exists
+          if (hasPreviouslyScheduled) ...[
+            Text(
+              _formatDate(result.previouslyScheduledReview!),
+              style: TextStyle(
+                fontSize: 8,
+                color: Colors.grey[600],
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+            const SizedBox(height: 2),
+          ],
+          // Show old interval
           Text(
             '${result.oldInterval}d',
             style: TextStyle(
@@ -377,6 +421,7 @@ Widget _buildDetailedScheduleList(BuildContext context) {
             size: 10,
             color: isIncrease ? Colors.green : Colors.red,
           ),
+          // Show new interval
           Text(
             '${result.newInterval}d',
             style: TextStyle(
@@ -385,9 +430,35 @@ Widget _buildDetailedScheduleList(BuildContext context) {
               color: isIncrease ? Colors.green : Colors.red,
             ),
           ),
+          // Show new review date
+          Text(
+            _formatDate(result.nextReview),
+            style: TextStyle(
+              fontSize: 8,
+              color: isIncrease ? Colors.green : Colors.red,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Tomorrow';
+    } else if (difference.inDays > 1 && difference.inDays < 7) {
+      return 'In ${difference.inDays}d';
+    } else if (difference.inDays < 0) {
+      return '${date.day}/${date.month}';
+    } else {
+      return '${date.day}/${date.month}';
+    }
   }
 
  
@@ -508,5 +579,21 @@ Widget _buildDetailedScheduleList(BuildContext context) {
       'reset': reset,
       'reduced': reduced,
     };
+  }
+
+  String _getEarlyReviewMessage() {
+    final earlyReviews = widget.studyResults.where((result) => result.previouslyScheduledReview != null).length;
+    final totalCards = widget.studyResults.length;
+    
+    if (earlyReviews == totalCards) {
+      return 'All cards were reviewed early! Current intervals maintained, schedules start from now.';
+    } else if (earlyReviews > 0) {
+      return '$earlyReviews of $totalCards cards were reviewed early! Current intervals maintained, schedules start from now.';
+    }
+    return '';
+  }
+
+  bool _hasEarlyReviews() {
+    return widget.studyResults.any((result) => result.previouslyScheduledReview != null);
   }
 }

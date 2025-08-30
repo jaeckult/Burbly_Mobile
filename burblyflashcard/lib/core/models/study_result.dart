@@ -7,6 +7,7 @@ class StudyResult {
   final StudyRating rating;
   final DateTime nextReview;
   final bool isNewCard;
+  final DateTime? previouslyScheduledReview; // New field to track previously scheduled time
 
   StudyResult({
     required this.cardId,
@@ -17,6 +18,7 @@ class StudyResult {
     required this.rating,
     required this.nextReview,
     required this.isNewCard,
+    this.previouslyScheduledReview, // Optional field for previously scheduled time
   });
 }
 
