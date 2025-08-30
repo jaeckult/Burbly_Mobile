@@ -235,22 +235,16 @@ drawer: _buildDrawer(),
               ),
             ),
             margin: EdgeInsets.zero,
-            currentAccountPicture: CircleAvatar(
-              radius: 36,
-              backgroundColor: Colors.white,
-              child: _isGuestMode
-                  ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                  : user?.photoURL != null
-                      ? ClipOval(
-                          child: Image.network(
-                            user!.photoURL!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : const Icon(Icons.person, size: 40, color: Colors.grey),
-            ),
+            currentAccountPicture: _isGuestMode
+                ? CircleAvatar(
+                    radius: 36,
+                    backgroundColor: Colors.white,
+                    child: const Icon(Icons.person, size: 40, color: Colors.grey),
+                  )
+                : UserProfileAvatar(
+                    radius: 36,
+                    backgroundColor: Colors.white,
+                  ),
             accountName: Text(
               _isGuestMode ? 'Guest User' : (user?.displayName ?? 'User'),
               style: const TextStyle(fontWeight: FontWeight.bold),
@@ -372,7 +366,21 @@ drawer: _buildDrawer(),
                   //     );
                   //   },
                   // ),
-                  // const Divider(height: 1, thickness: 0.5),
+                  // Debug: Profile Demo (remove in production)
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    leading: const Icon(Icons.person_outline, size: 22, color: Colors.orange),
+                    title: const Text('Profile Demo', style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Test profile storage', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushFade(
+                        const ProfileDemoScreen(),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, thickness: 0.5),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Text(

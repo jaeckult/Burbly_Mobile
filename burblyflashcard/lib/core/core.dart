@@ -14,6 +14,7 @@ export 'services/fsrs_study_service.dart';
 export 'services/notification_service.dart';
 export 'services/testing_mode_service.dart';
 export 'services/overdue_service.dart';
+export 'services/user_profile_service.dart';
 
 // Core Constants
 export 'constants/app_constants.dart';
@@ -26,3 +27,5 @@ export 'utils/navigation_helper.dart';
 // Core Widgets
 export 'widgets/transition_demo_screen.dart';
 export 'widgets/scheduling_consent_dialog.dart';
+export 'widgets/profile_avatar.dart';
+export 'widgets/profile_demo_screen.dart';

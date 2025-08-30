@@ -19,6 +19,16 @@ class HomeScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Debug: Profile Demo (remove in production)
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              context.pushFade(
+                const ProfileDemoScreen(),
+              );
+            },
+            tooltip: 'Profile Demo',
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -74,19 +84,9 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
+                        UserProfileAvatar(
                           radius: 30,
                           backgroundColor: Colors.white,
-                          backgroundImage: user?.photoURL != null
-                              ? NetworkImage(user!.photoURL!)
-                              : null,
-                          child: user?.photoURL == null
-                              ? Icon(
-                                  Icons.person,
-                                  size: 30,
-                                  color: Theme.of(context).primaryColor,
-                                )
-                              : null,
                         ),
                         const SizedBox(width: 16),
                         Expanded(

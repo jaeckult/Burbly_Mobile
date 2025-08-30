@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../../core/services/user_profile_service.dart';
 
 
 
 class AuthService {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   final GoogleSignIn googleSignIn = GoogleSignIn();
+  final UserProfileService _userProfileService = UserProfileService();
   
   User? get currentUser => firebaseAuth.currentUser;
 
@@ -75,7 +77,14 @@ class AuthService {
       );
 
       // Sign in to Firebase with the Google credential
-      return await firebaseAuth.signInWithCredential(credential);
+      final userCredential = await firebaseAuth.signInWithCredential(credential);
+      
+      // Store user profile information in local storage
+      if (userCredential.user != null) {
+        await _userProfileService.storeProfileFromFirebaseUser(userCredential.user!);
+      }
+      
+      return userCredential;
     } catch (e) {
       print('Error signing in with Google: $e');
       rethrow;
@@ -90,6 +99,8 @@ class AuthService {
       } catch (_) {}
       await googleSignIn.signOut();
     } finally {
+      // Clear stored profile data
+      await _userProfileService.clearStoredProfile();
       await firebaseAuth.signOut();
     }
   }
