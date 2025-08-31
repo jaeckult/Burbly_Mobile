@@ -16,6 +16,7 @@ import '../../stats/stats_page.dart';
 // import '../../../core/services/pet_notification_service.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import 'trash_screen.dart';
+import 'mixed_study_screen.dart';
 
 class FlashcardHomeScreen extends StatefulWidget {
   const FlashcardHomeScreen({super.key});
@@ -206,11 +207,26 @@ drawer: _buildDrawer(),
             )
           : _buildBody(),
       floatingActionButton: _decks.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: _showActionOptions,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Mixed Study Button
+                FloatingActionButton.extended(
+                  onPressed: _startMixedStudy,
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.shuffle),
+                  label: const Text('Mixed Study'),
+                  heroTag: 'mixed_study',
+                ),
+                const SizedBox(width: 16),
+                // Add Button
+                FloatingActionButton(
+                  onPressed: _showActionOptions,
+                  foregroundColor: Colors.white,
+                  child: const Icon(Icons.add),
+                ),
+              ],
             )
           : null,
     );
@@ -678,10 +694,8 @@ drawer: _buildDrawer(),
     final difference = now.difference(date);
     if (difference.inDays == 0) {
       return 'Today';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '${difference.inDays}d ago';
     }
   }
 
@@ -816,5 +830,58 @@ drawer: _buildDrawer(),
         ),
       ),
     );
+  }
+  void _startMixedStudy() async {
+    try {
+      // Get all flashcards from all decks
+      final allFlashcards = <Flashcard>[];
+      
+      for (final deck in _decks) {
+        final deckFlashcards = await _dataService.getFlashcardsForDeck(deck.id);
+        allFlashcards.addAll(deckFlashcards);
+      }
+      
+      if (allFlashcards.isEmpty) {
+        if (mounted) {
+          SnackbarUtils.showWarningSnackbar(
+            context,
+            'No flashcards found in any deck!',
+          );
+        }
+        return;
+      }
+
+      // Create a virtual deck for mixed study
+      final mixedDeck = Deck(
+        id: 'mixed_study_all_decks',
+        name: 'Mixed Study - All Decks',
+        description: 'All cards from all decks',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        coverColor: '9C27B0', // Purple for mixed study
+        spacedRepetitionEnabled: false, // Don't affect schedules
+        showStudyStats: true,
+      );
+
+      // Navigate to mixed study screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MixedStudyScreen(
+              customDeck: mixedDeck,
+              customFlashcards: allFlashcards,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error starting mixed study: ${e.toString()}',
+        );
+      }
+    }
   }
 }

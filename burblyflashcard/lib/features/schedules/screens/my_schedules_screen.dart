@@ -10,7 +10,6 @@ class MySchedulesScreen extends StatefulWidget {
 
 class _MySchedulesScreenState extends State<MySchedulesScreen> {
   final DataService _dataService = DataService();
-  List<Flashcard> _allFlashcards = [];
   List<Deck> _allDecks = [];
   List<CalendarEvent> _events = [];
   bool _isLoading = true;
@@ -29,17 +28,11 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // Load all decks and flashcards
+      // Load all decks
       _allDecks = await _dataService.getDecks();
-      _allFlashcards.clear();
       
-      for (final deck in _allDecks) {
-        final deckCards = await _dataService.getFlashcardsForDeck(deck.id);
-        _allFlashcards.addAll(deckCards);
-      }
-      
-      // Convert flashcards to calendar events
-      _events = _convertFlashcardsToEvents();
+      // Convert decks to calendar events
+      _events = _convertDecksToEvents();
       
     } catch (e) {
       print('Error loading calendar data: $e');
@@ -48,72 +41,11 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     }
   }
 
-  List<CalendarEvent> _convertFlashcardsToEvents() {
+  List<CalendarEvent> _convertDecksToEvents() {
     final List<CalendarEvent> events = [];
     final now = DateTime.now();
     
-    // Add card-level review events
-    for (final card in _allFlashcards) {
-      if (card.nextReview != null) {
-        // Create event for next review
-        final reviewDate = card.nextReview!;
-        final isOverdue = reviewDate.isBefore(now);
-        
-        events.add(CalendarEvent(
-          date: reviewDate,
-          title: card.question.length > 30 
-              ? '${card.question.substring(0, 30)}...' 
-              : card.question,
-          color: _getEventColor(card, isOverdue),
-          deckName: _getDeckName(card.deckId),
-          interval: card.interval,
-          isOverdue: isOverdue,
-          cardId: card.id,
-          eventType: CalendarEventType.cardReview,
-        ));
-      } else if (card.lastReviewed == null) {
-        // New cards that haven't been studied yet - show them as due today
-        events.add(CalendarEvent(
-          date: now,
-          title: card.question.length > 30 
-              ? '${card.question.substring(0, 30)}...' 
-              : card.question,
-          color: Colors.orange, // Learning color for new cards
-          deckName: _getDeckName(card.deckId),
-          interval: 1,
-          isOverdue: false,
-          cardId: card.id,
-          eventType: CalendarEventType.cardReview,
-          isNewCard: true,
-        ));
-      }
-      
-      // Add events for future reviews (next 3 reviews)
-      if (card.interval > 1) {
-        DateTime nextReview = card.nextReview ?? now;
-        for (int i = 1; i <= 3; i++) {
-          nextReview = nextReview.add(Duration(days: card.interval));
-          
-          if (nextReview.isAfter(now) && nextReview.isBefore(now.add(const Duration(days: 90)))) {
-            events.add(CalendarEvent(
-              date: nextReview,
-              title: card.question.length > 30 
-                  ? '${card.question.substring(0, 30)}...' 
-                  : card.question,
-              color: _getEventColor(card, false),
-              deckName: _getDeckName(card.deckId),
-              interval: card.interval,
-              isOverdue: false,
-              cardId: card.id,
-              isFutureReview: true,
-              eventType: CalendarEventType.cardReview,
-            ));
-          }
-        }
-      }
-    }
-    
-    // Add deck-level scheduled review events
+    // Only add deck-level scheduled review events
     for (final deck in _allDecks) {
       if (deck.scheduledReviewEnabled == true && deck.scheduledReviewTime != null) {
         final scheduledDate = deck.scheduledReviewTime!;
@@ -124,10 +56,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           title: 'Deck Review: ${deck.name}',
           color: isOverdue ? Colors.red : Colors.indigo,
           deckName: deck.name,
-          interval: 0, // Not applicable for deck reviews
           isOverdue: isOverdue,
-          cardId: '', // Not applicable for deck reviews
-          eventType: CalendarEventType.deckReview,
           deckId: deck.id,
         ));
       }
@@ -136,15 +65,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     return events;
   }
 
-  Color _getEventColor(Flashcard card, bool isOverdue) {
-    if (isOverdue) return Colors.red;
-    
-    // Color based on interval
-    if (card.interval <= 1) return Colors.orange; // Learning
-    if (card.interval <= 7) return Colors.blue; // Short term
-    if (card.interval <= 30) return Colors.green; // Medium term
-    return Colors.purple; // Long term
-  }
+  // Card-level event colors removed - only deck-level scheduling is used
 
   String _getDeckName(String deckId) {
     try {
@@ -160,7 +81,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Schedules'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        
         foregroundColor: Colors.white,
         elevation: 0,
         ),
@@ -223,7 +144,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                 ),
               ),
               Text(
-                '${_events.length} reviews scheduled',
+                '${_events.length} scheduled',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -517,31 +438,12 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          if (event.eventType == CalendarEventType.cardReview) ...[
-            if (event.isNewCard) ...[
-              Text(
-                'New Card - Ready to Study',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.orange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ] else ...[
-              Text(
-                'Interval: ${event.interval} days${event.isOverdue ? ' (Overdue)' : ''}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: event.isOverdue ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ] else ...[
-            Text(
-              'Scheduled Deck Review${event.isOverdue ? ' (Overdue)' : ''}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: event.isOverdue ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+          Text(
+            'Scheduled Deck Review${event.isOverdue ? ' (Overdue)' : ''}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: event.isOverdue ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -572,12 +474,8 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
             spacing: 16,
             runSpacing: 8,
             children: [
-              _buildLegendItem('Overdue', Colors.red),
-              _buildLegendItem('Learning', Colors.orange),
-              _buildLegendItem('Short Term', Colors.blue),
-              _buildLegendItem('Medium Term', Colors.green),
-              _buildLegendItem('Long Term', Colors.purple),
-              _buildLegendItem('Deck Review', Colors.indigo),
+              _buildLegendItem('Overdue Deck', Colors.red),
+              _buildLegendItem('Scheduled Deck', Colors.indigo),
             ],
           ),
         ],
@@ -607,35 +505,20 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   }
 }
 
-enum CalendarEventType {
-  cardReview,
-  deckReview,
-}
-
 class CalendarEvent {
   final DateTime date;
   final String title;
   final Color color;
   final String deckName;
-  final int interval;
   final bool isOverdue;
-  final String cardId;
-  final bool isFutureReview;
-  final CalendarEventType eventType;
   final String? deckId;
-  final bool isNewCard;
 
   CalendarEvent({
     required this.date,
     required this.title,
     required this.color,
     required this.deckName,
-    required this.interval,
     required this.isOverdue,
-    required this.cardId,
-    this.isFutureReview = false,
-    required this.eventType,
     this.deckId,
-    this.isNewCard = false,
   });
 }

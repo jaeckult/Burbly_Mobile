@@ -393,29 +393,12 @@ const SizedBox(height: 32),
                         ),
                       ),
                       child: const Text(
-                        'Hard',
+                        'Previous',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : () => _rateCard(3),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Good',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
+                  
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
@@ -429,7 +412,7 @@ const SizedBox(height: 32),
                         ),
                       ),
                       child: const Text(
-                        'Easy',
+                        'Next',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),

@@ -69,154 +69,102 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: Colors.transparent,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.9,
-                maxWidth: 400,
-              ),
-              child: _fadeAnimation.isCompleted
-                  ? ScaleTransition(
-                      scale: _fadeAnimation,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildHeader(context),
-                          Flexible(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildDescription(context),
-                                  const SizedBox(height: 20),
-                                  _buildDeckPerformanceSummary(context),
-                                  const SizedBox(height: 20),
-                                  _buildNextReviewInfo(context),
-                                  const SizedBox(height: 20),
-                                  _buildCardBreakdown(context),
-                                ],
-                              ),
-                            ),
-                          ),
-                          _buildActions(context),
-                        ],
-                      ),
-                    )
-                  : const SizedBox.shrink(), // Fallback if animation not ready
-            ),
-          ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxWidth: MediaQuery.of(context).size.width * 0.9,
+          minWidth: 300,
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.schedule,
-            color: Colors.white,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Schedule Deck Review',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+        child: ScaleTransition(
+          scale: _fadeAnimation,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDescription(context),
+                      const SizedBox(height: 20),
+                      _buildDeckPerformanceSummary(context),
+                      const SizedBox(height: 20),
+                      _buildCardBreakdown(context),
+                      const SizedBox(height: 20),
+                      _buildNextReviewInfo(context),
+                    ],
                   ),
                 ),
-                Flexible(
-                  child: Text(
-                    '"${widget.deck.name}"',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              _buildActions(context),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: widget.onDecline,
-          ),
-        ],
+        ),
       ),
     );
   }
 
+ 
   Widget _buildDescription(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
                 child: Icon(
                   Icons.lightbulb_outline,
-                  key: ValueKey(_fadeAnimation.value),
                   color: Theme.of(context).colorScheme.primary,
-                  size: 20,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Deck-Level Scheduling',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Deck-Level Scheduling',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             'The algorithm schedules your next deck review based on your overall performance, ensuring efficient learning.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.4,
                 ),
-            semanticsLabel: 'The algorithm schedules your next deck review based on your performance for efficient learning.',
           ),
         ],
       ),
@@ -271,20 +219,24 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
       decoration: BoxDecoration(
         color: performanceColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: performanceColor.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(performanceIcon, color: performanceColor, size: 24),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: performanceColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(performanceIcon, color: performanceColor, size: 20),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -294,10 +246,11 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
                       performanceText,
                       style: TextStyle(
                         color: performanceColor,
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       'Next Review: $nextReview',
                       style: TextStyle(
@@ -310,12 +263,12 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           LinearProgressIndicator(
             value: progressValue,
             backgroundColor: performanceColor.withOpacity(0.2),
             valueColor: AlwaysStoppedAnimation(performanceColor),
-            minHeight: 6,
+            minHeight: 8,
           ),
         ],
       ),
@@ -330,23 +283,29 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.5)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              AnimatedScale(
-                scale: _fadeAnimation.value,
-                duration: const Duration(milliseconds: 300),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
                 child: Icon(
                   Icons.calendar_today,
                   color: Theme.of(context).colorScheme.secondary,
-                  size: 20,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Text(
                 'Review Schedule',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -360,8 +319,8 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
             'Your next review is optimized for retention based on your performance.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.4,
                 ),
-            semanticsLabel: 'Your next review is optimized for retention based on your performance.',
           ),
         ],
       ),
@@ -386,19 +345,27 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
                 fontWeight: FontWeight.bold,
               ),
         ),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.2,
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            _buildRatingCard(context, 'Again', againCount, totalCards, Colors.red, Icons.refresh, 0),
-            _buildRatingCard(context, 'Hard', hardCount, totalCards, Colors.orange, Icons.trending_down, 1),
-            _buildRatingCard(context, 'Good', goodCount, totalCards, Colors.blue, Icons.trending_up, 2),
-            _buildRatingCard(context, 'Easy', easyCount, totalCards, Colors.green, Icons.trending_up, 3),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width * 0.9 - 60) / 2,
+              child: _buildRatingCard(context, 'Again', againCount, totalCards, Colors.red, Icons.refresh, 0),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width * 0.9 - 60) / 2,
+              child: _buildRatingCard(context, 'Hard', hardCount, totalCards, Colors.orange, Icons.trending_down, 1),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width * 0.9 - 60) / 2,
+              child: _buildRatingCard(context, 'Good', goodCount, totalCards, Colors.blue, Icons.trending_up, 2),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width * 0.9 - 60) / 2,
+              child: _buildRatingCard(context, 'Easy', easyCount, totalCards, Colors.green, Icons.trending_up, 3),
+            ),
           ],
         ),
       ],
@@ -416,67 +383,62 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
   ) {
     final percentage = total > 0 ? (count / total).toDouble() : 0.0;
 
-    return AnimatedOpacity(
-      opacity: _fadeAnimation.value,
-      duration: Duration(milliseconds: 300 + (index * 100)),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: percentage,
-                  backgroundColor: color.withOpacity(0.2),
-                  valueColor: AlwaysStoppedAnimation(color),
-                  strokeWidth: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
-                Icon(icon, color: color, size: 20),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
               ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$count (${(percentage * 100).round()}%)',
+            style: TextStyle(
+              color: color.withOpacity(0.8),
+              fontSize: 10,
             ),
-            Text(
-              '$count (${(percentage * 100).round()}%)',
-              style: TextStyle(
-                color: color.withOpacity(0.8),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildActions(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(12),
-          bottomRight: Radius.circular(12),
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
+        ),
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          ),
         ),
       ),
       child: Row(
@@ -489,16 +451,21 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
               },
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: Text(
-                'Skip Scheduling',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                'Cancel',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: ElevatedButton(
               onPressed: () {
@@ -507,12 +474,17 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 2,
               ),
-              child: const Text('Schedule Review'),
+              child: const Text(
+                'Accept',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],

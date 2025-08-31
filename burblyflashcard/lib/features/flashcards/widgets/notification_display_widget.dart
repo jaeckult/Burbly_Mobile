@@ -50,32 +50,14 @@ class _NotificationDisplayWidgetState extends State<NotificationDisplayWidget> {
     try {
       final notifications = await _notificationService.getNotifications();
       
-      // Add a test notification if no notifications exist (for testing)
-      if (notifications.isEmpty) {
-        print('No notifications found, adding test notification');
-        await _notificationService.saveNotification(
-          title: 'Test Notification',
-          message: 'This is a test notification to verify the system is working',
-          type: NotificationType.general,
-        );
-        // Reload notifications after adding test
-        final updatedNotifications = await _notificationService.getNotifications();
-        if (mounted) {
-          setState(() {
-            _notifications = updatedNotifications;
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _notifications = notifications;
-            _isLoading = false;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _notifications = notifications;
+          _isLoading = false;
+        });
       }
       
-      print('Loaded ${_notifications.length} notifications, unread: $_unreadCount');
+
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -115,11 +97,8 @@ class _NotificationDisplayWidgetState extends State<NotificationDisplayWidget> {
 
   @override
   Widget build(BuildContext context) {
-    print('Building NotificationDisplayWidget - notifications: ${_notifications.length}, unread: $_unreadCount, loading: $_isLoading');
-    
     return IconButton(
       onPressed: () {
-        print('Notification icon pressed!');
         _showNotificationDialog(context);
       },
       icon: Stack(

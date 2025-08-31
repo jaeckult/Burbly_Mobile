@@ -501,9 +501,10 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
   }
 
   Future<bool> _showSchedulingConsentDialog() async {
-    return await showDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black54,
       builder: (context) => SchedulingConsentDialog(
         studyResults: _pendingStudyResults,
         flashcards: widget.flashcards,
@@ -511,7 +512,8 @@ class _ModernStudyScreenState extends State<ModernStudyScreen> {
         onAccept: () => Navigator.pop(context, true),
         onDecline: () => Navigator.pop(context, false),
       ),
-    ) ?? false;
+    );
+    return result ?? false;
   }
 
   void _resetStudySession() {

@@ -1069,8 +1069,8 @@ Widget _buildDrawer() {
         children: [
           
           
-                    // Notification widget
-          const NotificationWidget(),
+          //           // Notification widget
+          // const NotificationWidget(),
           
           // Content
           Expanded(

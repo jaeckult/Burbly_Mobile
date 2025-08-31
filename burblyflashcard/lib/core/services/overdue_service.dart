@@ -101,36 +101,32 @@ class OverdueService {
               updated = updated.copyWith(deckIsOverdue: false);
             }
           }
-        } else {
-          // Scheduled time has passed: show Overdue ONLY if not reviewed after schedule
-          final reviewedAfterSchedule =
-              (updated.deckReviewedStartTime != null && updated.deckReviewedStartTime!.isAfter(scheduled));
-          if (updated.deckIsOverdue != true && !reviewedAfterSchedule) {
-            updated = updated.copyWith(
-              deckIsReviewNow: false,
-              deckReviewNowStartTime: null,
-              deckIsOverdue: true,
-              deckOverdueStartTime: now,
-            );
-            
-            // Send overdue notification
-            await _notificationService.showOverdueCardNotification(
-              deck.name,
-              'Your deck is overdue for review!',
-              deckId: deck.id,
-            );
-            
-            print('Deck ${deck.name} marked as Overdue at ${now.toString()}');
-          } else {
-            // Always clear Review Now after schedule passes
-            if (updated.deckIsReviewNow == true) {
-              updated = updated.copyWith(
-                deckIsReviewNow: false,
-                deckReviewNowStartTime: null,
-              );
-            }
-          }
-        }
+                 } else {
+           // Scheduled time has passed: show Overdue ONLY if not reviewed after schedule
+           final reviewedAfterSchedule =
+               (updated.deckReviewedStartTime != null && updated.deckReviewedStartTime!.isAfter(
+  scheduled.add(const Duration(minutes: 10)),
+)
+);
+           if (updated.deckIsOverdue != true && !reviewedAfterSchedule) {
+             updated = updated.copyWith(
+               deckIsReviewNow: false,
+               deckReviewNowStartTime: null,
+               deckIsOverdue: true,
+               deckOverdueStartTime: now,
+             );
+             
+             print('Deck ${deck.name} marked as Overdue at ${now.toString()}');
+           } else {
+             // Always clear Review Now after schedule passes
+             if (updated.deckIsReviewNow == true) {
+               updated = updated.copyWith(
+                 deckIsReviewNow: false,
+                 deckReviewNowStartTime: null,
+               );
+             }
+           }
+         }
       }
 
       // Expire Reviewed after 10 minutes (keep timestamp to show "Reviewed X ago")

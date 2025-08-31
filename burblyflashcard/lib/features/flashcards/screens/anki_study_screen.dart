@@ -810,9 +810,10 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
   }
 
   Future<bool> _showSchedulingConsentDialog() async {
-    return await showDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black54,
       builder: (context) => SchedulingConsentDialog(
         studyResults: _pendingStudyResults,
         flashcards: widget.flashcards,
@@ -820,7 +821,8 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
         onAccept: () => Navigator.pop(context, true),
         onDecline: () => Navigator.pop(context, false),
       ),
-    ) ?? false;
+    );
+    return result ?? false;
   }
 
   Future<void> _showCompletionDialog(Duration sessionDuration, int accuracy) async {
@@ -928,12 +930,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
       setState(() {
         _showExtendedDescription = true;
       });
-      if (widget.flashcards[_currentIndex].extendedDescription?.isEmpty ?? true) {
-        SnackbarUtils.showInfoSnackbar(
-          context,
-          'No extended description available for this card',
-        );
-      }
+      
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import 'deck_detail_screen.dart';
 import 'create_deck_screen.dart';
+import 'mixed_study_screen.dart';
 
 class DeckPackDetailScreen extends StatefulWidget {
   final DeckPack deckPack;
@@ -567,12 +568,30 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddDeckOptions,
-        backgroundColor: Color(int.parse('0xFF${widget.deckPack.coverColor ?? 'FF9800'}')),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Decks'),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Mixed Study Button
+          if (_decks.isNotEmpty)
+            FloatingActionButton.extended(
+              onPressed: _startMixedStudy,
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.shuffle),
+              label: const Text('Mixed Study'),
+              heroTag: 'mixed_study',
+            ),
+          const SizedBox(width: 16),
+          // Add Decks Button
+          FloatingActionButton.extended(
+            onPressed: _showAddDeckOptions,
+            backgroundColor: Color(int.parse('0xFF${widget.deckPack.coverColor ?? 'FF9800'}')),
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Decks'),
+            heroTag: 'add_decks',
+          ),
+        ],
       ),
     );
   }
@@ -1008,6 +1027,61 @@ class _DeckPackDetailScreenState extends State<DeckPackDetailScreen> {
         builder: (context) => DeckDetailScreen(deck: deck),
       ),
     ).then((_) => _loadDecks());
+  }
+
+  void _startMixedStudy() async {
+    try {
+      // Get all flashcards from all decks in this pack
+      final allFlashcards = <Flashcard>[];
+      
+      for (final deck in _decks) {
+        final deckFlashcards = await _dataService.getFlashcardsForDeck(deck.id);
+        allFlashcards.addAll(deckFlashcards);
+      }
+      
+      if (allFlashcards.isEmpty) {
+        if (mounted) {
+          SnackbarUtils.showWarningSnackbar(
+            context,
+            'No flashcards found in this pack!',
+          );
+        }
+        return;
+      }
+
+      // Create a virtual deck for mixed study
+      final mixedDeck = Deck(
+        id: 'mixed_study_${widget.deckPack.id}',
+        name: 'Mixed Study - ${widget.deckPack.name}',
+        description: 'All cards from ${widget.deckPack.name}',
+        packId: widget.deckPack.id,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        coverColor: '9C27B0', // Purple for mixed study
+        spacedRepetitionEnabled: false, // Don't affect schedules
+        showStudyStats: true,
+      );
+
+      // Navigate to mixed study screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MixedStudyScreen(
+              customDeck: mixedDeck,
+              customFlashcards: allFlashcards,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showErrorSnackbar(
+          context,
+          'Error starting mixed study: ${e.toString()}',
+        );
+      }
+    }
   }
 
   void _showDebugInfo() {

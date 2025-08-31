@@ -131,20 +131,20 @@ class StudyModeSelectionScreen extends StatelessWidget {
                   icon: Icons.timeline,
                   color: Colors.blue,
                   isRecommended: false,
-                  onTap: () => _navigateToStudyMode(context, StudyMode.anki),
-                ),
-                const SizedBox(height: 12),
-                _buildStudyModeCard(
-                  context,
-                  title: 'Enhanced Study Mode',
-                  subtitle: 'Interactive learning with navigation',
-                  description:
-                      'Study cards with navigation controls and spaced repetition info. Good for focused study sessions.',
-                  icon: Icons.touch_app,
-                  color: Colors.green,
-                  isRecommended: false,
                   onTap: () => _navigateToStudyMode(context, StudyMode.enhanced),
                 ),
+                const SizedBox(height: 12),
+                // _buildStudyModeCard(
+                //   context,
+                //   title: 'Enhanced Study Mode',
+                //   subtitle: 'Interactive learning with navigation',
+                //   description:
+                //       'Study cards with navigation controls and spaced repetition info. Good for focused study sessions.',
+                //   icon: Icons.touch_app,
+                //   color: Colors.green,
+                //   isRecommended: false,
+                //   onTap: () => _navigateToStudyMode(context, StudyMode.enhanced),
+                // ),
                 const SizedBox(height: 12),
                 // Study Tips
                 Container(

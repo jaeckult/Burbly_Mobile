@@ -333,17 +333,17 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
     if (widget.deck.spacedRepetitionEnabled && _pendingStudyResults.isNotEmpty) {
       final shouldApplySchedules = await _showSchedulingConsentDialog();
       
-              if (shouldApplySchedules) {
-          // Apply the study results to individual cards
-          if (widget.useFSRS) {
-            await _fsrsStudyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
-          } else {
-            await _studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
-          }
-          
-          // Apply deck-level scheduling
-          await _deckSchedulingService.scheduleDeckReview(widget.deck, _pendingStudyResults);
+      if (shouldApplySchedules) {
+        // Apply the study results to individual cards
+        if (widget.useFSRS) {
+          await _fsrsStudyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
+        } else {
+          await _studyService.applyStudyResults(_pendingStudyResults, widget.flashcards);
         }
+        
+        // Apply deck-level scheduling
+        await _deckSchedulingService.scheduleDeckReview(widget.deck, _pendingStudyResults);
+      }
     }
     
     // Save study session
@@ -452,17 +452,27 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
   }
 
   Future<bool> _showSchedulingConsentDialog() async {
-    return await showDialog<bool>(
+    print('Enhanced Study: Showing scheduling consent dialog...');
+    final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black54,
       builder: (context) => SchedulingConsentDialog(
         studyResults: _pendingStudyResults,
         flashcards: widget.flashcards,
         deck: widget.deck,
-        onAccept: () => Navigator.pop(context, true),
-        onDecline: () => Navigator.pop(context, false),
+        onAccept: () {
+          print('Enhanced Study: Dialog onAccept called');
+          Navigator.pop(context, true);
+        },
+        onDecline: () {
+          print('Enhanced Study: Dialog onDecline called');
+          Navigator.pop(context, false);
+        },
       ),
-    ) ?? false;
+    );
+    print('Enhanced Study: Dialog result: $result');
+    return result ?? false;
   }
 
   String _calculateAccuracy() {
@@ -527,12 +537,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
       setState(() {
         _showExtendedDescription = true;
       });
-      if (widget.flashcards[_currentIndex].extendedDescription?.isEmpty ?? true) {
-        SnackbarUtils.showInfoSnackbar(
-          context,
-          'No extended description available for this card',
-        );
-      }
+     
     }
   }
 
@@ -679,193 +684,50 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
 
           // Flashcard Content
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: GestureDetector(
-                onDoubleTap: _handleDoubleTap,
-                onVerticalDragEnd: (details) {
-                  if (details.primaryVelocity! < 0) {
-                    _handleSwipeUp();
-                  }
-                },
-                onTapDown: (_) => _tapScaleController.forward(),
-                onTapUp: (_) => _tapScaleController.reverse(),
-                onTapCancel: () => _tapScaleController.reverse(),
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([_flipAnimation, _tapScaleAnimation]),
-                  builder: (context, child) {
-                    final angle = _flipAnimation.value * pi;
-                    final transform = Matrix4.identity()
-                      ..setEntry(3, 2, 0.001)
-                      ..rotateY(angle)
-                      ..scale(_tapScaleAnimation.value);
-                    
-                    return Transform(
-                      transform: transform,
-                      alignment: Alignment.center,
-                      child: Card(
-                        elevation: 8,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
-                                Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withValues(alpha: 0.7),
-                              ],
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Question/Answer Label
-                                FadeTransition(
-                                  opacity: _textFadeAnimation,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      _showAnswer ? 'ANSWER' : 'QUESTION',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Question/Answer Text
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    child: FadeTransition(
-                                      opacity: _textFadeAnimation,
-                                      child: Text(
-                                        _showAnswer ? currentCard.answer : currentCard.question,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.5,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black.withOpacity(0.2),
-                                              blurRadius: 4,
-                                              offset: const Offset(2, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Extended Description
-                                if (_showAnswer && _showExtendedDescription) ...[
-                                  const SizedBox(height: 16),
-                                  FadeTransition(
-                                    opacity: _textFadeAnimation,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        currentCard.extendedDescription?.isNotEmpty == true 
-                                          ? currentCard.extendedDescription!
-                                          : 'No extended description available',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w400,
-                                          height: 1.5,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black.withOpacity(0.2),
-                                              blurRadius: 4,
-                                              offset: const Offset(1, 1),
-                                            ),
-                                          ],
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-
-                                // Spaced Repetition Info (if enabled)
-                                if (widget.deck.spacedRepetitionEnabled && _showAnswer) ...[
-                                  const SizedBox(height: 16),
-                                  FadeTransition(
-                                    opacity: _textFadeAnimation,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            'Review Count: ${currentCard.reviewCount}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          if (currentCard.lastReviewed != null)
-                                            Text(
-                                              'Last: ${_formatDate(currentCard.lastReviewed!)}',
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
+  child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: GestureDetector(
+      onDoubleTap: _handleDoubleTap,
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity! < 0) {
+          _handleSwipeUp();
+        }
+      },
+      onTapDown: (_) => _tapScaleController.forward(),
+      onTapUp: (_) => _tapScaleController.reverse(),
+      onTapCancel: () => _tapScaleController.reverse(),
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_flipAnimation, _tapScaleAnimation]),
+        builder: (context, child) {
+                               final angle = _flipAnimation.value * pi;
+                     final isFront = !_showAnswer;
+                     
+                     return Transform(
+                       transform: Matrix4.identity()
+                         ..setEntry(3, 2, 0.001)
+                         ..rotateY(angle)
+                         ..scale(_tapScaleAnimation.value),
+                       alignment: Alignment.center,
+                       child: isFront
+                           ? _buildCardSide(currentCard.question, isQuestion: true)
+                           : Transform(
+                               transform: Matrix4.identity()..rotateY(pi),
+                               alignment: Alignment.center,
+                               child: Transform(
+                                 transform: Matrix4.identity()..rotateY(pi),
+                                 alignment: Alignment.center,
+                                 child: _buildCardSide(
+                                   currentCard.answer,
+                                   isQuestion: false,
+                                 ),
+                               ),
+                             ),
+          );
+        },
+      ),
+    ),
+  ),
+),
 
           // Check Button and Rating Buttons
           Container(
@@ -880,61 +742,64 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
                   ),
                 ],
 
-                // Anki-style Rating Buttons (show whenever answer is shown)
-                if (_showAnswer) ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'How well did you know this?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildAnkiRatingButton(
-                          'Again',
-                          Icons.close,
-                          Colors.red,
-                          () => _rateCard(1),
-                          'I got it wrong',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildAnkiRatingButton(
-                          'Hard',
-                          Icons.remove,
-                          Colors.orange,
-                          () => _rateCard(2),
-                          'I struggled but remembered',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildAnkiRatingButton(
-                          'Good',
-                          Icons.check,
-                          Colors.green,
-                          () => _rateCard(3),
-                          'I remembered it',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildAnkiRatingButton(
-                          'Easy',
-                          Icons.star,
-                          Colors.blue,
-                          () => _rateCard(4),
-                          'I knew it effortlessly',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                                 // Rating Buttons (always visible, enabled only when showing answer)
+                 Column(
+                   children: [
+                     const SizedBox(height: 16),
+                     Text(
+                       _showAnswer ? 'How well did you know this?' : 'Double tap to show answer',
+                       style: TextStyle(
+                         fontSize: 16,
+                         fontWeight: FontWeight.w600,
+                         color: _showAnswer ? const Color.fromARGB(221, 255, 255, 255) : Colors.grey[600],
+                       ),
+                     ),
+                     const SizedBox(height: 16),
+                     Row(
+                       children: [
+                         Expanded(
+                           child: _buildAnkiRatingButton(
+                             'Again',
+                             Icons.close,
+                             Colors.red,
+                             _showAnswer ? () => _rateCard(1) : null,
+                             'I got it wrong',
+                           ),
+                         ),
+                         const SizedBox(width: 8),
+                         Expanded(
+                           child: _buildAnkiRatingButton(
+                             'Hard',
+                             Icons.remove,
+                             Colors.orange,
+                             _showAnswer ? () => _rateCard(2) : null,
+                             'I struggled but remembered',
+                           ),
+                         ),
+                         const SizedBox(width: 8),
+                         Expanded(
+                           child: _buildAnkiRatingButton(
+                             'Good',
+                             Icons.check,
+                             Colors.green,
+                             _showAnswer ? () => _rateCard(3) : null,
+                             'I remembered it',
+                           ),
+                         ),
+                         const SizedBox(width: 8),
+                         Expanded(
+                           child: _buildAnkiRatingButton(
+                             'Easy',
+                             Icons.star,
+                             Colors.blue,
+                             _showAnswer ? () => _rateCard(4) : null,
+                             'I knew it effortlessly',
+                           ),
+                         ),
+                       ],
+                     ),
+                   ],
+                 ),
               ],
             ),
           ),
@@ -943,54 +808,155 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
     );
   }
 
-  Widget _buildAnkiRatingButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-    String tooltip,
-  ) {
-    return Tooltip(
-      message: tooltip,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+     Widget _buildAnkiRatingButton(
+     String label,
+     IconData icon,
+     Color color,
+     VoidCallback? onPressed,
+     String tooltip,
+   ) {
+     return Tooltip(
+       message: tooltip,
+       child: ElevatedButton(
+         onPressed: (_isLoading || onPressed == null) ? null : onPressed,
+         style: ElevatedButton.styleFrom(
+           backgroundColor: onPressed == null ? Colors.grey[400] : color,
+           foregroundColor: Colors.white,
+           padding: const EdgeInsets.symmetric(vertical: 12),
+           shape: RoundedRectangleBorder(
+             borderRadius: BorderRadius.circular(8),
+           ),
+         ),
+         child: Column(
+           children: [
+             Icon(icon, size: 20),
+             const SizedBox(height: 4),
+             Text(
+               label,
+               style: const TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.w600,
+               ),
+             ),
+           ],
+         ),
+       ),
+     );
+   }
 
-  StudyRating _qualityToStudyRating(int quality) {
-    switch (quality) {
-      case 1:
-        return StudyRating.again;
-      case 2:
-        return StudyRating.hard;
-      case 3:
-        return StudyRating.good;
-      case 4:
-        return StudyRating.easy;
-      default:
-        return StudyRating.good;
-    }
-  }
-}
+     Widget _buildCardSide(String content, {required bool isQuestion}) {
+     return Card(
+       elevation: 8,
+       shape: RoundedRectangleBorder(
+         borderRadius: BorderRadius.circular(16),
+       ),
+       child: Container(
+         width: double.infinity,
+         decoration: BoxDecoration(
+           borderRadius: BorderRadius.circular(16),
+           gradient: LinearGradient(
+             begin: Alignment.topLeft,
+             end: Alignment.bottomRight,
+             colors: [
+               Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')),
+               Color(int.parse('0xFF${widget.deck.coverColor ?? '2196F3'}')).withOpacity(0.7),
+             ],
+           ),
+         ),
+         child: Padding(
+           padding: const EdgeInsets.all(24),
+           child: Column(
+             mainAxisAlignment: MainAxisAlignment.center,
+             children: [
+               // Question/Answer Label
+               FadeTransition(
+                 opacity: _textFadeAnimation,
+                 child: Container(
+                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                   decoration: BoxDecoration(
+                     color: Colors.white.withOpacity(0.2),
+                     borderRadius: BorderRadius.circular(20),
+                     boxShadow: [
+                       BoxShadow(
+                         color: Colors.black.withOpacity(0.1),
+                         blurRadius: 8,
+                         offset: const Offset(0, 2),
+                       ),
+                     ],
+                   ),
+                                        child: Text(
+                       !_showAnswer ? 'QUESTION' : 'ANSWER',
+                       style: const TextStyle(
+                         color: Colors.white,
+                         fontWeight: FontWeight.bold,
+                         fontSize: 14,
+                         letterSpacing: 1.2,
+                       ),
+                     ),
+                 ),
+               ),
+               const SizedBox(height: 24),
+
+               // Question/Answer Text
+               Expanded(
+                 child: SingleChildScrollView(
+                   child: FadeTransition(
+                     opacity: _textFadeAnimation,
+                     child: Text(
+                       content,
+                       style: TextStyle(
+                         color: Colors.white,
+                         fontSize: isQuestion ? 26 : 22,
+                         fontWeight: isQuestion ? FontWeight.w700 : FontWeight.w600,
+                         height: 1.5,
+                         shadows: [
+                           Shadow(
+                             color: Colors.black.withOpacity(0.2),
+                             blurRadius: 4,
+                             offset: const Offset(2, 2),
+                           ),
+                         ],
+                       ),
+                       textAlign: TextAlign.center,
+                     ),
+                   ),
+                 ),
+               ),
+
+               // Spaced Repetition Info (if enabled and showing answer)
+               if (widget.deck.spacedRepetitionEnabled && !isQuestion) ...[
+                 const SizedBox(height: 16),
+                 FadeTransition(
+                   opacity: _textFadeAnimation,
+                   child: Container(
+                     padding: const EdgeInsets.all(12),
+                     decoration: BoxDecoration(
+                       color: Colors.white.withOpacity(0.1),
+                       borderRadius: BorderRadius.circular(12),
+                     ),
+                    
+                   ),
+                 ),
+               ],
+             ],
+           ),
+         ),
+       ),
+     );
+   }
+
+   StudyRating _qualityToStudyRating(int quality) {
+     switch (quality) {
+       case 1:
+         return StudyRating.again;
+       case 2:
+         return StudyRating.hard;
+       case 3:
+         return StudyRating.good;
+       case 4:
+         return StudyRating.easy;
+       default:
+         return StudyRating.good;
+     }
+   }
+ }

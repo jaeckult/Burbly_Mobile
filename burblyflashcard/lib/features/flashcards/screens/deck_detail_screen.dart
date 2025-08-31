@@ -1635,7 +1635,7 @@ Widget _buildQuickTimerButton(
               // Quick picks
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Quick picks', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[800])),
+                child: Text('Quick picks', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: const Color.fromARGB(255, 196, 188, 188))),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1738,22 +1738,37 @@ _buildQuickScheduleChip(
                   '${selectedDateTime.hour.toString().padLeft(2, '0')}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
                 ),
                 onTap: () async {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.fromDateTime(selectedDateTime),
-                  );
-                  if (time != null) {
-                    setDialogState(() {
-                      selectedDateTime = DateTime(
-                        selectedDateTime.year,
-                        selectedDateTime.month,
-                        selectedDateTime.day,
-                        time.hour,
-                        time.minute,
-                      );
-                    });
-                  }
-                },
+  final time = await showTimePicker(
+    context: context,
+    initialTime: TimeOfDay.fromDateTime(selectedDateTime),
+    initialEntryMode: TimePickerEntryMode.dial,
+    builder: (context, child) {
+      return Theme(
+        data: Theme.of(context).copyWith(
+          // The previous parameters 'switchToInputEntryModeIcon' and 'switchToDialEntryModeIcon' do not exist.
+          // To hide the keyboard switch icon in the time picker, as of Flutter 3.10+, you can use 'entryModeIconColor' and set it to transparent.
+          timePickerTheme: const TimePickerThemeData(
+            entryModeIconColor: Colors.transparent,
+          ),
+        ),
+        child: child!,
+      );
+    },
+  );
+
+  if (time != null) {
+    setDialogState(() {
+      selectedDateTime = DateTime(
+        selectedDateTime.year,
+        selectedDateTime.month,
+        selectedDateTime.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+}
+
               ),
               
               const SizedBox(height: 16),
@@ -1828,8 +1843,8 @@ _buildQuickScheduleChip(
   }
 
   Widget _buildQuickScheduleChip(String label, bool isActive, VoidCallback onTap) {
-    final Color baseColor = const Color.fromARGB(255, 55, 66, 115);
-    final Color notBaseColor = const Color.fromARGB(255, 0, 47, 255);
+    final Color baseColor = const Color.fromARGB(255, 248, 248, 250);
+    final Color notBaseColor = const Color.fromARGB(255, 7, 177, 33);
  final Color bg = isActive ? notBaseColor.withOpacity(0.25) : baseColor.withOpacity(0.12);
 final Color border = isActive ? notBaseColor.withOpacity(0.9) : baseColor.withOpacity(0.5);
 final Color text = isActive ? notBaseColor : baseColor.withOpacity(0.9);

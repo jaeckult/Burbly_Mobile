@@ -65,12 +65,11 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Text('Search', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white,),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
