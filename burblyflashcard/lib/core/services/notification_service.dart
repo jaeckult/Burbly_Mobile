@@ -3,8 +3,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/deck.dart';
 import '../models/flashcard.dart';
+import '../models/notification.dart';
 import 'data_service.dart';
 import 'package:flutter/material.dart';
 import '../../features/flashcards/screens/mixed_study_screen.dart';
@@ -234,6 +236,10 @@ class NotificationService {
     try {
       final payload = response.payload ?? '';
       print('Notification tapped: $payload');
+      
+      // Save the notification to our app's notification system
+      _saveNotificationFromResponse(payload);
+      
       final nav = navigatorKey.currentState;
       if (nav == null) {
         print('Navigator not ready; cannot navigate from notification');
@@ -261,12 +267,75 @@ class NotificationService {
         case 'overdue_card':
           _navigateToMixed(nav);
           break;
+        case 'streak_reminder':
+          // Navigate to stats page for streak achievements
+          nav.pushNamed('/stats');
+          break;
         default:
           // no-op
           break;
       }
     } catch (e) {
       print('Error handling notification tap: $e');
+    }
+  }
+
+  void _saveNotificationFromResponse(String payload) {
+    try {
+      NotificationType type;
+      Map<String, dynamic>? data;
+      String title;
+      String message;
+      
+      if (payload.startsWith('scheduled_review_')) {
+        type = NotificationType.studyReminder;
+        title = 'Study Reminder 📚';
+        message = 'Time to review your flashcards!';
+        data = {'deckId': payload.replaceFirst('scheduled_review_', '')};
+      } else if (payload.startsWith('card_review_')) {
+        type = NotificationType.studyReminder;
+        title = 'Card Review Due';
+        message = 'Time to review a flashcard!';
+        data = {'cardId': payload.replaceFirst('card_review_', '')};
+      } else {
+        switch (payload) {
+          case 'study_reminder':
+            type = NotificationType.studyReminder;
+            title = 'Study Reminder 📚';
+            message = 'Time to review your flashcards!';
+            break;
+          case 'review_now':
+            type = NotificationType.studyReminder;
+            title = 'Review Now';
+            message = 'Time to review your cards!';
+            break;
+          case 'overdue_card':
+            type = NotificationType.overdueCards;
+            title = 'Card Overdue';
+            message = 'You have overdue cards to review!';
+            break;
+          case 'streak_reminder':
+            type = NotificationType.streakAchievement;
+            title = 'Amazing Streak! 🔥';
+            message = 'You\'ve achieved a study streak! Keep it up!';
+            break;
+          default:
+            type = NotificationType.general;
+            title = 'Notification';
+            message = 'You have a new notification';
+            break;
+        }
+      }
+      
+      // Save to our notification system
+      saveNotification(
+        title: title,
+        message: message,
+        type: type,
+        data: data,
+      );
+    } catch (e) {
+      print('Error saving notification from response: $e');
     }
   }
 
@@ -452,15 +521,26 @@ class NotificationService {
       // Schedule for 1 hour from now
       final scheduledTime = tz.TZDateTime.now(tz.local).add(const Duration(hours: 1));
       
+      final title = 'Amazing Streak! 🔥';
+      final message = 'You\'ve studied for $streakDays days in a row! Keep it up!';
+      
       await _notifications.zonedSchedule(
         studyStreakId,
-        'Amazing Streak! 🔥',
-        'You\'ve studied for $streakDays days in a row! Keep it up!',
+        title,
+        message,
         scheduledTime,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'streak_reminder',
+      );
+
+      // Also save to app's notification system
+      await saveNotification(
+        title: title,
+        message: message,
+        type: NotificationType.streakAchievement,
+        data: {'streakDays': streakDays},
       );
       
       print('Scheduled study streak reminder for ${scheduledTime.toString()}');
@@ -497,14 +577,24 @@ class NotificationService {
       
       final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
+      final title = 'Your Pet Misses You! 🐾';
+      
       await _notifications.zonedSchedule(
         notificationId,
-        'Your Pet Misses You! 🐾',
+        title,
         message,
         scheduledTime,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      );
+
+      // Also save to app's notification system
+      await saveNotification(
+        title: title,
+        message: message,
+        type: NotificationType.general,
+        data: {'source': 'pet', 'scheduledTime': scheduledTime.toIso8601String()},
       );
       
       print('Scheduled pet notification for ${scheduledTime.toString()}: $message');
@@ -542,6 +632,14 @@ class NotificationService {
         'Your Pet Misses You! 🐾',
         message,
         details,
+      );
+
+      // Also save to app's notification system
+      await saveNotification(
+        title: 'Your Pet Misses You! 🐾',
+        message: message,
+        type: NotificationType.general,
+        data: {'source': 'pet'},
       );
       
       print('Showed pet notification: $message');
@@ -583,6 +681,13 @@ class NotificationService {
         body,
         details,
         payload: 'study_reminder',
+      );
+
+      // Also save to app's notification system
+      await saveNotification(
+        title: title,
+        message: body,
+        type: NotificationType.studyReminder,
       );
       
       print('Showed study reminder notification: $title - $body');
@@ -638,6 +743,18 @@ class NotificationService {
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
           payload: 'study_reminder',
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        );
+
+        // Also save to app's notification system as a scheduled notification
+        await saveNotification(
+          title: 'Study Reminder 📚',
+          message: 'Time to review your flashcards!',
+          type: NotificationType.dailyReminder,
+          data: {
+            'scheduledTime': scheduledTime.toIso8601String(),
+            'dayOfWeek': dayOfWeek,
+            'time': '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
+          },
         );
         
         print('Scheduled study reminder for ${scheduledTime.toString()}: ${time.hour}:${time.minute.toString().padLeft(2, '0')} on day $dayOfWeek');
@@ -1007,8 +1124,8 @@ class NotificationService {
       await checkNotificationChannels();
       
       // Test immediate notification
-      print('Testing immediate notification...');
-      await testNotification();
+      // print('Testing immediate notification...');
+      // await testNotification();
       
       // Check if immediate notification worked
       await Future.delayed(const Duration(seconds: 2));
@@ -1020,40 +1137,40 @@ class NotificationService {
     }
   }
 
-  // Debug method to test notifications (only use during development)
-  Future<void> testNotification() async {
-    try {
-      final androidDetails = AndroidNotificationDetails(
-        immediateChannelId,
-        'Immediate Notifications',
-        channelDescription: 'Immediate notifications',
-        importance: Importance.high,
-        priority: Priority.high,
-        icon: '@mipmap/ic_launcher',
-        enableVibration: true,
-        playSound: true,
-      );
+  // // Debug method to test notifications (only use during development)
+  // Future<void> testNotification() async {
+  //   try {
+  //     final androidDetails = AndroidNotificationDetails(
+  //       immediateChannelId,
+  //       'Immediate Notifications',
+  //       channelDescription: 'Immediate notifications',
+  //       importance: Importance.high,
+  //       priority: Priority.high,
+  //       icon: '@mipmap/ic_launcher',
+  //       enableVibration: true,
+  //       playSound: true,
+  //     );
 
-      final iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
+  //     final iosDetails = DarwinNotificationDetails(
+  //       presentAlert: true,
+  //       presentBadge: true,
+  //       presentSound: true,
+  //     );
 
-      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+  //     final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-      await _notifications.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'Test Notification',
-        'This is a test notification to verify the system works!',
-        details,
-      );
+  //     await _notifications.show(
+  //       DateTime.now().millisecondsSinceEpoch ~/ 1000,
+  //       'Test Notification',
+  //       'This is a test notification to verify the system works!',
+  //       details,
+  //     );
       
-      print('Test notification sent successfully');
-    } catch (e) {
-      print('Error sending test notification: $e');
-    }
-  }
+  //     print('Test notification sent successfully');
+  //   } catch (e) {
+  //     print('Error sending test notification: $e');
+  //   }
+  // }
 
   // Debug method to test scheduled notifications with a short delay
   Future<void> testScheduledNotification() async {
@@ -1259,7 +1376,7 @@ class NotificationService {
   }
 
   // Show review now notification
-  Future<void> showReviewNowNotification(String deckName, String question) async {
+  Future<void> showReviewNowNotification(String deckName, String question, {String? deckId}) async {
     try {
       const androidDetails = AndroidNotificationDetails(
         'review_now_channel',
@@ -1279,12 +1396,27 @@ class NotificationService {
 
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
+      final title = 'Review Now: $deckName';
+      final message = 'Time to review: ${question.length > 50 ? question.substring(0, 50) + '...' : question}';
+      
       await _notifications.show(
         DateTime.now().millisecondsSinceEpoch % 100000,
-        'Review Now: $deckName',
-        'Time to review: ${question.length > 50 ? question.substring(0, 50) + '...' : question}',
+        title,
+        message,
         details,
-        payload: 'review_now',
+        payload: deckId != null ? 'scheduled_review_$deckId' : 'review_now',
+      );
+
+      // Also save to app's notification system
+      await saveNotification(
+        title: title,
+        message: message,
+        type: NotificationType.studyReminder,
+        data: {
+          'deckName': deckName, 
+          'question': question,
+          if (deckId != null) 'deckId': deckId,
+        },
       );
     } catch (e) {
       print('Error showing review now notification: $e');
@@ -1292,7 +1424,7 @@ class NotificationService {
   }
 
   // Show overdue card notification
-  Future<void> showOverdueCardNotification(String deckName, String question) async {
+  Future<void> showOverdueCardNotification(String deckName, String question, {String? deckId}) async {
     try {
       const androidDetails = AndroidNotificationDetails(
         'overdue_cards_channel',
@@ -1312,12 +1444,27 @@ class NotificationService {
 
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
+      final title = 'Card Overdue: $deckName';
+      final message = 'Time to review: ${question.length > 50 ? question.substring(0, 50) + '...' : question}';
+      
       await _notifications.show(
         DateTime.now().millisecondsSinceEpoch % 100000,
-        'Card Overdue: $deckName',
-        'Time to review: ${question.length > 50 ? question.substring(0, 50) + '...' : question}',
+        title,
+        message,
         details,
-        payload: 'overdue_card',
+        payload: deckId != null ? 'scheduled_review_$deckId' : 'overdue_card',
+      );
+
+      // Also save to app's notification system
+      await saveNotification(
+        title: title,
+        message: message,
+        type: NotificationType.overdueCards,
+        data: {
+          'deckName': deckName, 
+          'question': question,
+          if (deckId != null) 'deckId': deckId,
+        },
       );
     } catch (e) {
       print('Error showing overdue card notification: $e');
@@ -1365,6 +1512,194 @@ class NotificationService {
       print('Scheduled card review notification for ${flashcard.id} at ${scheduledTime.toString()}');
     } catch (e) {
       print('Error scheduling card review notification: $e');
+    }
+  }
+
+  // Save notification to app's notification system
+  Future<void> saveNotification({
+    required String title,
+    required String message,
+    required NotificationType type,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existingNotificationsJson = prefs.getStringList('app_notifications') ?? [];
+      
+      // Parse existing notifications
+      final existingNotifications = existingNotificationsJson
+          .map((jsonString) {
+            try {
+              final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+              return AppNotification.fromJson(jsonMap);
+            } catch (e) {
+              print('Error parsing notification JSON: $e');
+              return null;
+            }
+          })
+          .where((notification) => notification != null)
+          .cast<AppNotification>()
+          .toList();
+      
+      // Create new notification
+      final newNotification = AppNotification(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        message: message,
+        type: type,
+        timestamp: DateTime.now(),
+        data: data,
+      );
+      
+      // Add to beginning of list (newest first)
+      existingNotifications.insert(0, newNotification);
+      
+      // Keep only the last 50 notifications
+      if (existingNotifications.length > 50) {
+        existingNotifications.removeRange(50, existingNotifications.length);
+      }
+      
+      // Save back to shared preferences
+      final updatedNotificationsJson = existingNotifications
+          .map((notification) => jsonEncode(notification.toJson()))
+          .toList();
+      await prefs.setStringList('app_notifications', updatedNotificationsJson);
+      
+      print('Saved notification: $title');
+    } catch (e) {
+      print('Error saving notification: $e');
+    }
+  }
+
+  // Get all notifications from app's notification system
+  Future<List<AppNotification>> getNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsJson = prefs.getStringList('app_notifications') ?? [];
+      
+      final notifications = notificationsJson
+          .map((jsonString) {
+            try {
+              final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+              return AppNotification.fromJson(jsonMap);
+            } catch (e) {
+              print('Error parsing notification JSON: $e');
+              return null;
+            }
+          })
+          .where((notification) => notification != null)
+          .cast<AppNotification>()
+          .toList();
+      
+      // Sort by timestamp (newest first)
+      notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      
+      return notifications;
+    } catch (e) {
+      print('Error getting notifications: $e');
+      return [];
+    }
+  }
+
+  // Mark notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsJson = prefs.getStringList('app_notifications') ?? [];
+      
+      final notifications = notificationsJson
+          .map((jsonString) {
+            try {
+              final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+              return AppNotification.fromJson(jsonMap);
+            } catch (e) {
+              print('Error parsing notification JSON: $e');
+              return null;
+            }
+          })
+          .where((notification) => notification != null)
+          .cast<AppNotification>()
+          .toList();
+      
+      final updatedNotifications = notifications.map((notification) {
+        if (notification.id == notificationId) {
+          return notification.copyWith(isRead: true);
+        }
+        return notification;
+      }).toList();
+      
+      final updatedNotificationsJson = updatedNotifications
+          .map((notification) => jsonEncode(notification.toJson()))
+          .toList();
+      await prefs.setStringList('app_notifications', updatedNotificationsJson);
+    } catch (e) {
+      print('Error marking notification as read: $e');
+    }
+  }
+
+  // Mark all notifications as read
+  Future<void> markAllNotificationsAsRead() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsJson = prefs.getStringList('app_notifications') ?? [];
+      
+      final notifications = notificationsJson
+          .map((jsonString) {
+            try {
+              final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+              return AppNotification.fromJson(jsonMap);
+            } catch (e) {
+              print('Error parsing notification JSON: $e');
+              return null;
+            }
+          })
+          .where((notification) => notification != null)
+          .cast<AppNotification>()
+          .toList();
+      
+      final updatedNotifications = notifications
+          .map((notification) => notification.copyWith(isRead: true))
+          .toList();
+      
+      final updatedNotificationsJson = updatedNotifications
+          .map((notification) => jsonEncode(notification.toJson()))
+          .toList();
+      await prefs.setStringList('app_notifications', updatedNotificationsJson);
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+    }
+  }
+
+  // Delete notification
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsJson = prefs.getStringList('app_notifications') ?? [];
+      
+      final notifications = notificationsJson
+          .map((jsonString) {
+            try {
+              final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+              return AppNotification.fromJson(jsonMap);
+            } catch (e) {
+              print('Error parsing notification JSON: $e');
+              return null;
+            }
+          })
+          .where((notification) => notification != null)
+          .cast<AppNotification>()
+          .toList();
+      
+      final updatedNotifications = notifications
+          .where((notification) => notification.id != notificationId)
+          .toList();
+      
+      final updatedNotificationsJson = updatedNotifications
+          .map((notification) => jsonEncode(notification.toJson()))
+          .toList();
+      await prefs.setStringList('app_notifications', updatedNotificationsJson);
+    } catch (e) {
+      print('Error deleting notification: $e');
     }
   }
 }

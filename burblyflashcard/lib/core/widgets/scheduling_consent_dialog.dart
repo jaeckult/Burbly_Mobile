@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui';
 import '../models/study_result.dart';
 import '../models/flashcard.dart';
 import '../models/deck.dart';
@@ -28,22 +30,34 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
     with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
+  late DeckSchedulingService _deckSchedulingService;
+  Map<String, dynamic>? _performanceSummary;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
+    _initializeServices();
+    _calculatePerformanceSummary();
   }
 
   void _initializeAnimations() {
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
     _controller.forward();
+  }
+
+  void _initializeServices() {
+    _deckSchedulingService = DeckSchedulingService();
+  }
+
+  void _calculatePerformanceSummary() {
+    _performanceSummary = _deckSchedulingService.getDeckPerformanceSummary(widget.studyResults);
   }
 
   @override
@@ -54,39 +68,53 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-  maxHeight: MediaQuery.of(context).size.height * 0.85, // 85% of screen
-  maxWidth: 400,
-),
-
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHeader(context),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDescription(context),
-                      const SizedBox(height: 15),
-                      _buildDetailedScheduleList(context),
-                      const SizedBox(height: 15),
-                      // _buildSummaryGrid(context),
-                      // const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      backgroundColor: Colors.transparent,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+                maxWidth: 400,
               ),
-              _buildActions(context),
-            ],
+              child: _fadeAnimation.isCompleted
+                  ? ScaleTransition(
+                      scale: _fadeAnimation,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildHeader(context),
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildDescription(context),
+                                  const SizedBox(height: 20),
+                                  _buildDeckPerformanceSummary(context),
+                                  const SizedBox(height: 20),
+                                  _buildNextReviewInfo(context),
+                                  const SizedBox(height: 20),
+                                  _buildCardBreakdown(context),
+                                ],
+                              ),
+                            ),
+                          ),
+                          _buildActions(context),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(), // Fallback if animation not ready
+            ),
           ),
         ),
       ),
@@ -94,35 +122,58 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(12),
+        ),
+      ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.schedule,
-            color: Theme.of(context).colorScheme.primary,
-            size: 20,
+            color: Colors.white,
+            size: 24,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Schedule Cards',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                const Text(
+                  'Schedule Deck Review',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                                Text(
-                  '"${widget.deck.name}"',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 10,
+                Flexible(
+                  child: Text(
+                    '"${widget.deck.name}"',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: widget.onDecline,
           ),
         ],
       ),
@@ -130,472 +181,342 @@ class _SchedulingConsentDialogState extends State<SchedulingConsentDialog>
   }
 
   Widget _buildDescription(BuildContext context) {
-    return Text(
-      'Proposed changes:',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: 12,
-          ),
-    );
-  }
-
-  Widget _buildScheduleSummary(BuildContext context) {
-    final summary = _calculateScheduleSummary();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Summary',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _buildSummaryCard(
-              context,
-              'Soon',
-              summary['soon'] ?? 0,
-              Icons.schedule,
-              Theme.of(context).colorScheme.primary,
-              '≤7d',
-            ),
-            _buildSummaryCard(
-              context,
-              'Advanced',
-              summary['advanced'] ?? 0,
-              Icons.trending_up,
-              Colors.green,
-              '+Interval',
-            ),
-            _buildSummaryCard(
-              context,
-              'Reset',
-              summary['reset'] ?? 0,
-              Icons.refresh,
-              Colors.red,
-              'Learning',
-            ),
-            _buildSummaryCard(
-              context,
-              'Reduced',
-              summary['reduced'] ?? 0,
-              Icons.trending_down,
-              Colors.amber,
-              '-Interval',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSummaryGrid(BuildContext context) {
-  return GridView.count(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    crossAxisCount: 2, // 2 columns
-    crossAxisSpacing: 8,
-    mainAxisSpacing: 8,
-    childAspectRatio: 1.4, // Adjust to control card shape
-    children: [
-      _buildSummaryCard(
-        context,
-        "Completed",
-        12,
-        Icons.check_circle,
-        Colors.green,
-        "Tasks done",
-      ),
-      _buildSummaryCard(
-        context,
-        "Pending",
-        5,
-        Icons.pending,
-        Colors.orange,
-        "Waiting...",
-      ),
-      _buildSummaryCard(
-        context,
-        "Failed",
-        2,
-        Icons.error,
-        Colors.red,
-        "Issues found",
-      ),
-      _buildSummaryCard(
-        context,
-        "In Progress",
-        7,
-        Icons.work,
-        Colors.blue,
-        "Ongoing",
-      ),
-    ],
-  );
-}
-
-
-  Widget _buildSummaryCard(
-    BuildContext context,
-    String label,
-    int count,
-    IconData icon,
-    Color color,
-    String subtitle,
-  ) {
     return Container(
-      width: (MediaQuery.of(context).size.width - 28) / 2,
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(height: 2),
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          Row(
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Icon(
+                  Icons.lightbulb_outline,
+                  key: ValueKey(_fadeAnimation.value),
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Deck-Level Scheduling',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
           ),
+          const SizedBox(height: 8),
           Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 8,
-              color: color.withOpacity(0.7),
-            ),
-            textAlign: TextAlign.center,
+            'The algorithm schedules your next deck review based on your overall performance, ensuring efficient learning.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+            semanticsLabel: 'The algorithm schedules your next deck review based on your performance for efficient learning.',
           ),
         ],
       ),
     );
   }
-Widget _buildDetailedScheduleList(BuildContext context) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Details',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-      ),
-      const SizedBox(height: 6),
-      
-      // Show early review information if any cards were reviewed early
-      if (_hasEarlyReviews()) ...[
-        Container(
-          padding: const EdgeInsets.all(8),
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
-            border: Border.all(color: Colors.orange.withOpacity(0.3)),
-            borderRadius: BorderRadius.circular(8),
+
+  Widget _buildDeckPerformanceSummary(BuildContext context) {
+    if (_performanceSummary == null) return const SizedBox.shrink();
+
+    final performance = _performanceSummary!['performance'] as String;
+    final nextReview = _performanceSummary!['nextReview'] as String;
+
+    Color performanceColor;
+    IconData performanceIcon;
+    String performanceText;
+    double progressValue;
+
+    switch (performance) {
+      case 'again':
+        performanceColor = Colors.red;
+        performanceIcon = Icons.refresh;
+        performanceText = 'Needs Review';
+        progressValue = 0.25;
+        break;
+      case 'hard':
+        performanceColor = Colors.orange;
+        performanceIcon = Icons.trending_down;
+        performanceText = 'Some Difficulty';
+        progressValue = 0.5;
+        break;
+      case 'good':
+        performanceColor = Colors.blue;
+        performanceIcon = Icons.trending_up;
+        performanceText = 'Good';
+        progressValue = 0.75;
+        break;
+      case 'easy':
+        performanceColor = Colors.green;
+        performanceIcon = Icons.trending_up;
+        performanceText = 'Excellent';
+        progressValue = 1.0;
+        break;
+      default:
+        performanceColor = Colors.grey;
+        performanceIcon = Icons.help_outline;
+        performanceText = 'Unknown';
+        progressValue = 0.0;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: performanceColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Row(
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.orange, size: 16),
-              const SizedBox(width: 8),
+              Icon(performanceIcon, color: performanceColor, size: 24),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  _getEarlyReviewMessage(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.orange[800],
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      performanceText,
+                      style: TextStyle(
+                        color: performanceColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Next Review: $nextReview',
+                      style: TextStyle(
+                        color: performanceColor.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-      ],
-      
-      SizedBox(
-        height: 200, // or MediaQuery.of(context).size.height * 0.3
-        child: ListView.builder(
-          itemCount: widget.studyResults.length,
-          itemBuilder: (context, index) {
-            final result = widget.studyResults[index];
-            final card = widget.flashcards.firstWhere(
-              (c) => c.id == result.cardId,
-              orElse: () => Flashcard(
-                id: result.cardId,
-                question: 'Unknown',
-                answer: '',
-                deckId: '',
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            );
-            return _buildScheduleItem(context, result, card, index);
-          },
-        ),
-      ),
-    ],
-  );
-}
-
-  Widget _buildScheduleItem(
-    BuildContext context,
-    StudyResult result,
-    Flashcard card,
-    int index,
-  ) {
-    final changeType = _getChangeType(result);
-    final changeColor = _getChangeColor(changeType);
-    final changeIcon = _getChangeIcon(changeType);
-    final changeText = _getChangeText(result, changeType);
-
-    return Card(
-      margin: EdgeInsets.only(bottom: index < widget.studyResults.length - 1 ? 4 : 0),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        leading: Icon(changeIcon, color: changeColor, size: 16),
-        title: Text(
-          card.question.length > 25 ? '${card.question.substring(0, 25)}...' : card.question,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-        ),
-        subtitle: Text(
-          changeText,
-          style: TextStyle(
-            fontSize: 10,
-            color: changeColor,
-          ),
-        ),
-        trailing: _buildIntervalChange(context, result),
-      ),
-    );
-  }
-
-  Widget _buildIntervalChange(BuildContext context, StudyResult result) {
-    final isIncrease = result.newInterval > result.oldInterval;
-    final isDecrease = result.newInterval < result.oldInterval;
-    final hasPreviouslyScheduled = result.previouslyScheduledReview != null;
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      child: Column(
-        children: [
-          // Show previously scheduled time with strike-through if it exists
-          if (hasPreviouslyScheduled) ...[
-            Text(
-              _formatDate(result.previouslyScheduledReview!),
-              style: TextStyle(
-                fontSize: 8,
-                color: Colors.grey[600],
-                decoration: TextDecoration.lineThrough,
-              ),
-            ),
-            const SizedBox(height: 2),
-          ],
-          // Show old interval
-          Text(
-            '${result.oldInterval}d',
-            style: TextStyle(
-              fontSize: 9,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              decoration: TextDecoration.lineThrough,
-            ),
-          ),
-          Icon(
-            isIncrease ? Icons.arrow_upward : Icons.arrow_downward,
-            size: 10,
-            color: isIncrease ? Colors.green : Colors.red,
-          ),
-          // Show new interval
-          Text(
-            '${result.newInterval}d',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: isIncrease ? Colors.green : Colors.red,
-            ),
-          ),
-          // Show new review date
-          Text(
-            _formatDate(result.nextReview),
-            style: TextStyle(
-              fontSize: 8,
-              color: isIncrease ? Colors.green : Colors.red,
-              fontWeight: FontWeight.w500,
-            ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progressValue,
+            backgroundColor: performanceColor.withOpacity(0.2),
+            valueColor: AlwaysStoppedAnimation(performanceColor),
+            minHeight: 6,
           ),
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+  Widget _buildNextReviewInfo(BuildContext context) {
+    if (_performanceSummary == null) return const SizedBox.shrink();
 
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Tomorrow';
-    } else if (difference.inDays > 1 && difference.inDays < 7) {
-      return 'In ${difference.inDays}d';
-    } else if (difference.inDays < 0) {
-      return '${date.day}/${date.month}';
-    } else {
-      return '${date.day}/${date.month}';
-    }
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AnimatedScale(
+                scale: _fadeAnimation.value,
+                duration: const Duration(milliseconds: 300),
+                child: Icon(
+                  Icons.calendar_today,
+                  color: Theme.of(context).colorScheme.secondary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Review Schedule',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Your next review is optimized for retention based on your performance.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+            semanticsLabel: 'Your next review is optimized for retention based on your performance.',
+          ),
+        ],
+      ),
+    );
   }
 
- 
+  Widget _buildCardBreakdown(BuildContext context) {
+    if (_performanceSummary == null) return const SizedBox.shrink();
+
+    final againCount = _performanceSummary!['againCount'] as int;
+    final hardCount = _performanceSummary!['hardCount'] as int;
+    final goodCount = _performanceSummary!['goodCount'] as int;
+    final easyCount = _performanceSummary!['easyCount'] as int;
+    final totalCards = _performanceSummary!['totalCards'] as int;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Performance Breakdown',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 1.2,
+          children: [
+            _buildRatingCard(context, 'Again', againCount, totalCards, Colors.red, Icons.refresh, 0),
+            _buildRatingCard(context, 'Hard', hardCount, totalCards, Colors.orange, Icons.trending_down, 1),
+            _buildRatingCard(context, 'Good', goodCount, totalCards, Colors.blue, Icons.trending_up, 2),
+            _buildRatingCard(context, 'Easy', easyCount, totalCards, Colors.green, Icons.trending_up, 3),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRatingCard(
+    BuildContext context,
+    String label,
+    int count,
+    int total,
+    Color color,
+    IconData icon,
+    int index,
+  ) {
+    final percentage = total > 0 ? (count / total).toDouble() : 0.0;
+
+    return AnimatedOpacity(
+      opacity: _fadeAnimation.value,
+      duration: Duration(milliseconds: 300 + (index * 100)),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: percentage,
+                  backgroundColor: color.withOpacity(0.2),
+                  valueColor: AlwaysStoppedAnimation(color),
+                  strokeWidth: 4,
+                ),
+                Icon(icon, color: color, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '$count (${(percentage * 100).round()}%)',
+              style: TextStyle(
+                color: color.withOpacity(0.8),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildActions(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(12),
+          bottomRight: Radius.circular(12),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton(
-              onPressed: widget.onDecline,
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                widget.onDecline();
+              },
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: BorderSide(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text(
-                'Decline',
-                style: TextStyle(fontSize: 12),
+              child: Text(
+                'Skip Scheduling',
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 12),
           Expanded(
-            flex: 2,
             child: ElevatedButton(
-              onPressed: widget.onAccept,
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                widget.onAccept();
+              },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 2,
               ),
-              child: const Text(
-                'Accept',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('Schedule Review'),
             ),
           ),
         ],
       ),
     );
-  }
-
-  String _getChangeType(StudyResult result) {
-    if (result.rating == StudyRating.again) return 'reset';
-    if (result.rating == StudyRating.hard) return 'reduced';
-    if (result.rating == StudyRating.easy) return 'advanced';
-    return 'normal';
-  }
-
-  Color _getChangeColor(String changeType) {
-    switch (changeType) {
-      case 'reset':
-        return Colors.red;
-      case 'reduced':
-        return Colors.amber;
-      case 'advanced':
-        return Colors.green;
-      default:
-        return Theme.of(context).colorScheme.primary;
-    }
-  }
-
-  IconData _getChangeIcon(String changeType) {
-    switch (changeType) {
-      case 'reset':
-        return Icons.refresh;
-      case 'reduced':
-        return Icons.trending_down;
-      case 'advanced':
-        return Icons.trending_up;
-      default:
-        return Icons.schedule;
-    }
-  }
-
-  String _getChangeText(StudyResult result, String changeType) {
-    switch (changeType) {
-      case 'reset':
-        return 'Reset (1d)';
-      case 'reduced':
-        return 'To ${result.newInterval}d';
-      case 'advanced':
-        return 'To ${result.newInterval}d';
-      default:
-        return 'In ${result.newInterval}d';
-    }
-  }
-
-  Map<String, int> _calculateScheduleSummary() {
-    int soon = 0;
-    int advanced = 0;
-    int reset = 0;
-    int reduced = 0;
-
-    for (final result in widget.studyResults) {
-      if (result.rating == StudyRating.again) {
-        reset++;
-      } else if (result.rating == StudyRating.hard) {
-        reduced++;
-      } else if (result.rating == StudyRating.easy) {
-        advanced++;
-      } else {
-        if (result.newInterval <= 7) {
-          soon++;
-        } else {
-          advanced++;
-        }
-      }
-    }
-
-    return {
-      'soon': soon,
-      'advanced': advanced,
-      'reset': reset,
-      'reduced': reduced,
-    };
-  }
-
-  String _getEarlyReviewMessage() {
-    final earlyReviews = widget.studyResults.where((result) => result.previouslyScheduledReview != null).length;
-    final totalCards = widget.studyResults.length;
-    
-    if (earlyReviews == totalCards) {
-      return 'All cards were reviewed early! Current intervals maintained, schedules start from now.';
-    } else if (earlyReviews > 0) {
-      return '$earlyReviews of $totalCards cards were reviewed early! Current intervals maintained, schedules start from now.';
-    }
-    return '';
-  }
-
-  bool _hasEarlyReviews() {
-    return widget.studyResults.any((result) => result.previouslyScheduledReview != null);
   }
 }

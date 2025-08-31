@@ -51,7 +51,7 @@ class OverdueService {
       final now = DateTime.now();
       Deck updated = deck;
 
-      // Pre-window: Set Review Now 10 minutes BEFORE scheduled time
+      // Only handle deck-level scheduling
       final scheduled = (deck.scheduledReviewEnabled == true) ? deck.scheduledReviewTime : null;
       if (scheduled != null) {
         // If user changed the scheduled time away from previous window, clear transient tags
@@ -64,22 +64,32 @@ class OverdueService {
             deckOverdueStartTime: null,
           );
         }
+        
         if (now.isBefore(scheduled)) {
           final minutesUntil = scheduled.difference(now).inMinutes;
           if (minutesUntil <= 10 && minutesUntil >= 0) {
-            // Enter Review Now window (ends exactly at scheduled time)
+            // Enter Review Now window (10 minutes before scheduled time)
             if (updated.deckIsReviewNow != true) {
               updated = updated.copyWith(
                 deckIsReviewNow: true,
                 deckReviewNowStartTime: now,
                 deckIsOverdue: false,
-                // reset prior reviewed when a new schedule window starts
+                deckOverdueStartTime: null,
                 deckIsReviewed: false,
                 deckReviewedStartTime: null,
               );
+              
+              // Send review now notification
+              await _notificationService.showReviewNowNotification(
+                deck.name,
+                'Time to review your deck!',
+                deckId: deck.id,
+              );
+              
+              print('Deck ${deck.name} entered Review Now window at ${now.toString()}');
             }
           } else {
-            // Outside pre-window
+            // Outside pre-window - clear Review Now
             if (updated.deckIsReviewNow == true) {
               updated = updated.copyWith(
                 deckIsReviewNow: false,
@@ -102,6 +112,15 @@ class OverdueService {
               deckIsOverdue: true,
               deckOverdueStartTime: now,
             );
+            
+            // Send overdue notification
+            await _notificationService.showOverdueCardNotification(
+              deck.name,
+              'Your deck is overdue for review!',
+              deckId: deck.id,
+            );
+            
+            print('Deck ${deck.name} marked as Overdue at ${now.toString()}');
           } else {
             // Always clear Review Now after schedule passes
             if (updated.deckIsReviewNow == true) {
@@ -114,8 +133,6 @@ class OverdueService {
         }
       }
 
-      // Note: No generic 10-minute Review Now expiry; it ends at the scheduled time.
-
       // Expire Reviewed after 10 minutes (keep timestamp to show "Reviewed X ago")
       if (updated.deckIsReviewed == true && updated.deckReviewedStartTime != null) {
         final diff = now.difference(updated.deckReviewedStartTime!);
@@ -124,11 +141,13 @@ class OverdueService {
             deckIsReviewed: false,
             // keep deckReviewedStartTime for relative time display
           );
+          print('Deck ${deck.name} Reviewed tag expired at ${now.toString()}');
         }
       }
 
       if (updated != deck) {
         await _dataService.updateDeck(updated);
+        print('Updated deck-level tags for ${deck.name}: ReviewNow=${updated.deckIsReviewNow}, Overdue=${updated.deckIsOverdue}, Reviewed=${updated.deckIsReviewed}');
       }
     } catch (e) {
       print('Error updating deck tag state for deck ${deck.name}: $e');
@@ -140,63 +159,26 @@ class OverdueService {
       final flashcards = await _dataService.getFlashcardsForDeck(deck.id);
       final now = DateTime.now();
       
+      // Only handle deck-level scheduling - no card-level scheduling
+      // Clear any existing card-level tags since we only use deck-level
       for (final flashcard in flashcards) {
-        // Card-level logic remains for nextReview and transitions, but deck-level UI/tags are now primary
-        if (flashcard.nextReview != null && flashcard.nextReview!.isBefore(now)) {
-          // Card is due for review
-          if (flashcard.isReviewNow != true && flashcard.isOverdue != true && flashcard.isReviewed != true) {
-            // Show "Review Now" tag for 10 minutes
-            final updatedFlashcard = flashcard.copyWith(
-              isReviewNow: true,
-              reviewNowStartTime: now,
-            );
-            await _dataService.updateFlashcard(updatedFlashcard);
-            
-            // Send review now notification
-            await _notificationService.showReviewNowNotification(
-              deck.name,
-              flashcard.question,
-            );
-            
-            print('Card ${flashcard.id} marked as Review Now at ${now.toString()}');
-          } else if (flashcard.isReviewNow == true && flashcard.reviewNowStartTime != null) {
-            // Check if "Review Now" tag should expire (after 10 minutes)
-            final reviewNowDuration = now.difference(flashcard.reviewNowStartTime!);
-            if (reviewNowDuration.inMinutes >= 10) {
-              // Expire "Review Now" tag and show "Overdue" tag
-              final updatedFlashcard = flashcard.copyWith(
-                isReviewNow: false,
-                reviewNowStartTime: null,
-                isOverdue: true,
-                overdueStartTime: now,
-              );
-              await _dataService.updateFlashcard(updatedFlashcard);
-              
-              // Send overdue notification
-              await _notificationService.showOverdueCardNotification(
-                deck.name,
-                flashcard.question,
-              );
-              
-              print('Card ${flashcard.id} expired Review Now and marked as Overdue at ${now.toString()}');
-            }
-          }
-        }
-        
-        // Check if "Reviewed" tag should expire (after 10 minutes)
-        if (flashcard.isReviewed == true && flashcard.reviewedStartTime != null) {
-          final reviewedDuration = now.difference(flashcard.reviewedStartTime!);
-          if (reviewedDuration.inMinutes >= 10) {
-            final updatedFlashcard = flashcard.copyWith(
-              isReviewed: false,
-              reviewedStartTime: null,
-            );
-            await _dataService.updateFlashcard(updatedFlashcard);
-            
-            print('Card ${flashcard.id} Reviewed tag expired at ${now.toString()}');
-          }
+        // Clear any card-level review tags since we only use deck-level
+        if (flashcard.isReviewNow == true || flashcard.isOverdue == true || flashcard.isReviewed == true) {
+          final updatedFlashcard = flashcard.copyWith(
+            isReviewNow: false,
+            reviewNowStartTime: null,
+            isOverdue: false,
+            overdueStartTime: null,
+            isReviewed: false,
+            reviewedStartTime: null,
+          );
+          await _dataService.updateFlashcard(updatedFlashcard);
         }
       }
+      
+      // Deck-level tags are handled in _updateDeckTagState method
+      // This method now only ensures card-level tags are cleared
+      print('Cleared card-level tags for deck ${deck.name} - using deck-level scheduling only');
     } catch (e) {
       print('Error updating overdue status for deck ${deck.name}: $e');
     }
@@ -210,23 +192,24 @@ class OverdueService {
       // Calculate next review time using SM2 algorithm
       final nextReview = _calculateNextReview(flashcard, quality);
       
-      // Update flashcard with new review data
+      // Update flashcard with new review data (no card-level tags)
       final updatedFlashcard = flashcard.copyWith(
         lastReviewed: now,
         nextReview: nextReview,
         reviewCount: flashcard.reviewCount + 1,
-        isOverdue: false, // No longer overdue
-        overdueStartTime: null, // Clear overdue tracking
-        isReviewNow: false, // No longer review now
-        reviewNowStartTime: null, // Clear review now tracking
-        isReviewed: true, // Show reviewed tag
-        reviewedStartTime: now, // Start reviewed tag timer
+        // Clear any card-level tags since we only use deck-level
+        isOverdue: false,
+        overdueStartTime: null,
+        isReviewNow: false,
+        reviewNowStartTime: null,
+        isReviewed: false, // No card-level reviewed tag
+        reviewedStartTime: null,
         updatedAt: now,
       );
       
       await _dataService.updateFlashcard(updatedFlashcard);
 
-      // Also update deck-level tags to Reviewed (for 10 minutes) and clear others
+      // Update deck-level tags to Reviewed (for 10 minutes) and clear others
       final deck = await _dataService.getDeck(flashcard.deckId);
       if (deck != null) {
         final updatedDeck = deck.copyWith(
@@ -238,12 +221,10 @@ class OverdueService {
           deckReviewedStartTime: now,
         );
         await _dataService.updateDeck(updatedDeck);
+        print('Deck ${deck.name} marked as Reviewed after studying card');
       }
       
-      // Check if we need to send a notification for the next review
-      if (nextReview.isAfter(now)) {
-        await _scheduleNextReviewNotification(updatedFlashcard);
-      }
+      // No individual card notifications - only deck-level scheduling
     } catch (e) {
       print('Error marking card as studied: $e');
     }
@@ -280,21 +261,8 @@ class OverdueService {
     }
   }
 
-  // Schedule notification for next review
-  Future<void> _scheduleNextReviewNotification(Flashcard flashcard) async {
-    try {
-      final deck = await _dataService.getDeck(flashcard.deckId);
-      if (deck != null) {
-        await _notificationService.scheduleCardReviewNotification(
-          flashcard,
-          deck,
-          flashcard.nextReview!,
-        );
-      }
-    } catch (e) {
-      print('Error scheduling next review notification: $e');
-    }
-  }
+  // No individual card notifications - only deck-level scheduling
+  // This method is removed since we only use deck-level scheduling
 
   // Get overdue statistics for a deck
   Future<Map<String, dynamic>> getOverdueStats(String deckId) async {
@@ -347,83 +315,15 @@ class OverdueService {
     }
   }
 
-  // Check if a card should show review now tag (within 10 minutes of becoming due)
-  bool shouldShowReviewNowTag(Flashcard flashcard) {
-    if (flashcard.isReviewNow != true || flashcard.reviewNowStartTime == null) {
-      return false;
-    }
-    
-    final now = DateTime.now();
-    final reviewNowDuration = now.difference(flashcard.reviewNowStartTime!);
-    
-    // Only show review now tag for 10 minutes after becoming due
-    return reviewNowDuration.inMinutes < 10;
-  }
-
-  // Get review now tag text with countdown
-  String getReviewNowTagText(Flashcard flashcard) {
-    if (flashcard.isReviewNow != true || flashcard.reviewNowStartTime == null) {
-      return '';
-    }
-    
-    final now = DateTime.now();
-    final reviewNowDuration = now.difference(flashcard.reviewNowStartTime!);
-    final remainingMinutes = 10 - reviewNowDuration.inMinutes;
-    
-    if (remainingMinutes <= 0) {
-      return 'Review Now';
-    } else if (remainingMinutes == 1) {
-      return 'Review Now (1m)';
-    } else {
-      return 'Review Now (${remainingMinutes}m)';
-    }
-  }
-
-  // Check if a card should show overdue tag (stays until reviewed)
-  bool shouldShowOverdueTag(Flashcard flashcard) {
-    return flashcard.isOverdue == true;
-  }
-
-  // Get overdue tag text
-  String getOverdueTagText(Flashcard flashcard) {
-    if (flashcard.isOverdue != true) {
-      return '';
-    }
-    
-    return 'Overdue';
-  }
-
-  // Check if a card should show reviewed tag (within 10 minutes of being reviewed)
-  bool shouldShowReviewedTag(Flashcard flashcard) {
-    if (flashcard.isReviewed != true || flashcard.reviewedStartTime == null) {
-      return false;
-    }
-    
-    final now = DateTime.now();
-    final reviewedDuration = now.difference(flashcard.reviewedStartTime!);
-    
-    // Only show reviewed tag for 10 minutes after being reviewed
-    return reviewedDuration.inMinutes < 10;
-  }
-
-  // Get reviewed tag text with countdown
-  String getReviewedTagText(Flashcard flashcard) {
-    if (flashcard.isReviewed != true || flashcard.reviewedStartTime == null) {
-      return '';
-    }
-    
-    final now = DateTime.now();
-    final reviewedDuration = now.difference(flashcard.reviewedStartTime!);
-    final remainingMinutes = 10 - reviewedDuration.inMinutes;
-    
-    if (remainingMinutes <= 0) {
-      return 'Reviewed';
-    } else if (remainingMinutes == 1) {
-      return 'Reviewed (1m)';
-    } else {
-      return 'Reviewed (${remainingMinutes}m)';
-    }
-  }
+  // Card-level tags are disabled - only deck-level tags are used
+  // These methods return false/empty since we don't use card-level scheduling
+  
+  bool shouldShowReviewNowTag(Flashcard flashcard) => false;
+  String getReviewNowTagText(Flashcard flashcard) => '';
+  bool shouldShowOverdueTag(Flashcard flashcard) => false;
+  String getOverdueTagText(Flashcard flashcard) => '';
+  bool shouldShowReviewedTag(Flashcard flashcard) => false;
+  String getReviewedTagText(Flashcard flashcard) => '';
 
   // Dispose resources
   void dispose() {

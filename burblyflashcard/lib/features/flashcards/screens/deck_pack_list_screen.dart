@@ -15,6 +15,7 @@ import 'flashcard_home_screen.dart';
 import '../../stats/stats_page.dart';
 import 'notification_settings_screen.dart';
 import '../widgets/notification_widget.dart';
+import '../widgets/notification_display_widget.dart';
 import '../../schedules/schedules.dart';
 // import '../../pets/screens/pet_management_screen.dart';
 import 'trash_screen.dart';
@@ -813,7 +814,7 @@ Widget _buildDrawer() {
                   leading:
                       const Icon(Icons.notifications_outlined, size: 22, color: Colors.red),
                   title:
-                      const Text('Notifications', style: TextStyle(fontSize: 14)),
+                      const Text('Notification Settings', style: TextStyle(fontSize: 14)),
                   onTap: () {
                     Navigator.pop(context);
                     context.pushFade(
@@ -1030,16 +1031,8 @@ Widget _buildDrawer() {
             tooltip: 'Search',
           ),
           
-          // Notification settings button
-          IconButton(
-            onPressed: () {
-              context.pushFade(
-                const NotificationSettingsScreen(),
-              );
-            },
-            icon: Icon(Icons.notifications, color: Theme.of(context).appBarTheme.foregroundColor),
-            tooltip: 'Notification Settings',
-          ),
+          // Notification display widget
+          const NotificationDisplayWidget(),
          
         ],
       ),

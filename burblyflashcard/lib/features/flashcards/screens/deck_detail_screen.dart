@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/core.dart';
 import 'add_flashcard_screen.dart';
 import 'study_mode_selection_screen.dart';
@@ -105,69 +106,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     );
   }
 
-  Widget _buildReviewStatusTags(Flashcard flashcard) {
-    final overdueService = OverdueService();
-    
-    return Wrap(
-      spacing: 8,
-      runSpacing: 4,
-      children: [
-        // Review Now Tag
-        if (overdueService.shouldShowReviewNowTag(flashcard))
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withOpacity(0.6)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.schedule, color: Colors.orange[700], size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  overdueService.getReviewNowTagText(flashcard),
-                  style: TextStyle(
-                    color: Colors.orange[700],
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        
-        // Overdue Tag
-        if (overdueService.shouldShowOverdueTag(flashcard))
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.withOpacity(0.6)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.warning, color: Colors.red[700], size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  overdueService.getOverdueTagText(flashcard),
-                  style: TextStyle(
-                    color: Colors.red[700],
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        
-        // Reviewed tag intentionally omitted at flashcard level; deck card shows deck-level Reviewed
-      ],
-    );
-  }
+  // Card-level review status tags removed - only deck-level tags are used
 
   void _addFlashcard() {
     context.pushScale(
@@ -907,7 +846,7 @@ Widget _buildQuickTimerButton(
                             }
                             // Past scheduled time → show Overdue without the 'Next:' prefix
                             return const Text(
-                              'No schedule yet',
+                              'Schedule here',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
@@ -1563,11 +1502,8 @@ Widget _buildQuickTimerButton(
                 overflow: TextOverflow.ellipsis,
               ),
               
-              // Review Status Tags
-              if (_currentDeck.spacedRepetitionEnabled) ...[
-                const SizedBox(height: 8),
-                _buildReviewStatusTags(flashcard),
-              ],
+              // Card-level tags are disabled - only deck-level tags are shown
+              // Review Status Tags removed since we only use deck-level scheduling
               
               const SizedBox(height: 12),
               Row(
