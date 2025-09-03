@@ -254,7 +254,7 @@ Future<void> _signInWithGoogle() async {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -279,7 +279,7 @@ Future<void> _signInWithGoogle() async {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                            color: Colors.black,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: Theme.of(context).dividerColor.withOpacity(0.3),
@@ -289,7 +289,7 @@ Future<void> _signInWithGoogle() async {
                           child: Text(
                             'OR',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.9),
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                             ),

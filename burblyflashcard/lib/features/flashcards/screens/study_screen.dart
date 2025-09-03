@@ -45,7 +45,7 @@ class _StudyScreenState extends State<StudyScreen> with TickerProviderStateMixin
 
   void _initializeAnimations() {
     _flipController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     
@@ -58,7 +58,7 @@ class _StudyScreenState extends State<StudyScreen> with TickerProviderStateMixin
     ));
 
     _textFadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 200),
       vsync: this,
     );
 
@@ -195,159 +195,113 @@ class _StudyScreenState extends State<StudyScreen> with TickerProviderStateMixin
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 // Question/Answer Label
-                                AnimatedSwitcher(
-  duration: const Duration(milliseconds: 400),
-  transitionBuilder: (child, animation) {
-    final rotation = Tween(begin: pi, end: 0.0).animate(animation);
-
-    return AnimatedBuilder(
-      animation: rotation,
-      child: child,
-      builder: (context, child) {
-        final isUnder = (child?.key != ValueKey(_showAnswer));
-        final value = isUnder ? min(rotation.value, pi / 2) : rotation.value;
-
-        return Transform(
-          transform: Matrix4.rotationY(value),
-          alignment: Alignment.center,
-          child: child,
-        );
-      },
-    );
-  },
-  child: AnimatedSwitcher(
-  duration: const Duration(milliseconds: 400),
-  transitionBuilder: (child, animation) => FadeTransition(
-    opacity: animation,
-    child: child,
-  ),
-  child: Container(
-    key: ValueKey(_showAnswer),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: _showAnswer 
-          ? Colors.green.withOpacity(0.3) 
-          : Colors.white.withOpacity(0.2),
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Text(
-      _showAnswer ? 'ANSWER' : 'QUESTION',
-      style: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        fontSize: 14,
-        letterSpacing: 1.2,
-      ),
-    ),
-  ),
-)
-
-                              
-),
-                              
-const SizedBox(height: 24),
+                                FadeTransition(
+                                  opacity: _textFadeAnimation,
+                                  child: Container(
+                                    key: ValueKey(_showAnswer),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: _flipAnimation.value < 0.5
+                                          ? Colors.white.withOpacity(0.2)
+                                          : Colors.green.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _showAnswer ? 'ANSWER' : 'QUESTION',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
 
                                 // Question/Answer Text
                                 Expanded(
-  child: SingleChildScrollView(
-    child: Column(
-      children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          transitionBuilder: (child, animation) {
-            final rotation = Tween(begin: pi, end: 0.0).animate(animation);
-            return AnimatedBuilder(
-              animation: rotation,
-              child: child,
-              builder: (context, child) {
-                final isUnder = (child?.key != ValueKey(_showAnswer));
-                final value = isUnder ? min(rotation.value, pi / 2) : rotation.value;
-                return Transform(
-                  transform: Matrix4.rotationY(value),
-                  alignment: Alignment.center,
-                  child: child,
-                );
-              },
-            );
-          },
-          child: Text(
-            _showAnswer ? currentCard.answer : currentCard.question,
-            key: ValueKey(_showAnswer),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              height: 1.5,
-              shadows: [
-                Shadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(2, 2),
-                ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        if (_showAnswer && _showExtendedDescription) ...[
-          
-          const SizedBox(height: 16),
-          FadeTransition(
-            opacity: _textFadeAnimation,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-             child: Row(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Text(
-      "Description: ",
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.95),
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.8,
-      ),
-    ),
-    Expanded(
-      child: Text(
-        currentCard.extendedDescription ?? '',
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.9),
-          fontSize: 16,
-        ),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 3, // adjust as needed
-      ),
-    ),
-  ],
-),
-
-             ),
-          ),
-        ],
-      ],
-    ),
-  ),
-),
-const SizedBox(height: 32),
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      children: [
+                                        FadeTransition(
+                                          opacity: _textFadeAnimation,
+                                          child: Text(
+                                            _showAnswer ? currentCard.answer : currentCard.question,
+                                            key: ValueKey(_showAnswer),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.5,
+                                              shadows: [
+                                                Shadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(2, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        if (_showAnswer && _showExtendedDescription) ...[
+                                          const SizedBox(height: 16),
+                                          FadeTransition(
+                                            opacity: _textFadeAnimation,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.1),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    "Description: ",
+                                                    style: TextStyle(
+                                                      color: Colors.white.withOpacity(0.95),
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      letterSpacing: 0.8,
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    child: Text(
+                                                      currentCard.extendedDescription ?? '',
+                                                      style: TextStyle(
+                                                        color: Colors.white.withOpacity(0.9),
+                                                        fontSize: 16,
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                      maxLines: 3,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
 
                                 // Tap to reveal hint
                                 if (!_showAnswer)
@@ -398,7 +352,6 @@ const SizedBox(height: 32),
                       ),
                     ),
                   ),
-                  
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
@@ -420,8 +373,7 @@ const SizedBox(height: 32),
                 ],
               ),
             ),
-          ] else ...[
-            ],
+          ],
         ],
       ),
     );
@@ -499,15 +451,18 @@ const SizedBox(height: 32),
       _isFlipping = true;
     });
     
-    _flipController.forward().then((_) {
-      setState(() {
-        _showAnswer = !_showAnswer;
-        _isFlipping = false;
-        _showExtendedDescription = false;
-        _textFadeController.reset();
-        _textFadeController.forward();
+    _textFadeController.reverse();
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _flipController.forward().then((_) {
+        setState(() {
+          _showAnswer = !_showAnswer;
+          _isFlipping = false;
+          _showExtendedDescription = false;
+          _textFadeController.reset();
+          _textFadeController.forward();
+        });
+        _flipController.reset();
       });
-      _flipController.reset();
     });
   }
 
@@ -516,7 +471,6 @@ const SizedBox(height: 32),
       setState(() {
         _showExtendedDescription = true;
       });
-      
     }
   }
 }

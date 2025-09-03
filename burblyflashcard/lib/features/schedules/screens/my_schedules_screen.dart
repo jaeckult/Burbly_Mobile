@@ -99,23 +99,7 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await _loadCalendarData();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Calendar updated!'),
-                duration: Duration(seconds: 1),
-              ),
-            );
-          }
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.refresh),
-        tooltip: 'Refresh Calendar',
-      ),
+     
     );
   }
 
@@ -357,9 +341,15 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
   }
 
   void _showEventsForDate(DateTime date, List<CalendarEvent> events) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+   showDialog(
+  context: context,
+  builder: (context) => Dialog(
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.8, // 80% of screen width
+        maxHeight: MediaQuery.of(context).size.height * 0.6, // 60% of screen height
+      ),
+      child: AlertDialog(
         title: Row(
           children: [
             Icon(
@@ -368,24 +358,32 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
               size: 24,
             ),
             const SizedBox(width: 8),
-            Text('${_getMonthName(date.month)} ${date.day}, ${date.year}'),
+            Flexible(
+              child: Text(
+                '${_getMonthName(date.month)} ${date.day}, ${date.year}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${events.length} review${events.length == 1 ? '' : 's'} scheduled',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+          height: MediaQuery.of(context).size.height * 0.4,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${events.length} review${events.length == 1 ? '' : 's'} scheduled',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              ...events.map((event) => _buildEventItem(event)),
-            ],
+                const SizedBox(height: 16),
+                ...events.map((event) => _buildEventItem(event)),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -395,8 +393,10 @@ class _MySchedulesScreenState extends State<MySchedulesScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildEventItem(CalendarEvent event) {
     return Container(

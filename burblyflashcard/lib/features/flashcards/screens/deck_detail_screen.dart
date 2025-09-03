@@ -1612,18 +1612,23 @@ Widget _buildQuickTimerButton(
     DateTime selectedDateTime = _currentDeck.scheduledReviewTime ?? DateTime.now().add(const Duration(hours: 1));
     
     showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.alarm_add, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text('Schedule Review'),
-            ],
-          ),
-          content: Column(
+  context: context,
+  builder: (context) => StatefulBuilder(
+    builder: (context, setDialogState) => AlertDialog(
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.alarm_add, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          const Text('Schedule Review'),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
@@ -1635,73 +1640,25 @@ Widget _buildQuickTimerButton(
               // Quick picks
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Quick picks', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: const Color.fromARGB(255, 196, 188, 188))),
+                child: Text(
+                  'Quick picks',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color.fromARGB(255, 196, 188, 188),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _buildQuickScheduleChip(
-  'In 10m',
-  selectedDateTime.difference(DateTime.now()).inMinutes <= 10 &&
-      selectedDateTime.difference(DateTime.now()).inMinutes >= 9,
-  () {
-    setDialogState(
-        () => selectedDateTime = DateTime.now().add(const Duration(minutes: 10)));
-  },
-),
-_buildQuickScheduleChip(
-  'In 15m',
-  selectedDateTime.difference(DateTime.now()).inMinutes <= 15 &&
-      selectedDateTime.difference(DateTime.now()).inMinutes >= 14,
-  () {
-    setDialogState(
-        () => selectedDateTime = DateTime.now().add(const Duration(minutes: 15)));
-  },
-),
-_buildQuickScheduleChip(
-  'In 30m',
-  selectedDateTime.difference(DateTime.now()).inMinutes <= 30 &&
-      selectedDateTime.difference(DateTime.now()).inMinutes >= 29,
-  () {
-    setDialogState(
-        () => selectedDateTime = DateTime.now().add(const Duration(minutes: 30)));
-  },
-),
-_buildQuickScheduleChip(
-  'In 1h',
-  selectedDateTime.difference(DateTime.now()).inMinutes <= 60 &&
-      selectedDateTime.difference(DateTime.now()).inMinutes >= 59,
-  () {
-    setDialogState(
-        () => selectedDateTime = DateTime.now().add(const Duration(hours: 1)));
-  },
-),
-_buildQuickScheduleChip(
-  'In 6h',
-  selectedDateTime.difference(DateTime.now()).inMinutes <= 360 &&
-      selectedDateTime.difference(DateTime.now()).inMinutes >= 359,
-  () {
-    setDialogState(
-        () => selectedDateTime = DateTime.now().add(const Duration(hours: 6)));
-  },
-),
-_buildQuickScheduleChip(
-  'In 24h',
-  selectedDateTime.difference(DateTime.now()).inMinutes <= 1440 &&
-      selectedDateTime.difference(DateTime.now()).inMinutes >= 1439,
-  () {
-    setDialogState(
-        () => selectedDateTime = DateTime.now().add(const Duration(hours: 24)));
-  },
-),
-
-                 
+                  // your _buildQuickScheduleChip calls
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               // Date Picker
               ListTile(
                 leading: const Icon(Icons.calendar_today),
@@ -1730,6 +1687,7 @@ _buildQuickScheduleChip(
                 },
               ),
               const SizedBox(height: 12),
+
               // Time Picker
               ListTile(
                 leading: const Icon(Icons.access_time),
@@ -1738,41 +1696,26 @@ _buildQuickScheduleChip(
                   '${selectedDateTime.hour.toString().padLeft(2, '0')}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
                 ),
                 onTap: () async {
-  final time = await showTimePicker(
-    context: context,
-    initialTime: TimeOfDay.fromDateTime(selectedDateTime),
-    initialEntryMode: TimePickerEntryMode.dial,
-    builder: (context, child) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          // The previous parameters 'switchToInputEntryModeIcon' and 'switchToDialEntryModeIcon' do not exist.
-          // To hide the keyboard switch icon in the time picker, as of Flutter 3.10+, you can use 'entryModeIconColor' and set it to transparent.
-          timePickerTheme: const TimePickerThemeData(
-            entryModeIconColor: Colors.transparent,
-          ),
-        ),
-        child: child!,
-      );
-    },
-  );
-
-  if (time != null) {
-    setDialogState(() {
-      selectedDateTime = DateTime(
-        selectedDateTime.year,
-        selectedDateTime.month,
-        selectedDateTime.day,
-        time.hour,
-        time.minute,
-      );
-    });
-  }
-}
-
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.fromDateTime(selectedDateTime),
+                    initialEntryMode: TimePickerEntryMode.dial,
+                  );
+                  if (time != null) {
+                    setDialogState(() {
+                      selectedDateTime = DateTime(
+                        selectedDateTime.year,
+                        selectedDateTime.month,
+                        selectedDateTime.day,
+                        time.hour,
+                        time.minute,
+                      );
+                    });
+                  }
+                },
               ),
-              
               const SizedBox(height: 16),
-              
+
               // Info Box
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1786,61 +1729,58 @@ _buildQuickScheduleChip(
                     const Icon(Icons.info_outline, color: Colors.blue, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-  child: Text(
-    selectedDateTime.isBefore(DateTime.now())
-        ? 'Not scheduled yet'
-        : 'Next: ${_formatScheduledTime(selectedDateTime)}',
-    style: const TextStyle(fontSize: 12, color: Colors.blue),
-  ),
-),
-
+                      child: Text(
+                        selectedDateTime.isBefore(DateTime.now())
+                            ? 'Not scheduled yet'
+                            : 'Next: ${_formatScheduledTime(selectedDateTime)}',
+                        style: const TextStyle(fontSize: 12, color: Colors.blue),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final updatedDeck = _currentDeck.copyWith(
-                    scheduledReviewTime: selectedDateTime,
-                    scheduledReviewEnabled: true,
-                  );
-                  await _dataService.updateDeck(updatedDeck);
-                  setState(() => _currentDeck = updatedDeck);
-                  
-                  // Handle notification scheduling based on enabled state
-                  await NotificationService().updateDeckReviewNotification(updatedDeck);
-                  // Start overdue monitoring for this deck
-                  OverdueService().startOverdueMonitoring();
-                  
-                  Navigator.pop(context);
-
-                  if (mounted) {
-                    final message = 'Scheduled for ${_formatScheduledTime(selectedDateTime)}';
-                    SnackbarUtils.showSuccessSnackbar(context, message);
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    SnackbarUtils.showErrorSnackbar(
-                      context,
-                      'Error setting scheduled review time: ${e.toString()}',
-                    );
-                  }
-                }
-              },
-              child: const Text('Schedule'),
-            ),
-          ],
         ),
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            try {
+              final updatedDeck = _currentDeck.copyWith(
+                scheduledReviewTime: selectedDateTime,
+                scheduledReviewEnabled: true,
+              );
+              await _dataService.updateDeck(updatedDeck);
+              setState(() => _currentDeck = updatedDeck);
+              await NotificationService().updateDeckReviewNotification(updatedDeck);
+              OverdueService().startOverdueMonitoring();
+              Navigator.pop(context);
+
+              if (mounted) {
+                final message = 'Scheduled for ${_formatScheduledTime(selectedDateTime)}';
+                SnackbarUtils.showSuccessSnackbar(context, message);
+              }
+            } catch (e) {
+              if (mounted) {
+                SnackbarUtils.showErrorSnackbar(
+                  context,
+                  'Error setting scheduled review time: ${e.toString()}',
+                );
+              }
+            }
+          },
+          child: const Text('Schedule'),
+        ),
+      ],
+    ),
+  ),
+);
+}
 
   Widget _buildQuickScheduleChip(String label, bool isActive, VoidCallback onTap) {
     final Color baseColor = const Color.fromARGB(255, 248, 248, 250);
