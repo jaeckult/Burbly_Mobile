@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest   # 👈 macOS runner (required for iOS)
+    runs-on: macos-latest   # macOS runner required for iOS builds
 
     steps:
       - name: Checkout repository
@@ -19,8 +19,15 @@ jobs:
         with:
           flutter-version: "3.32.7"
 
-      - name: Install dependencies
+      - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Set iOS platform version
+        run: |
+          cd ios
+          # Ensure platform is set to iOS 12.0
+          sed -i '' "s/^# platform :ios, '9.0'/platform :ios, '12.0'/" Podfile || echo "platform :ios, '12.0'" >> Podfile
+          pod install
 
       - name: Build iOS (unsigned)
         run: flutter build ipa --release --no-codesign
