@@ -1,20 +1,16 @@
-# 📚 Burbly App
+# burblyflashcard
 
-A simple and elegant Flutter app for managing study decks and practicing different topics.  
-Each deck represents a subject (e.g., Microcontrollers, Logic Design, Data Structures), and you can easily create, edit, and practice decks to improve your knowledge.
+A new Flutter project.
 
----
+## Getting Started
 
-## ✨ Features
+This project is a starting point for a Flutter application.
 
-- 🔍 **Search Decks** – Quickly find a deck using the search bar.  
-- 🗂 **Organized Subjects** – Create decks for subjects like Microcontrollers, Logic Design, IoT, Data Structures, and more.  
-- 🎨 **Colorful Avatars** – Each deck has a sleek circular avatar with initials for quick recognition.  
-- 📝 **Practice Mode** – Open a deck and start practicing questions.  
-- 🔄 **Swipe Actions** – Edit or delete a deck by swiping left or right. 
+A few resources to get you started if this is your first Flutter project:
 
-## Technoloy stack 
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
--flutter - frontend
--firebase - authentication/database/notification
--hive - local flutter database/storage
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
