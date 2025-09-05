@@ -62,7 +62,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
   void _initializeAnimations() {
     _deckSchedulingService = DeckSchedulingService();
     _flipController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     
@@ -75,7 +75,7 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
     ));
 
     _textFadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 200),
       vsync: this,
     );
 
@@ -296,9 +296,12 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Container(
+                                        key: ValueKey(_showAnswer),
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.2),
+                                          color: _flipAnimation.value < 0.5
+                                              ? Colors.white.withOpacity(0.2)
+                                              : Colors.green.withOpacity(0.3),
                                           borderRadius: BorderRadius.circular(20),
                                           boxShadow: [
                                             BoxShadow(
@@ -344,171 +347,146 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
                                 // Question/Answer Text
                                 Expanded(
                                   child: SingleChildScrollView(
-                                    child: FadeTransition(
-                                      opacity: _textFadeAnimation,
-                                      child: Text(
-                                        _showAnswer ? currentCard.answer : currentCard.question,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.5,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black.withOpacity(0.2),
-                                              blurRadius: 4,
-                                              offset: const Offset(2, 2),
+                                    child: Column(
+                                      children: [
+                                        FadeTransition(
+                                          opacity: _textFadeAnimation,
+                                          child: Text(
+                                            _showAnswer ? currentCard.answer : currentCard.question,
+                                            key: ValueKey(_showAnswer),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.5,
+                                              shadows: [
+                                                Shadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(2, 2),
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                            textAlign: TextAlign.center,
+                                          ),
                                         ),
-                                        textAlign: TextAlign.center,
-                                      ),
+                                        if (_showAnswer && _showExtendedDescription) ...[
+                                          const SizedBox(height: 16),
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.1),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  "Description: ",
+                                                  style: TextStyle(
+                                                    color: Colors.white.withOpacity(0.95),
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: 0.8,
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    currentCard.extendedDescription ?? '',
+                                                    style: TextStyle(
+                                                      color: Colors.white.withOpacity(0.9),
+                                                      fontSize: 16,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 3,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                 ),
 
-                                // Extended Description
-                                if (_showAnswer && _showExtendedDescription) ...[
-                                  const SizedBox(height: 16),
-                                  FadeTransition(
-                                    opacity: _textFadeAnimation,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        currentCard.extendedDescription?.isNotEmpty == true 
-                                          ? currentCard.extendedDescription!
-                                          : 'No extended description available',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w400,
-                                          height: 1.5,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black.withOpacity(0.2),
-                                              blurRadius: 4,
-                                              offset: const Offset(1, 1),
-                                            ),
-                                          ],
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-
                                 // Spaced Repetition Info
                                 if (_showAnswer) ...[
                                   const SizedBox(height: 16),
-                                  FadeTransition(
-                                    opacity: _textFadeAnimation,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                            children: [
-                                              _buildInfoItem('Reviews', '${currentCard.reviewCount}'),
-                                              _buildInfoItem('Ease', '${currentCard.easeFactor.toStringAsFixed(2)}'),
-                                            ],
-                                          ),
-                                          if (_isMixedStudy) ...[
-                                            const SizedBox(height: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.2),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Container(
-                                                    width: 8,
-                                                    height: 8,
-                                                    decoration: BoxDecoration(
-                                                      color: _getDeckColor(currentCard.deckId),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    _getDeckName(currentCard.deckId),
-                                                    style: TextStyle(
-                                                      color: _getDeckColor(currentCard.deckId),
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            _buildInfoItem('Reviews', '${currentCard.reviewCount}'),
+                                            _buildInfoItem('Ease', '${currentCard.easeFactor.toStringAsFixed(2)}'),
                                           ],
+                                        ),
+                                        if (_isMixedStudy) ...[
+                                          const SizedBox(height: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: _getDeckColor(currentCard.deckId).withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  width: 8,
+                                                  height: 8,
+                                                  decoration: BoxDecoration(
+                                                    color: _getDeckColor(currentCard.deckId),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  _getDeckName(currentCard.deckId),
+                                                  style: TextStyle(
+                                                    color: _getDeckColor(currentCard.deckId),
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ],
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 ],
+                                const SizedBox(height: 32),
 
-                                // Study Instructions
-                                if (!_showAnswer) ...[
-                                  const SizedBox(height: 16),
+                                // Tap to reveal hint
+                                if (!_showAnswer)
                                   FadeTransition(
                                     opacity: _textFadeAnimation,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.lightbulb_outline,
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Try to recall the answer before revealing it',
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.9),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'This active recall strengthens your memory',
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.7),
-                                              fontSize: 12,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ],
+                                    child: Text(
+                                      'Double tap to reveal answer',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 16,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w400,
                                       ),
                                     ),
                                   ),
-                                ],
                               ],
                             ),
                           ),
@@ -912,16 +890,19 @@ class _AnkiStudyScreenState extends State<AnkiStudyScreen> with TickerProviderSt
       _isFlipping = true;
     });
     
-    _flipController.forward().then((_) {
-      setState(() {
-        _showAnswer = !_showAnswer;
-        _isAnswerRevealed = _showAnswer;
-        _isFlipping = false;
-        _showExtendedDescription = false;
-        _textFadeController.reset();
-        _textFadeController.forward();
+    _textFadeController.reverse();
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _flipController.forward().then((_) {
+        setState(() {
+          _showAnswer = !_showAnswer;
+          _isAnswerRevealed = _showAnswer;
+          _isFlipping = false;
+          _showExtendedDescription = false;
+          _textFadeController.reset();
+          _textFadeController.forward();
+        });
+        _flipController.reset();
       });
-      _flipController.reset();
     });
   }
 

@@ -88,7 +88,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
 
   void _initializeAnimations() {
     _flipController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     
@@ -101,7 +101,7 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
     ));
 
     _textFadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 200),
       vsync: this,
     );
 
@@ -512,23 +512,26 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
       _isFlipping = true;
     });
     
-    _flipController.forward().then((_) {
-      setState(() {
-        _showAnswer = !_showAnswer;
-        _showRatingButtons = _showAnswer;
-        _isFlipping = false;
-        _showExtendedDescription = false;
-        _textFadeController.reset();
-        _textFadeController.forward();
+    _textFadeController.reverse();
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _flipController.forward().then((_) {
+        setState(() {
+          _showAnswer = !_showAnswer;
+          _showRatingButtons = _showAnswer;
+          _isFlipping = false;
+          _showExtendedDescription = false;
+          _textFadeController.reset();
+          _textFadeController.forward();
+        });
+        _flipController.reset();
+        // Handle timer when flipping
+        if (_showAnswer && _timerEnabled) {
+          _pauseTimer();
+        } else if (!_showAnswer && _timerEnabled) {
+          _timeRemaining = _effectiveTimerDuration;
+          _resumeTimer();
+        }
       });
-      _flipController.reset();
-      // Handle timer when flipping
-      if (_showAnswer && _timerEnabled) {
-        _pauseTimer();
-      } else if (!_showAnswer && _timerEnabled) {
-        _timeRemaining = _effectiveTimerDuration;
-        _resumeTimer();
-      }
     });
   }
 
@@ -537,7 +540,6 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
       setState(() {
         _showExtendedDescription = true;
       });
-     
     }
   }
 
@@ -922,6 +924,50 @@ class _EnhancedStudyScreenState extends State<EnhancedStudyScreen> with TickerPr
                    ),
                  ),
                ),
+
+               // Extended Description
+               if (!isQuestion && _showExtendedDescription) ...[
+                 const SizedBox(height: 16),
+                 Container(
+                   padding: const EdgeInsets.all(16),
+                   decoration: BoxDecoration(
+                     color: Colors.white.withOpacity(0.2),
+                     borderRadius: BorderRadius.circular(12),
+                     boxShadow: [
+                       BoxShadow(
+                         color: Colors.black.withOpacity(0.1),
+                         blurRadius: 8,
+                         offset: const Offset(0, 2),
+                       ),
+                     ],
+                   ),
+                   child: Row(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(
+                         "Description: ",
+                         style: TextStyle(
+                           color: Colors.white.withOpacity(0.95),
+                           fontSize: 16,
+                           fontWeight: FontWeight.bold,
+                           letterSpacing: 0.8,
+                         ),
+                       ),
+                       Expanded(
+                         child: Text(
+                           widget.flashcards[_currentIndex].extendedDescription ?? '',
+                           style: TextStyle(
+                             color: Colors.white.withOpacity(0.9),
+                             fontSize: 16,
+                           ),
+                           overflow: TextOverflow.ellipsis,
+                           maxLines: 3,
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
+               ],
 
                // Spaced Repetition Info (if enabled and showing answer)
                if (widget.deck.spacedRepetitionEnabled && !isQuestion) ...[
